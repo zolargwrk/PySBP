@@ -1,2 +1,2 @@
-# Project Title
+# HOMS
 High-Order Method Solvers

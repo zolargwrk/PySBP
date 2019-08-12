@@ -1,4 +1,2 @@
-HOMS
+Project Title
 High-Order Method Solvers
-
-Discreption

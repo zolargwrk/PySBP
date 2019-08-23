@@ -1,2 +1,2 @@
-# HOMS
+# HOPSOL
 High-Order PDE Solver

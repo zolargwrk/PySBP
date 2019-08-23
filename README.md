@@ -1,2 +1,2 @@
 # HOMS
-High-Order Method Solvers
+High-Order PDE Solver

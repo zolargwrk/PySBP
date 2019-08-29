@@ -5,14 +5,14 @@ from math import *
 from accuracy_test_1d import operator_test_1d
 
 
-def hqd_csbp(p, xl, xr, m, b, app):
-    """Computes classical SBP operators on m equally spaced nodes up to degree p = 6 for first derivative twice
+def hqd_csbp(p, xl, xr, n, b, app):
+    """Computes classical SBP operators on n equally spaced nodes up to degree p = 6 for first derivative twice
         and up to p = 4 for order-matched and compatible operators
             Inputs: p   - degree of operator
                     xl  - start point of the element
                     xr  - end point of the element
-                    m   - number of degrees of freedom in the mesh
-                    b   - (m,1) vector for holding entries of the variable coefficient, use np.ones(m,1) for constant
+                    n   - number of degrees of freedom in the mesh
+                    b   - (n,1) vector for holding entries of the variable coefficient, use np.ones(n,1) for constant
                            coefficient
                     app - 1 for first derivative twice
                           2 for order-matched and compatible operator
@@ -38,13 +38,13 @@ def hqd_csbp(p, xl, xr, m, b, app):
     # elif p == 8:
     #     bn = 23
 
-    x = np.linspace(xl, xr, m)    # 1D mesh
+    x = np.linspace(xl, xr, n)    # 1D mesh
     bn2 = bn + p                # size of the block at boundaries including terms from center-difference
-    dx = (xr-xl)/(m-1)          # mesh size
+    dx = (xr-xl)/(n - 1)          # mesh size
 
     # the H and D1 matrices
-    h_mat = np.eye(m)
-    d_mat = np.zeros((m, m))
+    h_mat = np.eye(n)
+    d_mat = np.zeros((n, n))
 
     # the H and D1 matrices obtained from solution of the accuracy equation (see CSBP_Oper.py)
     if p == 1:
@@ -75,15 +75,15 @@ def hqd_csbp(p, xl, xr, m, b, app):
         k = k-1
 
     # values at the right boundary
-    for i in range(m-bn, m):
-        h_mat[i, i] = h_mat[m-i-1, m-i-1]
+    for i in range(n - bn, n):
+        h_mat[i, i] = h_mat[n - i - 1, n - i - 1]
 
     for i in range(0, bn2):
         for j in range(0, bn2):
-            d_mat[m-1-i, m-1-j] = -d_mat[i, j]
+            d_mat[n - 1 - i, n - 1 - j] = -d_mat[i, j]
 
     # interior operator
-    for i in range(bn, m-bn):
+    for i in range(bn, n - bn):
         d_mat[i, (i-p):(i+p+1)] = d_int[0, 0:(2*p+1)]
 
     d_mat = (1/dx)*d_mat
@@ -91,35 +91,35 @@ def hqd_csbp(p, xl, xr, m, b, app):
     q_mat = h_mat @ d_mat
 
     # ================================================================================================================#
-    #                                       Second derivative operator
+    #                                    Second derivative operator: CSBP
     # ================================================================================================================#
-    db_mat = np.zeros((m, m))
-    e_mat = np.zeros((m, m))
-    txL = np.zeros((m, 1))
+    db_mat = np.zeros((n, n))
+    e_mat = np.zeros((n, n))
+    txL = np.zeros((n, 1))
     txL[0, 0] = 1
-    txR = np.zeros((m, 1))
-    txR[m-1, 0] = 1
+    txR = np.zeros((n, 1))
+    txR[n - 1, 0] = 1
     e_mat[0, 0] = -1
-    e_mat[m-1, m-1] = 1
+    e_mat[n - 1, n - 1] = 1
     if p == 1:
         if app == 2:
-            d2_mat = np.zeros((m, m))
-            c2_mat = np.eye(m, m)
+            d2_mat = np.zeros((n, n))
+            c2_mat = np.eye(n, n)
             d2_mat[0:bn, 0:bn2] = [[1, -2, 1], [1, -2, 1]]
             db_mat[0:bn, 0:bn2] = [[-3/2, 2, -1/2]]
             d2_int = [1, -2, 1]
             c2_mat[1, 1] = 0
-            c2_mat[m-2, m-2] = 0
+            c2_mat[n - 2, n - 2] = 0
             a1 = -1/4
 
             # values at the right boundary
             for i in range(0, bn2):
                 for j in range(0, bn2):
-                    d2_mat[m - 1 - i, m - 1 - j] = d2_mat[i, j]
-                    db_mat[m - 1 - i, m - 1 - j] = -db_mat[i, j]
+                    d2_mat[n - 1 - i, n - 1 - j] = d2_mat[i, j]
+                    db_mat[n - 1 - i, n - 1 - j] = -db_mat[i, j]
 
             # interior operator
-            for i in range(bn, m - bn):
+            for i in range(bn, n - bn):
                 d2_mat[i, (i - p):(i + p + 1)] = d2_int
 
             d2_mat = (1/(dx**2))*d2_mat
@@ -157,28 +157,28 @@ def hqd_csbp(p, xl, xr, m, b, app):
             FNm4 = np.fliplr(np.flipud(F5))
             FNm5 = np.fliplr(np.flipud(F6))
 
-            D2 = np.zeros((m, m))
+            D2 = np.zeros((n, n))
             D2[0:5, 0:5] = D2[0:5, 0:5] + np.dot(b[0] / dx ** 2, F1)
             D2[0:3, 0:3] = D2[0:3, 0:3] + np.dot(b[1] / dx ** 2, F2)
             D2[0:5, 0:5] = D2[0:5, 0:5] + np.dot(b[2] / dx ** 2, F3)
             D2[0:6, 0:6] = D2[0:6, 0:6] + np.dot(b[3] / dx ** 2, F4)
             D2[2:7, 2:7] = D2[2:7, 2:7] + np.dot(b[4] / dx ** 2, F5)
             D2[3:8, 3:8] = D2[3:8, 3:8] + np.dot(b[5] / dx ** 2, F6)
-            D2[m-5:m, m-5:m] = D2[m-5:m, m-5:m] + np.dot(b[m-1] / dx ** 2, FN)
-            D2[m-3:m, m-3:m] = D2[m-3:m, m-3:m] + np.dot(b[m-2] / dx ** 2, FNm1)
-            D2[m-5:m, m-5:m] = D2[m-5:m, m-5:m] + np.dot(b[m-3] / dx ** 2, FNm2)
-            D2[m-6:m, m-6:m] = D2[m-6:m, m-6:m] + np.dot(b[m-4] / dx ** 2, FNm3)
-            D2[m-7:m-2, m-7:m-2] = D2[m-7:m-2, m-7:m-2] + np.dot(b[m-5] / dx ** 2, FNm4)
-            D2[m-8:m-3, m-8:m-3] = D2[m-8:m-3, m-8:m-3] + np.dot(b[m-6] / dx ** 2, FNm5)
+            D2[n - 5:n, n - 5:n] = D2[n - 5:n, n - 5:n] + np.dot(b[n - 1] / dx ** 2, FN)
+            D2[n - 3:n, n - 3:n] = D2[n - 3:n, n - 3:n] + np.dot(b[n - 2] / dx ** 2, FNm1)
+            D2[n - 5:n, n - 5:n] = D2[n - 5:n, n - 5:n] + np.dot(b[n - 3] / dx ** 2, FNm2)
+            D2[n - 6:n, n - 6:n] = D2[n - 6:n, n - 6:n] + np.dot(b[n - 4] / dx ** 2, FNm3)
+            D2[n - 7:n - 2, n - 7:n - 2] = D2[n - 7:n - 2, n - 7:n - 2] + np.dot(b[n - 5] / dx ** 2, FNm4)
+            D2[n - 8:n - 3, n - 8:n - 3] = D2[n - 8:n - 3, n - 8:n - 3] + np.dot(b[n - 6] / dx ** 2, FNm5)
 
             # interior of the operator
-            for i in range(6, m - 6):
+            for i in range(6, n - 6):
                 D2[i-2:i+3, i-2:i+3] = D2[i-2:i+3, i-2:i+3] + np.dot(b[i] / dx ** 2, Fint)
 
             d2p = D2
             # upper portion of db_mat
             db_mat[0, 0:5] = 1 / dx * np.asarray([- 252525932147.0 / 117745777728.0, 124968006275.0 / 29436444432.0, - 66095117411.0 / 19624296288.0, 46470821123.0 / 29436444432.0, - 36658672979.0 / 117745777728.0])
-            db_mat[m-1, m-5:m] = - np.flip(db_mat[0, 0:5])
+            db_mat[n - 1, n - 5:n] = - np.flip(db_mat[0, 0:5])
 
         elif app == 1:
             d2p = d_mat @ np.diag(b) @d_mat
@@ -217,7 +217,7 @@ def hqd_csbp(p, xl, xr, m, b, app):
             FNm7 = np.fliplr(np.flipud(F8))
             FNm8 = np.fliplr(np.flipud(F9))
 
-            D2 = np.zeros((m, m))
+            D2 = np.zeros((n, n))
             D2[0:6, 0:9] = np.dot(b[0] / dx ** 2, F1)
             D2[0:6, 0:6] = D2[0:6, 0:6] + np.dot(b[1] / dx ** 2, F2)
             D2[0:6, 0:6] = D2[0:6, 0:6] + np.dot(b[2] / dx ** 2, F3)
@@ -227,25 +227,25 @@ def hqd_csbp(p, xl, xr, m, b, app):
             D2[3:10, 3:10] = D2[3:10, 3:10] + np.dot(b[6] / dx ** 2, F7)
             D2[4:11, 4:11] = D2[4:11, 4:11] + np.dot(b[7] / dx ** 2, F8)
             D2[5:12, 5:12] = D2[5:12, 5:12] + np.dot(b[8] / dx ** 2, F9)
-            D2[m-6:m, m-9:m] = D2[m-6:m, m-9:m] + np.dot(b[m-1] / dx ** 2, FN)
-            D2[m-6:m, m-6:m] = D2[m-6:m, m-6:m] + np.dot(b[m-2] / dx ** 2, FNm1)
-            D2[m-6:m, m-6:m] = D2[m-6:m, m-6:m] + np.dot(b[m-3] / dx ** 2, FNm2)
-            D2[m-7:m, m-7:m] = D2[m-7:m, m-7:m] + np.dot(b[m-4] / dx ** 2, FNm3)
-            D2[m-8:m, m-8:m] = D2[m-8:m, m-8:m] + np.dot(b[m-5] / dx ** 2, FNm4)
-            D2[m-9:m, m-9:m] = D2[m-9:m, m-9:m] + np.dot(b[m-6] / dx ** 2, FNm5)
-            D2[m-10:m-3, m-10:m-3] = D2[m-10:m-3, m-10:m-3] + np.dot(b[m-7] / dx ** 2, FNm6)
-            D2[m-11:m-4, m-11:m-4] = D2[m-11:m-4, m-11:m-4] + np.dot(b[m-8] / dx ** 2, FNm7)
-            D2[m-12:m-5, m-12:m-5] = D2[m-12:m-5, m-12:m-5] + np.dot(b[m-9] / dx ** 2, FNm8)
+            D2[n - 6:n, n - 9:n] = D2[n - 6:n, n - 9:n] + np.dot(b[n - 1] / dx ** 2, FN)
+            D2[n - 6:n, n - 6:n] = D2[n - 6:n, n - 6:n] + np.dot(b[n - 2] / dx ** 2, FNm1)
+            D2[n - 6:n, n - 6:n] = D2[n - 6:n, n - 6:n] + np.dot(b[n - 3] / dx ** 2, FNm2)
+            D2[n - 7:n, n - 7:n] = D2[n - 7:n, n - 7:n] + np.dot(b[n - 4] / dx ** 2, FNm3)
+            D2[n - 8:n, n - 8:n] = D2[n - 8:n, n - 8:n] + np.dot(b[n - 5] / dx ** 2, FNm4)
+            D2[n - 9:n, n - 9:n] = D2[n - 9:n, n - 9:n] + np.dot(b[n - 6] / dx ** 2, FNm5)
+            D2[n - 10:n - 3, n - 10:n - 3] = D2[n - 10:n - 3, n - 10:n - 3] + np.dot(b[n - 7] / dx ** 2, FNm6)
+            D2[n - 11:n - 4, n - 11:n - 4] = D2[n - 11:n - 4, n - 11:n - 4] + np.dot(b[n - 8] / dx ** 2, FNm7)
+            D2[n - 12:n - 5, n - 12:n - 5] = D2[n - 12:n - 5, n - 12:n - 5] + np.dot(b[n - 9] / dx ** 2, FNm8)
 
             # interior of the operator
-            for i in range(9, m-9):
+            for i in range(9, n - 9):
                 D2[i-3:i+4, i-3:i+4] = D2[i-3:i+4, i-3:i+4] + np.dot(b[i] / dx ** 2, Fint)
 
             d2p = D2
             # upper portion of db_mat
             db_mat[0, 0:9] = 1/dx *np.asarray([- 6.483812845270432e+96 / 2.7821824770560037e+96,3.641811197925308e+96 / 6.955456192640009e+95,- 3.0449769513616686e+97 / 5.5643649541120075e+96,1.0589595513592362e+97 / 2.7821824770560037e+96,- 1.6546585782748327e+96 / 1.1128729908224013e+96,3.442519001149234e+95 / 1.3910912385280019e+96,- 2.4437888807988108e+67 / 1.0294372669976264e+72,1.9473560647137064e+69 / 3.7574460245413365e+73,- 7.041021079661327e+68 / 2.504964016360891e+73])
             # lower portion of db_mat
-            db_mat[m-1, m-9:m] = - np.flip(db_mat[0, 0:9])
+            db_mat[n - 1, n - 9:n] = - np.flip(db_mat[0, 0:9])
 
         elif app == 1:
             d2p = d_mat @ np.diag(b) @ d_mat
@@ -293,7 +293,7 @@ def hqd_csbp(p, xl, xr, m, b, app):
             FNm10 = np.fliplr(np.flipud(F11))
             FNm11 = np.fliplr(np.flipud(F12))
 
-            D2 = np.zeros((m, m))
+            D2 = np.zeros((n, n))
             D2[0:8, 0:8] = np.dot(b[0] / dx ** 2, F1)
             D2[0:8, 0:8] = D2[0:8, 0:8] + np.dot(b[1] / dx ** 2, F2)
             D2[0:8, 0:8] = D2[0:8, 0:8] + np.dot(b[2] / dx ** 2, F3)
@@ -306,20 +306,20 @@ def hqd_csbp(p, xl, xr, m, b, app):
             D2[5:14, 5:14] = D2[5:14, 5:14] + np.dot(b[9] / dx ** 2, F10)
             D2[6:15, 6:15] = D2[6:15, 6:15] + np.dot(b[10] / dx ** 2, F11)
             D2[7:16, 7:16] = D2[7:16, 7:16] + np.dot(b[11] / dx ** 2, F12)
-            D2[m-8:m, m-8:m] = D2[m-8:m, m-8:m] + np.dot(b[m-1] / dx ** 2, FN)
-            D2[m-8:m, m-8:m] = D2[m-8:m, m-8:m] + np.dot(b[m-2] / dx ** 2, FNm1)
-            D2[m-8:m, m-8:m] = D2[m-8:m, m-8:m] + np.dot(b[m-3] / dx ** 2, FNm2)
-            D2[m-8:m, m-8:m] = D2[m-8:m, m-8:m] + np.dot(b[m-4] / dx ** 2, FNm3)
-            D2[m-9:m, m-9:m] = D2[m-9:m, m-9:m] + np.dot(b[m-5] / dx ** 2, FNm4)
-            D2[m-10:m, m-10:m] = D2[m-10:m, m-10:m]  + np.dot(b[m-6] / dx ** 2, FNm5)
-            D2[m-11:m, m-11:m] = D2[m-11:m, m-11:m] + np.dot(b[m-7] / dx ** 2, FNm6)
-            D2[m-12:m, m-12:m] = D2[m-12:m, m-12:m] + np.dot(b[m-8] / dx ** 2, FNm7)
-            D2[m-13:m-4, m-13:m-4] = D2[m-13:m-4, m-13:m-4] + np.dot(b[m-9] / dx ** 2, FNm8)
-            D2[m-14:m-5, m-14:m-5] = D2[m-14:m-5, m-14:m-5] + np.dot(b[m-10] / dx ** 2, FNm9)
-            D2[m-15:m-6, m-15:m-6] = D2[m-15:m-6, m-15:m-6] + np.dot(b[m-11] / dx ** 2, FNm10)
-            D2[m-16:m-7, m-16:m-7] = D2[m-16:m-7, m-16:m-7] + np.dot(b[m-12] / dx ** 2, FNm11)
+            D2[n - 8:n, n - 8:n] = D2[n - 8:n, n - 8:n] + np.dot(b[n - 1] / dx ** 2, FN)
+            D2[n - 8:n, n - 8:n] = D2[n - 8:n, n - 8:n] + np.dot(b[n - 2] / dx ** 2, FNm1)
+            D2[n - 8:n, n - 8:n] = D2[n - 8:n, n - 8:n] + np.dot(b[n - 3] / dx ** 2, FNm2)
+            D2[n - 8:n, n - 8:n] = D2[n - 8:n, n - 8:n] + np.dot(b[n - 4] / dx ** 2, FNm3)
+            D2[n - 9:n, n - 9:n] = D2[n - 9:n, n - 9:n] + np.dot(b[n - 5] / dx ** 2, FNm4)
+            D2[n - 10:n, n - 10:n] = D2[n - 10:n, n - 10:n] + np.dot(b[n - 6] / dx ** 2, FNm5)
+            D2[n - 11:n, n - 11:n] = D2[n - 11:n, n - 11:n] + np.dot(b[n - 7] / dx ** 2, FNm6)
+            D2[n - 12:n, n - 12:n] = D2[n - 12:n, n - 12:n] + np.dot(b[n - 8] / dx ** 2, FNm7)
+            D2[n - 13:n - 4, n - 13:n - 4] = D2[n - 13:n - 4, n - 13:n - 4] + np.dot(b[n - 9] / dx ** 2, FNm8)
+            D2[n - 14:n - 5, n - 14:n - 5] = D2[n - 14:n - 5, n - 14:n - 5] + np.dot(b[n - 10] / dx ** 2, FNm9)
+            D2[n - 15:n - 6, n - 15:n - 6] = D2[n - 15:n - 6, n - 15:n - 6] + np.dot(b[n - 11] / dx ** 2, FNm10)
+            D2[n - 16:n - 7, n - 16:n - 7] = D2[n - 16:n - 7, n - 16:n - 7] + np.dot(b[n - 12] / dx ** 2, FNm11)
 
-            for i in range(12, m - 12):
+            for i in range(12, n - 12):
                 D2[i-4:i+5, i-4:i+5] = D2[i-4:i+5, i-4:i+5] + np.dot(b[i] / dx ** 2, Fint)
 
             d2p = D2
@@ -327,7 +327,7 @@ def hqd_csbp(p, xl, xr, m, b, app):
             # upper portion of db_mat
             db_mat[0, 0:7] = 1 / dx * np.asarray([- 2.4968607207219065,6.2811643243314395,- 8.202910810828598,7.603881081104797,- 4.452910810828597,1.4811643243314392,- 0.2135273873885732])
             # lower portion of D1b
-            db_mat[m-1, m-7:m] = - np.flip(db_mat[0, 0:7])
+            db_mat[n - 1, n - 7:n] = - np.flip(db_mat[0, 0:7])
         elif app == 1:
             d2p = d_mat @ np.diag(b) @ d_mat
             db_mat = d_mat
@@ -351,14 +351,14 @@ def hqd_csbp(p, xl, xr, m, b, app):
     return h_mat, q_mat, d_mat, d2p, db_mat, txL, txR, e_mat, x
 
 
-def hqd_hgtl(p, xl, xr, m, b, app):
+def hqd_hgtl(p, xl, xr, n, b, app):
     """Computes hybrid-Gauss-Trapezoidal-Lobatto (HGTL) operators up to degree p = 4 for first derivative twice
         and order-matched and compatible operators
             Inputs: p   - degree of operator
                     xl  - start point of the element
                     xr  - end point of the element
-                    m   - number of degrees of freedom in the mesh
-                    b   - (m,1) vector for holding entries of the variable coefficient, use np.ones(m,1) for constant
+                    n   - number of degrees of freedom in the mesh
+                    b   - (n,1) vector for holding entries of the variable coefficient, use np.ones(n,1) for constant
                            coefficient
                     app - 1 for first derivative twice
                           2 for order-matched and compatible operator
@@ -377,13 +377,13 @@ def hqd_hgtl(p, xl, xr, m, b, app):
     elif p >= 5:
         sys.exit('Only operators with degrees p <= 5 are supported')
 
-    x = np.linspace(0, m-1, m)  # 1D mesh
+    x = np.linspace(0, n - 1, n)  # 1D mesh
     bn2 = bn + p                # size of the block at boundaries including terms from center-difference
-    dx = (xr-xl)/(m-1)          # mesh size
+    dx = (xr-xl)/(n - 1)          # mesh size
 
     # the H and D1 matrices
-    h_mat = np.eye(m)
-    d_mat = np.zeros((m, m))
+    h_mat = np.eye(n)
+    d_mat = np.zeros((n, n))
 
     # the H and D1 matrices obtained from solution of the accuracy equation (see CSBP_Oper.py)
     if p == 1:
@@ -392,15 +392,15 @@ def hqd_hgtl(p, xl, xr, m, b, app):
         d_mat[0:bn, 0:bn2] = [[-1, 1, 0], [-1/2, 0, 1/2]]
     elif p == 2:
         x[1] = 12/13
-        x[m-2] = m-1-12/13
+        x[n - 2] = n - 1 - 12 / 13
         x = dx*x + xl
         h_mat[0:bn, 0:bn] = [[553.0 / 1728.0,0,0,0],[0,129623.0 / 108864.0,0,0],[0,0,661.0 / 672.0,0],[0,0,0,1955.0 / 1944.0]]
         d_mat[0:bn, 0:bn2] = [[- 864.0 / 553.0,408811.0 / 209034.0,- 2901.0 / 7742.0,- 278.0 / 14931.0,0,0],[- 41.0 / 78.0,0,15.0 / 26.0,- 2.0 / 39.0,0,0],[967.0 / 7932.0,- 49855.0 / 71388.0,0,11800.0 / 17847.0,- 56.0 / 661.0,0],[139.0 / 23460.0,9971.0 / 164220.0,- 1770.0 / 2737.0,0,1296.0 / 1955.0,- 162.0 / 1955.0]]
     elif p == 3:
         x[1] = 4530911073.0 / 5832340780.0
         x[2] = 3476591521.0 / 1773010470.0
-        x[m-3] = m - 1 - 3476591521.0 / 1773010470.0
-        x[m-2] = m - 1 - 4530911073.0 / 5832340780.0
+        x[n - 3] = n - 1 - 3476591521.0 / 1773010470.0
+        x[n - 2] = n - 1 - 4530911073.0 / 5832340780.0
         x = dx * x + xl
         h_mat[0:bn, 0:bn] = [[0.23964384800553828,0,0,0,0,0],[0,1.141349597513777,0,0,0,0],[0,0,1.1140964967090707,0,0,0],[0,0,0,1.008454610228187,0,0],[0,0,0,0,0.9955423760348296,0],[0,0,0,0,0,1.0009130715085972]]
         d_mat[0:bn, 0:bn2] = [[- 2.0864295251528624,2.7374848692200393,- 0.7225033337912564,- 0.027920696644146505,0.12300916308384005,- 0.02364047671561377,0,0,0],[- 0.5747769214146581,0,0.6709177149829892,- 0.05431980081625862,- 0.05650144164358034,0.014680448891507774,0,0,0],[0.15541156409522427,- 0.6873297476678649,0,0.5846135429252965,- 0.04359501606941579,- 0.009100343283240081,0,0,0],[0.006634927457255199,0.06147810934657416,- 0.6458554440584836,0,0.6865790480289092,- 0.1253635786231439,0.01652693784888884,0,0],[- 0.029610381125876772,0.06477664761564347,0.04878652666736163,- 0.6954840124722225,0,0.7454615637614953,- 0.15067163750220128,0.01674129305580014,0],[0.00566012670838254,- 0.016740239398002562,0.010129411693491519,0.1263081504437395,- 0.7414615689963884,0,0.7493158210728373,- 0.14986316421456747,0.016651462690507497]]
@@ -408,9 +408,9 @@ def hqd_hgtl(p, xl, xr, m, b, app):
         x[1] = 4201521473.0 / 6476381109.0
         x[2] = 3666429902.0 / 2010617441.0
         x[3] = 9061125799.0 / 3037910163.0
-        x[m-4] = m - 1 - 9061125799.0 / 3037910163.0
-        x[m-3] = m - 1 - 3666429902.0 / 2010617441.0
-        x[m-2] = m - 1 - 4201521473.0 / 6476381109.0
+        x[n - 4] = n - 1 - 9061125799.0 / 3037910163.0
+        x[n - 3] = n - 1 - 3666429902.0 / 2010617441.0
+        x[n - 2] = n - 1 - 4201521473.0 / 6476381109.0
         x = dx * x + xl
         h_mat[0:bn, 0:bn] = [[0.19035354511472097,0,0,0,0,0,0,0],[0,1.0081446836100132,0,0,0,0,0,0],[0,0,1.2374844574607071,0,0,0,0,0],[0,0,0,1.0659288063102514,0,0,0,0],[0,0,0,0,0.9965199524303897,0,0,0],[0,0,0,0,0,1.0022226837225547,0,0],[0,0,0,0,0,0,0.9992341513638966,0],[0,0,0,0,0,0,0,1.000111719987466]]
         d_mat[0:bn, 0:bn2] = [[- 2.626691295392809,3.489888049469191,- 1.0760932905603076,- 0.014195934495894735,0.45704169099707115,- 0.29809114677672244,0.07411784870004978,- 0.005975921940578181,0,0,0,0],[- 0.6589456583663733,0,0.8203525430067151,- 0.06165611133623007,- 0.2262741108262585,0.17137232518323,- 0.05013742102475079,0.005288433363667539,0,0,0,0],[0.16552787511581663,- 0.6683187412432084,0,0.47401597463952366,0.19250855560052632,- 0.24583665822613268,0.09584309762940983,- 0.013740103515935269,0,0,0,0],[0.0025351097010539005,0.05831372647752189,- 0.5503063597980726,0,0.3870711317200882,0.2259013938895714,- 0.15248528741915388,0.028970285428991063,0,0,0,0],[- 0.08730332587354447,0.22891367233714288,- 0.23905827966901907,- 0.4140311173753168,0,0.5403701743588535,- 0.026319164295077392,0.0010119412333677166,- 0.003583900716406426,0,0,0],[0.056616865171622704,- 0.17238494134821147,0.3035443605197186,- 0.2402607794089721,- 0.5372954226567438,0,0.7352291453003048,- 0.1798964717725696,0.038010752215007736,- 0.003563508020156975,0,0],[- 0.01411940858613927,0.0505845145374859,- 0.11869524626374686,0.16266303566258092,0.026247674096746013,- 0.7374280854473759,0,0.7963505333215897,- 0.20015328712195396,0.038124435642276945,- 0.0035741658414634634,0],[0.001137410855191414,- 0.005330910410962954,0.01700126516374011,- 0.030876812208718768,- 0.00100830698169459,0.18027618427907544,- 0.7956517591472259,0,0.7999106339939963,- 0.19997765849849908,0.03809098257114268,- 0.003571029616044626]]
@@ -424,49 +424,51 @@ def hqd_hgtl(p, xl, xr, m, b, app):
         k = k-1
 
     # values at the right boundary
-    for i in range(m-bn, m):
-        h_mat[i, i] = h_mat[m-i-1, m-i-1]
+    for i in range(n - bn, n):
+        h_mat[i, i] = h_mat[n - i - 1, n - i - 1]
 
     for i in range(0, bn2):
         for j in range(0, bn2):
-            d_mat[m-1-i, m-1-j] = -d_mat[i, j]
+            d_mat[n - 1 - i, n - 1 - j] = -d_mat[i, j]
 
     # interior operator
-    for i in range(bn, m-bn):
+    for i in range(bn, n - bn):
         d_mat[i, (i-p):(i+p+1)] = d_int[0, 0:(2*p+1)]
 
     d_mat = (1/dx)*d_mat
     h_mat = dx*h_mat
     q_mat = h_mat @ d_mat
 
-    # ===========================================================================================================
-    db_mat = np.zeros((m, m))
-    e_mat = np.zeros((m, m))
-    txL = np.zeros((m, 1))
+    # ================================================================================================================#
+    #                                    Second derivative operator: HGTL
+    # ================================================================================================================#
+    db_mat = np.zeros((n, n))
+    e_mat = np.zeros((n, n))
+    txL = np.zeros((n, 1))
     txL[0, 0] = 1
-    txR = np.zeros((m, 1))
-    txR[m-1, 0] = 1
+    txR = np.zeros((n, 1))
+    txR[n - 1, 0] = 1
     e_mat[0, 0] = -1
-    e_mat[m-1, m-1] = 1
+    e_mat[n - 1, n - 1] = 1
     if p == 1:
         if app == 2:
-            d2_mat = np.zeros((m, m))
-            c2_mat = np.eye(m, m)
+            d2_mat = np.zeros((n, n))
+            c2_mat = np.eye(n, n)
             d2_mat[0:bn, 0:bn2] = [[1, -2, 1], [1, -2, 1]]
             db_mat[0, 0:bn2] = [-3/2, 2, -1/2]
             d2_int = [1, -2, 1]
             c2_mat[1, 1] = 0
-            c2_mat[m-2, m-2] = 0
+            c2_mat[n - 2, n - 2] = 0
             a1 = -1/4
 
             # values at the right boundary
             for i in range(0, bn2):
                 for j in range(0, bn2):
-                    d2_mat[m - 1 - i, m - 1 - j] = d2_mat[i, j]
-                    db_mat[m - 1 - i, m - 1 - j] = -db_mat[i, j]
+                    d2_mat[n - 1 - i, n - 1 - j] = d2_mat[i, j]
+                    db_mat[n - 1 - i, n - 1 - j] = -db_mat[i, j]
 
             # interior operator
-            for i in range(bn, m - bn):
+            for i in range(bn, n - bn):
                 d2_mat[i, (i - p):(i + p + 1)] = d2_int
 
             d2_mat = (1/(dx**2))*d2_mat
@@ -505,28 +507,28 @@ def hqd_hgtl(p, xl, xr, m, b, app):
             FNm4 = np.fliplr(np.flipud(F5))
             FNm5 = np.fliplr(np.flipud(F6))
 
-            D2 = np.zeros((m, m))
+            D2 = np.zeros((n, n))
             D2[0:4, 0:5] = D2[0:4, 0:5] + np.dot(b[0] / dx ** 2, F1)
             D2[0:4, 0:4] = D2[0:4, 0:4] + np.dot(b[1] / dx ** 2, F2)
             D2[0:5, 0:5] = D2[0:5, 0:5] + np.dot(b[2] / dx ** 2, F3)
             D2[0:6, 0:6] = D2[0:6, 0:6] + np.dot(b[3] / dx ** 2, F4)
             D2[2:7, 2:7] = D2[2:7, 2:7] + np.dot(b[4] / dx ** 2, F5)
             D2[3:8, 3:8] = D2[3:8, 3:8] + np.dot(b[5] / dx ** 2, F6)
-            D2[m-4:m, m-5:m] = D2[m-4:m, m-5:m] + np.dot(b[m-1] / dx ** 2, FN)
-            D2[m-4:m, m-4:m] = D2[m-4:m, m-4:m] + np.dot(b[m-2] / dx ** 2, FNm1)
-            D2[m-5:m, m-5:m] = D2[m-5:m, m-5:m] + np.dot(b[m-3] / dx ** 2, FNm2)
-            D2[m-6:m, m-6:m] = D2[m-6:m, m-6:m] + np.dot(b[m-4] / dx ** 2, FNm3)
-            D2[m-7:m-2, m-7:m-2] = D2[m-7:m-2, m-7:m-2] + np.dot(b[m-5] / dx ** 2, FNm4)
-            D2[m-8:m-3, m-8:m-3] = D2[m-8:m-3, m-8:m-3] + np.dot(b[m-6] / dx ** 2, FNm5)
+            D2[n - 4:n, n - 5:n] = D2[n - 4:n, n - 5:n] + np.dot(b[n - 1] / dx ** 2, FN)
+            D2[n - 4:n, n - 4:n] = D2[n - 4:n, n - 4:n] + np.dot(b[n - 2] / dx ** 2, FNm1)
+            D2[n - 5:n, n - 5:n] = D2[n - 5:n, n - 5:n] + np.dot(b[n - 3] / dx ** 2, FNm2)
+            D2[n - 6:n, n - 6:n] = D2[n - 6:n, n - 6:n] + np.dot(b[n - 4] / dx ** 2, FNm3)
+            D2[n - 7:n - 2, n - 7:n - 2] = D2[n - 7:n - 2, n - 7:n - 2] + np.dot(b[n - 5] / dx ** 2, FNm4)
+            D2[n - 8:n - 3, n - 8:n - 3] = D2[n - 8:n - 3, n - 8:n - 3] + np.dot(b[n - 6] / dx ** 2, FNm5)
 
             # interior of the operator
-            for i in range(6, m - 6):
+            for i in range(6, n - 6):
                 D2[i-2:i+3, i-2:i+3] = D2[i-2:i+3, i-2:i+3] + np.dot(b[i] / dx ** 2, Fint)
 
             d2p = D2
             # upper portion of db_mat
             db_mat[0, 0:5] = 1 / dx * np.asarray([- 2.211729975895053,3.9350594027112664,- 2.8031827331745576,1.3454102846638916,- 0.26555697830554753])
-            db_mat[m-1, m-5:m] = - np.flip(db_mat[0, 0:5])
+            db_mat[n - 1, n - 5:n] = - np.flip(db_mat[0, 0:5])
 
         elif app == 1:
             d2p = d_mat @ (np.diag(b) @d_mat)
@@ -565,7 +567,7 @@ def hqd_hgtl(p, xl, xr, m, b, app):
             FNm7 = np.fliplr(np.flipud(F8))
             FNm8 = np.fliplr(np.flipud(F9))
 
-            D2 = np.zeros((m, m))
+            D2 = np.zeros((n, n))
             D2[0:6, 0:6] = np.dot(b[0] / dx ** 2, F1)
             D2[0:6, 0:6] = D2[0:6, 0:6] + np.dot(b[1] / dx ** 2, F2)
             D2[0:6, 0:6] = D2[0:6, 0:6] + np.dot(b[2] / dx ** 2, F3)
@@ -575,25 +577,25 @@ def hqd_hgtl(p, xl, xr, m, b, app):
             D2[3:10, 3:10] = D2[3:10, 3:10] + np.dot(b[6] / dx ** 2, F7)
             D2[4:11, 4:11] = D2[4:11, 4:11] + np.dot(b[7] / dx ** 2, F8)
             D2[5:12, 5:12] = D2[5:12, 5:12] + np.dot(b[8] / dx ** 2, F9)
-            D2[m-6:m, m-6:m] = D2[m-6:m, m-6:m] + np.dot(b[m-1] / dx ** 2, FN)
-            D2[m-6:m, m-6:m] = D2[m-6:m, m-6:m] + np.dot(b[m-2] / dx ** 2, FNm1)
-            D2[m-6:m, m-6:m] = D2[m-6:m, m-6:m] + np.dot(b[m-3] / dx ** 2, FNm2)
-            D2[m-7:m, m-7:m] = D2[m-7:m, m-7:m] + np.dot(b[m-4] / dx ** 2, FNm3)
-            D2[m-8:m, m-8:m] = D2[m-8:m, m-8:m] + np.dot(b[m-5] / dx ** 2, FNm4)
-            D2[m-9:m, m-9:m] = D2[m-9:m, m-9:m] + np.dot(b[m-6] / dx ** 2, FNm5)
-            D2[m-10:m-3, m-10:m-3] = D2[m-10:m-3, m-10:m-3] + np.dot(b[m-7] / dx ** 2, FNm6)
-            D2[m-11:m-4, m-11:m-4] = D2[m-11:m-4, m-11:m-4] + np.dot(b[m-8] / dx ** 2, FNm7)
-            D2[m-12:m-5, m-12:m-5] = D2[m-12:m-5, m-12:m-5] + np.dot(b[m-9] / dx ** 2, FNm8)
+            D2[n - 6:n, n - 6:n] = D2[n - 6:n, n - 6:n] + np.dot(b[n - 1] / dx ** 2, FN)
+            D2[n - 6:n, n - 6:n] = D2[n - 6:n, n - 6:n] + np.dot(b[n - 2] / dx ** 2, FNm1)
+            D2[n - 6:n, n - 6:n] = D2[n - 6:n, n - 6:n] + np.dot(b[n - 3] / dx ** 2, FNm2)
+            D2[n - 7:n, n - 7:n] = D2[n - 7:n, n - 7:n] + np.dot(b[n - 4] / dx ** 2, FNm3)
+            D2[n - 8:n, n - 8:n] = D2[n - 8:n, n - 8:n] + np.dot(b[n - 5] / dx ** 2, FNm4)
+            D2[n - 9:n, n - 9:n] = D2[n - 9:n, n - 9:n] + np.dot(b[n - 6] / dx ** 2, FNm5)
+            D2[n - 10:n - 3, n - 10:n - 3] = D2[n - 10:n - 3, n - 10:n - 3] + np.dot(b[n - 7] / dx ** 2, FNm6)
+            D2[n - 11:n - 4, n - 11:n - 4] = D2[n - 11:n - 4, n - 11:n - 4] + np.dot(b[n - 8] / dx ** 2, FNm7)
+            D2[n - 12:n - 5, n - 12:n - 5] = D2[n - 12:n - 5, n - 12:n - 5] + np.dot(b[n - 9] / dx ** 2, FNm8)
 
             # interior of the operator
-            for i in range(9, m-9):
+            for i in range(9, n - 9):
                 D2[i-3:i+4, i-3:i+4] = D2[i-3:i+4, i-3:i+4] + np.dot(b[i] / dx ** 2, Fint)
 
             d2p = D2
             # upper portion of db_mat
             db_mat[0, 0:6] = 1/dx *np.asarray([- 2.593990489201914,4.271053714942161,- 3.199748538135959,2.286544885656597,- 0.9158512275616086,0.15199165430072362])
             # lower portion of db_mat
-            db_mat[m-1, m-6:m] = - np.flip(db_mat[0, 0:6])
+            db_mat[n - 1, n - 6:n] = - np.flip(db_mat[0, 0:6])
 
         elif app == 1:
             d2p = d_mat @ np.diag(b) @ d_mat
@@ -641,7 +643,7 @@ def hqd_hgtl(p, xl, xr, m, b, app):
             FNm10 = np.fliplr(np.flipud(F11))
             FNm11 = np.fliplr(np.flipud(F12))
 
-            D2 = np.zeros((m, m))
+            D2 = np.zeros((n, n))
             D2[0:8, 0:8] = np.dot(b[0] / dx ** 2, F1)
             D2[0:8, 0:8] = D2[0:8, 0:8] + np.dot(b[1] / dx ** 2, F2)
             D2[0:8, 0:8] = D2[0:8, 0:8] + np.dot(b[2] / dx ** 2, F3)
@@ -654,20 +656,20 @@ def hqd_hgtl(p, xl, xr, m, b, app):
             D2[5:14, 5:14] = D2[5:14, 5:14] + np.dot(b[9] / dx ** 2, F10)
             D2[6:15, 6:15] = D2[6:15, 6:15] + np.dot(b[10] / dx ** 2, F11)
             D2[7:16, 7:16] = D2[7:16, 7:16] + np.dot(b[11] / dx ** 2, F12)
-            D2[m-8:m, m-8:m] = D2[m-8:m, m-8:m] + np.dot(b[m-1] / dx ** 2, FN)
-            D2[m-8:m, m-8:m] = D2[m-8:m, m-8:m] + np.dot(b[m-2] / dx ** 2, FNm1)
-            D2[m-8:m, m-8:m] = D2[m-8:m, m-8:m] + np.dot(b[m-3] / dx ** 2, FNm2)
-            D2[m-8:m, m-8:m] = D2[m-8:m, m-8:m] + np.dot(b[m-4] / dx ** 2, FNm3)
-            D2[m-9:m, m-9:m] = D2[m-9:m, m-9:m] + np.dot(b[m-5] / dx ** 2, FNm4)
-            D2[m-10:m, m-10:m] = D2[m-10:m, m-10:m]  + np.dot(b[m-6] / dx ** 2, FNm5)
-            D2[m-11:m, m-11:m] = D2[m-11:m, m-11:m] + np.dot(b[m-7] / dx ** 2, FNm6)
-            D2[m-12:m, m-12:m] = D2[m-12:m, m-12:m] + np.dot(b[m-8] / dx ** 2, FNm7)
-            D2[m-13:m-4, m-13:m-4] = D2[m-13:m-4, m-13:m-4] + np.dot(b[m-9] / dx ** 2, FNm8)
-            D2[m-14:m-5, m-14:m-5] = D2[m-14:m-5, m-14:m-5] + np.dot(b[m-10] / dx ** 2, FNm9)
-            D2[m-15:m-6, m-15:m-6] = D2[m-15:m-6, m-15:m-6] + np.dot(b[m-11] / dx ** 2, FNm10)
-            D2[m-16:m-7, m-16:m-7] = D2[m-16:m-7, m-16:m-7] + np.dot(b[m-12] / dx ** 2, FNm11)
+            D2[n - 8:n, n - 8:n] = D2[n - 8:n, n - 8:n] + np.dot(b[n - 1] / dx ** 2, FN)
+            D2[n - 8:n, n - 8:n] = D2[n - 8:n, n - 8:n] + np.dot(b[n - 2] / dx ** 2, FNm1)
+            D2[n - 8:n, n - 8:n] = D2[n - 8:n, n - 8:n] + np.dot(b[n - 3] / dx ** 2, FNm2)
+            D2[n - 8:n, n - 8:n] = D2[n - 8:n, n - 8:n] + np.dot(b[n - 4] / dx ** 2, FNm3)
+            D2[n - 9:n, n - 9:n] = D2[n - 9:n, n - 9:n] + np.dot(b[n - 5] / dx ** 2, FNm4)
+            D2[n - 10:n, n - 10:n] = D2[n - 10:n, n - 10:n] + np.dot(b[n - 6] / dx ** 2, FNm5)
+            D2[n - 11:n, n - 11:n] = D2[n - 11:n, n - 11:n] + np.dot(b[n - 7] / dx ** 2, FNm6)
+            D2[n - 12:n, n - 12:n] = D2[n - 12:n, n - 12:n] + np.dot(b[n - 8] / dx ** 2, FNm7)
+            D2[n - 13:n - 4, n - 13:n - 4] = D2[n - 13:n - 4, n - 13:n - 4] + np.dot(b[n - 9] / dx ** 2, FNm8)
+            D2[n - 14:n - 5, n - 14:n - 5] = D2[n - 14:n - 5, n - 14:n - 5] + np.dot(b[n - 10] / dx ** 2, FNm9)
+            D2[n - 15:n - 6, n - 15:n - 6] = D2[n - 15:n - 6, n - 15:n - 6] + np.dot(b[n - 11] / dx ** 2, FNm10)
+            D2[n - 16:n - 7, n - 16:n - 7] = D2[n - 16:n - 7, n - 16:n - 7] + np.dot(b[n - 12] / dx ** 2, FNm11)
 
-            for i in range(12, m - 12):
+            for i in range(12, n - 12):
                 D2[i-4:i+5, i-4:i+5] = D2[i-4:i+5, i-4:i+5] + np.dot(b[i] / dx ** 2, Fint)
 
             d2p = D2
@@ -675,7 +677,7 @@ def hqd_hgtl(p, xl, xr, m, b, app):
             # upper portion of db_mat
             db_mat[0, 0:12] = 1 / dx * np.asarray([- 2.8750912094789585,4.193780470189746,- 2.254250179264897,1.4287363930683017,- 0.594415612658386,0.10124013814419368,0,0,0,0,0,0])
             # lower portion of D1b
-            db_mat[m-1, m-12:m] = - np.flip(db_mat[0, 0:12])
+            db_mat[n - 1, n - 12:n] = - np.flip(db_mat[0, 0:12])
         elif app == 1:
             d2p = d_mat @ np.diag(b) @ d_mat
             db_mat = d_mat
@@ -686,14 +688,14 @@ def hqd_hgtl(p, xl, xr, m, b, app):
     return h_mat, q_mat, d_mat, d2p, db_mat, txL, txR, e_mat, x
 
 
-def hqd_hgt(p, xl, xr, m, b, app):
+def hqd_hgt(p, xl, xr, n, b, app):
     """Computes hybrid-Gauss-Trapezoidal(HGT) operators up to degree p = 4 for first derivative twice
         and order-matched and compatible operators
             Inputs: p   - degree of operator
                     xl  - start point of the element
                     xr  - end point of the element
-                    m   - number of degrees of freedom in the mesh
-                    b   - (m,1) vector for holding entries of the variable coefficient, use np.ones(m,1) for constant
+                    n   - number of degrees of freedom in the mesh
+                    b   - (n,1) vector for holding entries of the variable coefficient, use np.ones(n,1) for constant
                            coefficient
                     app - 1 for first derivative twice
                           2 for order-matched and compatible operator
@@ -712,13 +714,13 @@ def hqd_hgt(p, xl, xr, m, b, app):
     elif p >= 5:
         sys.exit('Only operators with degrees p <= 5 are supported')
 
-    x = np.linspace(0, m-1, m)  # 1D mesh
+    x = np.linspace(0, n - 1, n)  # 1D mesh
     bn2 = bn + p                # size of the block at boundaries including terms from center-difference
-    dx = (xr-xl)/(m-1)          # mesh size
+    dx = (xr-xl)/(n - 1)          # mesh size
 
     # the H and D1 matrices
-    h_mat = np.eye(m)
-    d_mat = np.zeros((m, m))
+    h_mat = np.eye(n)
+    d_mat = np.zeros((n, n))
 
     # the H and D1 matrices obtained from solution of the accuracy equation (see CSBP_Oper.py)
     if p == 1:
@@ -726,23 +728,23 @@ def hqd_hgt(p, xl, xr, m, b, app):
         h_mat[0:bn, 0:bn] = [[1/2, 0], [0, 1]]
         d_mat[0:bn, 0:bn2] = [[-1, 1, 0], [-1/2, 0, 1/2]]
 
-        txL = np.zeros((m, 1))
+        txL = np.zeros((n, 1))
         txL[0, 0] = 1
-        txR = np.zeros((m, 1))
-        txR[m - 1, 0] = 1
-        e_mat = np.zeros((m, m))
+        txR = np.zeros((n, 1))
+        txR[n - 1, 0] = 1
+        e_mat = np.zeros((n, n))
         e_mat[0, 0] = -1
-        e_mat[m - 1, m - 1] = 1
+        e_mat[n - 1, n - 1] = 1
     elif p == 2:
         x[0] = 291/470 - (17/470)*sqrt(119)
         x[1] = 291/470 + (17/470)*sqrt(119)
-        x[m-2] = m-1-(291/470 + (17/470)*sqrt(119))
-        x[m-1] = m-1-(291/470 - (17/470)*sqrt(119))
+        x[n - 2] = n - 1 - (291 / 470 + (17 / 470) * sqrt(119))
+        x[n - 1] = n - 1 - (291 / 470 - (17 / 470) * sqrt(119))
         x = dx*x + xl
         h_mat[0:bn, 0:bn] = [[0.5626503937015195,0,0,0],[0,0.9243601307812251,0,0],[0,0,1.019036046982584,0],[0,0,0,0.9939534285346713]]
         d_mat[0:bn, 0:bn2] = [[- 2.174199764799835,3.145750470689078,- 1.2140224361207093,0.24247173023146643,0,0],[- 0.43987870836356463,- 0.4109380435663457,1.0370870997470494,- 0.1862703478171391,0,0],[0.07162334465472171,- 0.6071238279682889,- 0.07464330351364873,0.6919204163979631,- 0.08177662957074722,0],[- 0.007280390946012315,0.10080071968312483,- 0.6769706855298216,- 0.0034316002355072664,0.6707222366036759,- 0.08384027957545949]]
 
-        txL = np.zeros((m, 1))
+        txL = np.zeros((n, 1))
         txL[0, 0] = 1.5641702935744421035
         txL[1, 0] = -.87161315237204648508
         txL[2, 0] = 0.39003645200486026731
@@ -753,14 +755,14 @@ def hqd_hgt(p, xl, xr, m, b, app):
         x[0] = 0.2180540672543505
         x[1] = 1.0011818730312165
         x[2] = 1.9975805264180329
-        x[m-3] = m - 1 - 1.9975805264180329
-        x[m-2] = m - 1 - 1.0011818730312165
-        x[m-1] = m - 1 - 0.2180540672543505
+        x[n - 3] = n - 1 - 1.9975805264180329
+        x[n - 2] = n - 1 - 1.0011818730312165
+        x[n - 1] = n - 1 - 0.2180540672543505
         x = dx * x + xl
         h_mat[0:bn, 0:bn] = [[0.54142014473072,0,0,0,0,0],[0,0.9493700968218415,0,0,0,0],[0,0,1.0115402020235404,0,0,0],[0,0,0,0.9961556602732163,0,0],[0,0,0,0,1.001887133878803,0],[0,0,0,0,0,0.9996267622718789]]
         d_mat[0:bn, 0:bn2] = [[- 2.7049617503550327,4.907594894493699,- 3.891011093934746,2.4490610684756597,- 0.9052732401762246,0.14459012149664388,0,0,0],[- 0.279784174829044,- 1.0283294212357414,2.1149390624168767,- 1.160753668439965,0.42158823744345736,- 0.0676600353555837,0,0,0],[0.00870562497765266,- 0.2916657688116944,- 0.7427055796193681,1.4002592760886794,- 0.4459163214035907,0.07132276876832125,0,0,0],[0.013055129602793068,0.008795261190797448,- 0.4591698140920839,- 0.30722942556794147,0.9122106551220589,- 0.18439279251744534,0.01673098626182126,0,0],[- 0.0028252537128808566,0.002238829042572789,0.09780258253377588,- 0.682064240655529,- 0.04140527245917605,0.7593355446762413,- 0.14971746310312967,0.01663527367812552,0],[- 0.0002853325693438575,0.0005515582427172875,- 0.016286908072402028,0.14808299557931817,- 0.747920308833952,- 0.0010389202163684297,0.7502800328149024,- 0.1500560065629805,0.016672889618108942]]
 
-        txL = np.zeros((m, 1))
+        txL = np.zeros((n, 1))
         txL[0, 0] = 1.7114442920342359
         txL[1, 0] = - 1.3973297407579386
         txL[2, 0] = 1.2257867286377238
@@ -775,13 +777,13 @@ def hqd_hgt(p, xl, xr, m, b, app):
         x[1] = 2716855217 / 2884637151
         x[2] = 393040771 / 200000000
         x[3] = 1498739191 / 500000000
-        x[m-4] = m - 1 - 1498739191 / 500000000
-        x[m-3] = m - 1 - 393040771 / 200000000
-        x[m-2] = m - 1 - 2716855217 / 2884637151
-        x[m-1] = m - 1 - 1967606921 / 10000000000
+        x[n - 4] = n - 1 - 1498739191 / 500000000
+        x[n - 3] = n - 1 - 393040771 / 200000000
+        x[n - 2] = n - 1 - 2716855217 / 2884637151
+        x[n - 1] = n - 1 - 1967606921 / 10000000000
         x = dx * x + xl
 
-        txL = np.zeros((m, 1))
+        txL = np.zeros((n, 1))
         txL[0:8, 0] = [1.750989404942544,- 1.633343421557352,1.9910263083850168,- 2.133524567689234,1.6103351899246576,- 0.7740803545446678,0.21488407333883414,- 0.026286632799799065]
         txR = np.flip(txL)
         e_mat = txR @ txR.transpose() - txL @ txL.transpose()
@@ -798,15 +800,15 @@ def hqd_hgt(p, xl, xr, m, b, app):
         k = k-1
 
     # values at the right boundary
-    for i in range(m-bn, m):
-        h_mat[i, i] = h_mat[m-i-1, m-i-1]
+    for i in range(n - bn, n):
+        h_mat[i, i] = h_mat[n - i - 1, n - i - 1]
 
     for i in range(0, bn2):
         for j in range(0, bn2):
-            d_mat[m-1-i, m-1-j] = -d_mat[i, j]
+            d_mat[n - 1 - i, n - 1 - j] = -d_mat[i, j]
 
     # interior operator
-    for i in range(bn, m-bn):
+    for i in range(bn, n - bn):
         d_mat[i, (i-p):(i+p+1)] = d_int[0, 0:(2*p+1)]
 
     d_mat = (1/dx)*d_mat
@@ -814,28 +816,28 @@ def hqd_hgt(p, xl, xr, m, b, app):
     q_mat = h_mat @ d_mat
 
     # ================================================================================================================ #
-    #                                               Second Derivative Operator
+    #                                         Second Derivative Operator: HGT
     # ================================================================================================================ #
-    db_mat = np.zeros((m, m))
+    db_mat = np.zeros((n, n))
     if p == 1:
         if app == 2:
-            d2_mat = np.zeros((m, m))
-            c2_mat = np.eye(m, m)
+            d2_mat = np.zeros((n, n))
+            c2_mat = np.eye(n, n)
             d2_mat[0:bn, 0:bn2] = [[1, -2, 1], [1, -2, 1]]
             db_mat[0:bn, 0:bn2] = [[-3/2, 2, -1/2]]
             d2_int = [1, -2, 1]
             c2_mat[1, 1] = 0
-            c2_mat[m-2, m-2] = 0
+            c2_mat[n - 2, n - 2] = 0
             a1 = -1/4
 
             # values at the right boundary
             for i in range(0, bn2):
                 for j in range(0, bn2):
-                    d2_mat[m - 1 - i, m - 1 - j] = d2_mat[i, j]
-                    db_mat[m - 1 - i, m - 1 - j] = -db_mat[i, j]
+                    d2_mat[n - 1 - i, n - 1 - j] = d2_mat[i, j]
+                    db_mat[n - 1 - i, n - 1 - j] = -db_mat[i, j]
 
             # interior operator
-            for i in range(bn, m - bn):
+            for i in range(bn, n - bn):
                 d2_mat[i, (i - p):(i + p + 1)] = d2_int
 
             d2_mat = (1/(dx**2))*d2_mat
@@ -874,29 +876,29 @@ def hqd_hgt(p, xl, xr, m, b, app):
             FNm4 = np.fliplr(np.flipud(F5))
             FNm5 = np.fliplr(np.flipud(F6))
 
-            D2 = np.zeros((m, m))
+            D2 = np.zeros((n, n))
             D2[0:4, 0:4] = D2[0:4, 0:4] + np.dot(b[0] / dx ** 2, F1)
             D2[0:4, 0:4] = D2[0:4, 0:4] + np.dot(b[1] / dx ** 2, F2)
             D2[0:5, 0:5] = D2[0:5, 0:5] + np.dot(b[2] / dx ** 2, F3)
             D2[0:6, 0:6] = D2[0:6, 0:6] + np.dot(b[3] / dx ** 2, F4)
             D2[2:7, 2:7] = D2[2:7, 2:7] + np.dot(b[4] / dx ** 2, F5)
             D2[3:8, 3:8] = D2[3:8, 3:8] + np.dot(b[5] / dx ** 2, F6)
-            D2[m-4:m, m-4:m] = D2[m-4:m, m-4:m] + np.dot(b[m-1] / dx ** 2, FN)
-            D2[m-4:m, m-4:m] = D2[m-4:m, m-4:m] + np.dot(b[m-2] / dx ** 2, FNm1)
-            D2[m-5:m, m-5:m] = D2[m-5:m, m-5:m] + np.dot(b[m-3] / dx ** 2, FNm2)
-            D2[m-6:m, m-6:m] = D2[m-6:m, m-6:m] + np.dot(b[m-4] / dx ** 2, FNm3)
-            D2[m-7:m-2, m-7:m-2] = D2[m-7:m-2, m-7:m-2] + np.dot(b[m-5] / dx ** 2, FNm4)
-            D2[m-8:m-3, m-8:m-3] = D2[m-8:m-3, m-8:m-3] + np.dot(b[m-6] / dx ** 2, FNm5)
+            D2[n - 4:n, n - 4:n] = D2[n - 4:n, n - 4:n] + np.dot(b[n - 1] / dx ** 2, FN)
+            D2[n - 4:n, n - 4:n] = D2[n - 4:n, n - 4:n] + np.dot(b[n - 2] / dx ** 2, FNm1)
+            D2[n - 5:n, n - 5:n] = D2[n - 5:n, n - 5:n] + np.dot(b[n - 3] / dx ** 2, FNm2)
+            D2[n - 6:n, n - 6:n] = D2[n - 6:n, n - 6:n] + np.dot(b[n - 4] / dx ** 2, FNm3)
+            D2[n - 7:n - 2, n - 7:n - 2] = D2[n - 7:n - 2, n - 7:n - 2] + np.dot(b[n - 5] / dx ** 2, FNm4)
+            D2[n - 8:n - 3, n - 8:n - 3] = D2[n - 8:n - 3, n - 8:n - 3] + np.dot(b[n - 6] / dx ** 2, FNm5)
 
             # interior of the operator
-            for i in range(6, m - 6):
+            for i in range(6, n - 6):
                 D2[i-2:i+3, i-2:i+3] = D2[i-2:i+3, i-2:i+3] + np.dot(b[i] / dx ** 2, Fint)
 
             d2p = D2
             # upper portion of db_mat
             db_mat[0:bn, 0:bn2] = 1 / dx * np.asarray([[- 1.2594566074497204,1.2594566074497204,0,0,0,0],[1.842351885525726,- 4.302391584650601,2.460039699124875,0,0,0],[0.5443727324765248,1.713504476309843,- 5.859939826975134,3.6020626181887665,0,0],[- 0.6722417786640936,3.793874071170223,- 2.950430712150868,- 3.8090780901872887,3.6378765098320276,0]])
             # lower portion of db_mat
-            db_mat[m-bn:m, m-bn2:m] = - np.fliplr(np.flipud(db_mat[0:bn, 0:bn2]))
+            db_mat[n - bn:n, n - bn2:n] = - np.fliplr(np.flipud(db_mat[0:bn, 0:bn2]))
 
         elif app == 1:
             d2p = d_mat @ np.diag(b) @d_mat
@@ -935,7 +937,7 @@ def hqd_hgt(p, xl, xr, m, b, app):
             FNm7 = np.fliplr(np.flipud(F8))
             FNm8 = np.fliplr(np.flipud(F9))
 
-            D2 = np.zeros((m, m))
+            D2 = np.zeros((n, n))
             D2[0:6, 0:6] = np.dot(b[0] / dx ** 2, F1)
             D2[0:6, 0:6] = D2[0:6, 0:6] + np.dot(b[1] / dx ** 2, F2)
             D2[0:6, 0:6] = D2[0:6, 0:6] + np.dot(b[2] / dx ** 2, F3)
@@ -945,25 +947,25 @@ def hqd_hgt(p, xl, xr, m, b, app):
             D2[3:10, 3:10] = D2[3:10, 3:10] + np.dot(b[6] / dx ** 2, F7)
             D2[4:11, 4:11] = D2[4:11, 4:11] + np.dot(b[7] / dx ** 2, F8)
             D2[5:12, 5:12] = D2[5:12, 5:12] + np.dot(b[8] / dx ** 2, F9)
-            D2[m-6:m, m-6:m] = D2[m-6:m, m-6:m] + np.dot(b[m-1] / dx ** 2, FN)
-            D2[m-6:m, m-6:m] = D2[m-6:m, m-6:m] + np.dot(b[m-2] / dx ** 2, FNm1)
-            D2[m-6:m, m-6:m] = D2[m-6:m, m-6:m] + np.dot(b[m-3] / dx ** 2, FNm2)
-            D2[m-7:m, m-7:m] = D2[m-7:m, m-7:m] + np.dot(b[m-4] / dx ** 2, FNm3)
-            D2[m-8:m, m-8:m] = D2[m-8:m, m-8:m] + np.dot(b[m-5] / dx ** 2, FNm4)
-            D2[m-9:m, m-9:m] = D2[m-9:m, m-9:m] + np.dot(b[m-6] / dx ** 2, FNm5)
-            D2[m-10:m-3, m-10:m-3] = D2[m-10:m-3, m-10:m-3] + np.dot(b[m-7] / dx ** 2, FNm6)
-            D2[m-11:m-4, m-11:m-4] = D2[m-11:m-4, m-11:m-4] + np.dot(b[m-8] / dx ** 2, FNm7)
-            D2[m-12:m-5, m-12:m-5] = D2[m-12:m-5, m-12:m-5] + np.dot(b[m-9] / dx ** 2, FNm8)
+            D2[n - 6:n, n - 6:n] = D2[n - 6:n, n - 6:n] + np.dot(b[n - 1] / dx ** 2, FN)
+            D2[n - 6:n, n - 6:n] = D2[n - 6:n, n - 6:n] + np.dot(b[n - 2] / dx ** 2, FNm1)
+            D2[n - 6:n, n - 6:n] = D2[n - 6:n, n - 6:n] + np.dot(b[n - 3] / dx ** 2, FNm2)
+            D2[n - 7:n, n - 7:n] = D2[n - 7:n, n - 7:n] + np.dot(b[n - 4] / dx ** 2, FNm3)
+            D2[n - 8:n, n - 8:n] = D2[n - 8:n, n - 8:n] + np.dot(b[n - 5] / dx ** 2, FNm4)
+            D2[n - 9:n, n - 9:n] = D2[n - 9:n, n - 9:n] + np.dot(b[n - 6] / dx ** 2, FNm5)
+            D2[n - 10:n - 3, n - 10:n - 3] = D2[n - 10:n - 3, n - 10:n - 3] + np.dot(b[n - 7] / dx ** 2, FNm6)
+            D2[n - 11:n - 4, n - 11:n - 4] = D2[n - 11:n - 4, n - 11:n - 4] + np.dot(b[n - 8] / dx ** 2, FNm7)
+            D2[n - 12:n - 5, n - 12:n - 5] = D2[n - 12:n - 5, n - 12:n - 5] + np.dot(b[n - 9] / dx ** 2, FNm8)
 
             # interior of the operator
-            for i in range(9, m-9):
+            for i in range(9, n - 9):
                 D2[i-3:i+4, i-3:i+4] = D2[i-3:i+4, i-3:i+4] + np.dot(b[i] / dx ** 2, Fint)
 
             d2p = D2
             # upper portion of db_mat
             db_mat[0:bn, 0:bn] = 1 / dx * np.asarray([[- 2.4627527915652583,4.002941726470849,- 2.315018727304732,0.9455422741396596,- 0.1707124817405184,0],[- 0.4073384847327758,- 0.5604439302999017,1.3189062135015222,- 0.4198019428248313,0.06867814435598675,0],[0.13640697936458196,- 0.7636947795725192,0.0685793845780439,0.6369732324821576,- 0.07826481685226427,0],[- 0.13665378940150058,0.5962233730614939,- 1.562355381925818,0.8573426255858562,0.24544317267996868,0],[0.40954732383510695,- 1.6191280365204503,3.1865688500220224,- 4.074262849037939,2.0972747117012602,0],[14.355731884974267,- 53.564429199973475,92.86093300468208,- 87.29186008807092,40.32232333454415,- 6.682698936156117]])
             # lower portion of db_mat
-            db_mat[m-bn:m, m-bn:m] = - np.fliplr(np.flipud(db_mat[0:bn, 0:bn]))
+            db_mat[n - bn:n, n - bn:n] = - np.fliplr(np.flipud(db_mat[0:bn, 0:bn]))
 
         elif app == 1:
             d2p = d_mat @ np.diag(b) @ d_mat
@@ -1011,7 +1013,7 @@ def hqd_hgt(p, xl, xr, m, b, app):
             FNm10 = np.fliplr(np.flipud(F11))
             FNm11 = np.fliplr(np.flipud(F12))
 
-            D2 = np.zeros((m, m))
+            D2 = np.zeros((n, n))
             D2[0:8, 0:8] = np.dot(b[0] / dx ** 2, F1)
             D2[0:8, 0:8] = D2[0:8, 0:8] + np.dot(b[1] / dx ** 2, F2)
             D2[0:8, 0:8] = D2[0:8, 0:8] + np.dot(b[2] / dx ** 2, F3)
@@ -1024,20 +1026,20 @@ def hqd_hgt(p, xl, xr, m, b, app):
             D2[5:14, 5:14] = D2[5:14, 5:14] + np.dot(b[9] / dx ** 2, F10)
             D2[6:15, 6:15] = D2[6:15, 6:15] + np.dot(b[10] / dx ** 2, F11)
             D2[7:16, 7:16] = D2[7:16, 7:16] + np.dot(b[11] / dx ** 2, F12)
-            D2[m-8:m, m-8:m] = D2[m-8:m, m-8:m] + np.dot(b[m-1] / dx ** 2, FN)
-            D2[m-8:m, m-8:m] = D2[m-8:m, m-8:m] + np.dot(b[m-2] / dx ** 2, FNm1)
-            D2[m-8:m, m-8:m] = D2[m-8:m, m-8:m] + np.dot(b[m-3] / dx ** 2, FNm2)
-            D2[m-8:m, m-8:m] = D2[m-8:m, m-8:m] + np.dot(b[m-4] / dx ** 2, FNm3)
-            D2[m-9:m, m-9:m] = D2[m-9:m, m-9:m] + np.dot(b[m-5] / dx ** 2, FNm4)
-            D2[m-10:m, m-10:m] = D2[m-10:m, m-10:m]  + np.dot(b[m-6] / dx ** 2, FNm5)
-            D2[m-11:m, m-11:m] = D2[m-11:m, m-11:m] + np.dot(b[m-7] / dx ** 2, FNm6)
-            D2[m-12:m, m-12:m] = D2[m-12:m, m-12:m] + np.dot(b[m-8] / dx ** 2, FNm7)
-            D2[m-13:m-4, m-13:m-4] = D2[m-13:m-4, m-13:m-4] + np.dot(b[m-9] / dx ** 2, FNm8)
-            D2[m-14:m-5, m-14:m-5] = D2[m-14:m-5, m-14:m-5] + np.dot(b[m-10] / dx ** 2, FNm9)
-            D2[m-15:m-6, m-15:m-6] = D2[m-15:m-6, m-15:m-6] + np.dot(b[m-11] / dx ** 2, FNm10)
-            D2[m-16:m-7, m-16:m-7] = D2[m-16:m-7, m-16:m-7] + np.dot(b[m-12] / dx ** 2, FNm11)
+            D2[n - 8:n, n - 8:n] = D2[n - 8:n, n - 8:n] + np.dot(b[n - 1] / dx ** 2, FN)
+            D2[n - 8:n, n - 8:n] = D2[n - 8:n, n - 8:n] + np.dot(b[n - 2] / dx ** 2, FNm1)
+            D2[n - 8:n, n - 8:n] = D2[n - 8:n, n - 8:n] + np.dot(b[n - 3] / dx ** 2, FNm2)
+            D2[n - 8:n, n - 8:n] = D2[n - 8:n, n - 8:n] + np.dot(b[n - 4] / dx ** 2, FNm3)
+            D2[n - 9:n, n - 9:n] = D2[n - 9:n, n - 9:n] + np.dot(b[n - 5] / dx ** 2, FNm4)
+            D2[n - 10:n, n - 10:n] = D2[n - 10:n, n - 10:n] + np.dot(b[n - 6] / dx ** 2, FNm5)
+            D2[n - 11:n, n - 11:n] = D2[n - 11:n, n - 11:n] + np.dot(b[n - 7] / dx ** 2, FNm6)
+            D2[n - 12:n, n - 12:n] = D2[n - 12:n, n - 12:n] + np.dot(b[n - 8] / dx ** 2, FNm7)
+            D2[n - 13:n - 4, n - 13:n - 4] = D2[n - 13:n - 4, n - 13:n - 4] + np.dot(b[n - 9] / dx ** 2, FNm8)
+            D2[n - 14:n - 5, n - 14:n - 5] = D2[n - 14:n - 5, n - 14:n - 5] + np.dot(b[n - 10] / dx ** 2, FNm9)
+            D2[n - 15:n - 6, n - 15:n - 6] = D2[n - 15:n - 6, n - 15:n - 6] + np.dot(b[n - 11] / dx ** 2, FNm10)
+            D2[n - 16:n - 7, n - 16:n - 7] = D2[n - 16:n - 7, n - 16:n - 7] + np.dot(b[n - 12] / dx ** 2, FNm11)
 
-            for i in range(12, m - 12):
+            for i in range(12, n - 12):
                 D2[i-4:i+5, i-4:i+5] = D2[i-4:i+5, i-4:i+5] + np.dot(b[i] / dx ** 2, Fint)
 
             d2p = D2
@@ -1045,7 +1047,7 @@ def hqd_hgt(p, xl, xr, m, b, app):
             # upper portion of db_mat
             db_mat[0:bn, 0:bn2] = 1 / dx * np.asarray([[- 2.200376739098629,2.7608012675787195,0,- 1.3691807035753567,1.1446822814973512,- 0.37364260295217966,0.03771649655009451,0,0,0,0,0],[- 0.651913329216443,0.24240780078556096,0,0.9104606814650275,- 0.6973946026278984,0.21818198152667295,- 0.021742531932919938,0,0,0,0,0],[- 0.06468384604166036,0,- 1.2908222624384893,2.055321052348157,- 0.9092929275698375,0.23102048983593335,- 0.021542506134103443,0,0,0,0,0],[0.01900102269911435,0,- 0.4537133356204391,- 0.28867574942049967,0.8783166693406234,- 0.1695048247752072,0.014576217776408266,0,0,0,0,0],[- 0.015429364960731877,0,0.2560755344056763,- 1.1189160300808965,0.5110523063245795,0.393792674582687,- 0.026575120271314638,0,0,0,0,0],[0.029171968430077504,0,- 0.4146236178554449,1.3666748629634018,- 2.476731024650295,1.3536210895426477,0.14188672156961313,0,0,0,0,0],[- 0.15106930932256663,0,1.9774402953292691,- 5.848575997544326,8.081431025847817,- 6.704263311037054,2.6450372967268607,0,0,0,0,0],[38.04646295025841,- 144.72251201026367,288.83796222411684,- 357.6960447261035,263.5541263681215,- 108.2829764439221,20.2629816377925,0,0,0,0,0]])
             # lower portion of db_mat
-            db_mat[m-bn:m, m-bn2:m] = - np.fliplr(np.flipud(db_mat[0:bn, 0:bn2]))
+            db_mat[n - bn:n, n - bn2:n] = - np.fliplr(np.flipud(db_mat[0:bn, 0:bn2]))
         elif app == 1:
             d2p = d_mat @ np.diag(b) @ d_mat
             db_mat = d_mat

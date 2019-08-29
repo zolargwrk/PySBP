@@ -287,7 +287,7 @@ def lagrange(p, x0, x):
     return y
 
 
-def construct_projectors_1d(xl, xr, x, **kwargs):
+def projectors_1d(xl, xr, x, **kwargs):
     """Construct the boundary projection matrices
     Inputs: p   - degree of operator
             xl  - left end point of domain
@@ -303,13 +303,13 @@ def construct_projectors_1d(xl, xr, x, **kwargs):
     tl = np.zeros((m, 1))
     tr = np.zeros((m, 1))
 
-    if 'LG' or 'LGR' in list(kwargs.values()):
+    if ('LG' in list(kwargs.values())) or ('LGR' in list(kwargs.values())):
         for i in range(0, m):
             tl[i] = lagrange(i, xl, x)
             tr[i] = lagrange(i, xr, x)
     else:
-        tl[1] = 1
-        tr[m] = 1
+        tl[0] = 1
+        tr[m-1] = 1
 
     return tl, tr
 

@@ -360,6 +360,6 @@ def hqd_csbp(p):
 
     return h_mat, q_mat, d_mat, d2p1
 
-
-kk = hqd_csbp(1)
+# kk = hqd_csbp(1)
+# print(kk[1])
 

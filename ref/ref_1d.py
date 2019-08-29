@@ -1,6 +1,7 @@
 import numpy as np
 import quadpy
 import orthopy
+from mesh.mesh_tools import *
 
 
 class Ref1D:
@@ -8,20 +9,20 @@ class Ref1D:
         Uses the normalized-legendre vandermonde matrix"""
 
     @staticmethod
-    def vandermonde_1d(p, x):
+    def vandermonde_1d(p, x_ref):
         """ Calculates the vandermonde matrix in 1D"""
-        v = np.polynomial.legendre.legvander(x, p)
+        v = np.polynomial.legendre.legvander(x_ref, p)
         for i in range(0, p+1):
             v[:, i] /= np.sqrt(2/(2*i+1))
 
         return v
 
     @staticmethod
-    def grad_vandermonde_1d(p, x):
+    def grad_vandermonde_1d(p, x_ref):
         """Calculates the gradient of the vandermonde matrix in 1D"""
-        vx = np.zeros((len(x), p+1))
+        vx = np.zeros((len(x_ref), p+1))
         for i in range(1, p+1):
-            jacobi_polynomial = orthopy.line_segment.tree_jacobi(x, i-1, 1, 1, 'normal', symbolic=False)
+            jacobi_polynomial = orthopy.line_segment.tree_jacobi(x_ref, i-1, 1, 1, 'normal', symbolic=False)
             jacobi_polynomial = np.asarray(jacobi_polynomial).T
             vx[:, i] = np.sqrt(i*(i+1))*np.asarray(jacobi_polynomial)[:, i-1]
         return vx
@@ -31,8 +32,8 @@ class Ref1D:
         """Returnes the derivative operator in 1D"""
         v = Ref1D.vandermonde_1d(p, x_ref)
         vx = Ref1D.grad_vandermonde_1d(p, x_ref)
-        d_mat = vx @ np.linalg.inv(v)
-        return d_mat
+        d_mat_ref = vx @ np.linalg.inv(v)
+        return d_mat_ref
 
     @staticmethod
     def e_mat_1d(tl, tr):
@@ -40,26 +41,26 @@ class Ref1D:
         return e_mat
 
     @staticmethod
-    def projectors_1d(xl_elem, xr_elem, x, **kwargs):
+    def projectors_1d(xl_elem, xr_elem, x_ref, **kwargs):
         """Construct the boundary projection matrices
         Inputs: p   - degree of operator
                 xl_elem  - left end point of the element
                 xr_elem  - right end point of the element
-                x   - 1D mesh
+                x_ref    - 1D mesh on reference element
                 kwargs: scheme = 'LG'  - Legendre-Gauss
                         scheme = 'LGR' - Legendre-Gauss-Radau
                         leave blank for other schemes
         Output: tl - left projection matrix
                 tr - right projection matrix"""
 
-        m = len(x)
+        m = len(x_ref)
         tl = np.zeros((m, 1))
         tr = np.zeros((m, 1))
 
         if ('LG' in list(kwargs.values())) or ('LGR' in list(kwargs.values())):
             for i in range(0, m):
-                tl[i] = Ref1D.lagrange(i, xl_elem, x)
-                tr[i] = Ref1D.lagrange(i, xr_elem, x)
+                tl[i] = Ref1D.lagrange(i, xl_elem, x_ref)
+                tr[i] = Ref1D.lagrange(i, xr_elem, x_ref)
         else:
             tl[0] = 1
             tr[m-1] = 1
@@ -67,18 +68,18 @@ class Ref1D:
         return tl, tr
 
     @staticmethod
-    def lagrange(p, x0, x):
-        """Evaluates the i-th Lagrange polynomial at x0 based on grid data x
+    def lagrange(p, x0, x_ref):
+        """Evaluates the i-th Lagrange polynomial at x0 based on grid data x_ref
         Inputs: x0 - point at which we want to evaluate the Lagrange polynomial
                 p  - degree of the Lagrange polynomial
-                x  - 1D mesh
+                x_ref  - 1D mesh
         Output: y  - Lagrange polynomial value at point x0
         """
-        m = len(x)
+        m = len(x_ref)
         y = 1.
         for j in range(0, m):
             if p != j:
-                y *= (x0-x[j])/(x[p]-x[j])
+                y *= (x0 - x_ref[j]) / (x_ref[p] - x_ref[j])
         return y
 
     @staticmethod
@@ -98,4 +99,5 @@ tl, tr = Ref1D.projectors_1d(-1, 1, x, scheme='LGL')
 v = Ref1D.vandermonde_1d(8, x)
 lift = Ref1D.lift_1d(v, tl, tr)
 # e_mat = Ref1D.e_mat_1d(tl, tr)
+nx = MeshTools.normals_1d(9)
 print(d_mat)

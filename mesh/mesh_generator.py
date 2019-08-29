@@ -76,7 +76,13 @@ class MeshGenerator:
         # x coordinates on the reference element
         x_ref = xp
 
-        return coord, convty_id, bgrp, coord_elem, x_ref, convty
+        # x coordinate on the physical element
+        x = coord
+
+        # element to vertex connectivity
+        etov = convty_id
+
+        return x, etov, bgrp, x_ref, coord_elem, convty
 
 
 # mesh = MeshGenerator()

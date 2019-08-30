@@ -82,7 +82,7 @@ class MeshGenerator:
         # element to vertex connectivity
         etov = convty_id
 
-        return x, etov, x_ref, bgrp, coord_elem, convty
+        return {'x': x, 'etov': etov, 'x_ref': x_ref, 'bgrp': bgrp, 'coord_elem': coord_elem}
 
 
 # mesh = MeshGenerator()

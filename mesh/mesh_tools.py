@@ -1,9 +1,12 @@
 import numpy as np
-from mesh.mesh_generator import *
+from mesh.mesh_generator import MeshGenerator
 
 
 class MeshTools:
-    """Collects methods used for operations on the meshes"""
+    """Collects methods used for operations on the meshes
+        Some methods are adopted from the book by Hesthaven, Jan S., and Tim Warburton.
+        Nodal discontinuous Galerkin methods: algorithms, analysis, and applications.
+        Springer Science & Business Media, 2007."""
 
     @staticmethod
     def normals_1d(nelem):
@@ -51,7 +54,7 @@ class MeshTools:
         etof[ind] = face2
         etof = etof .reshape((nelem, nface), order='F')
 
-        return etoe, etof
+        return {'etoe': etoe, 'etof': etof}
 
     @staticmethod
     def sub2ind(array_shape, v1, v2):
@@ -72,62 +75,76 @@ class MeshTools:
         fmask1 = ((np.abs(x_ref+1) < 1e-12).nonzero())[0][0]
         fmask2 = ((np.abs(x_ref-1) < 1e-12).nonzero())[0][0]
         fmask = np.array([fmask1, fmask2])
-        f = np.array([np.arange(0, nelem).T, np.arange(1, nelem+1).T])
-        f = f *(fmask2+1)
+        f = (np.array([np.arange(0, nelem).T, np.arange(1, nelem+1).T]))*(fmask2+1)
         f[1, :] -= 1
         f = f.reshape((2*nelem, 1), order='F')
         fx = (x[f[:]]).reshape((2, nelem), order='F')
-        return fx, fmask
+        return {'fx': fx, 'fmask': fmask}
 
     @staticmethod
-    def buildmaps_1d(etoe, etof, fmask):
+    def buildmaps_1d(x, etoe, etof, fmask):
         nelem = etoe.shape[0]
         nface = 2
         n = fmask[1] + 1    # number of nodes per element
         nodeids = np.reshape([np.arange(0, nelem*n)], (nelem, n)).T
-        vmapM = np.zeros((1, nface, nelem))
-        vmapP = np.zeros((1, nface, nelem))
+        vmapM = np.zeros((1, nface, nelem), dtype=int)
+        vmapP = np.zeros((1, nface, nelem), dtype=int)
 
         for i in range(0, nelem):
             for j in range(0, nface):
-                vmapM[:, j, i] = nodeids[fmask[j], i]
+                vmapM[:, j, i] = int(nodeids[fmask[j], i])
 
         for i in range(0, nelem):
             for j in range(0, nface):
                 i2 = etoe[i, j]
                 j2 = etof[i, j]
-                vidM = int(vmapM[:, j, i])
-                vidP = int(vmapP[:, j2, i2])
+                vidM = vmapM[:, j, i]
+                vidP = vmapM[:, j2, i2]
                 x1 = x[vidM]
                 x2 = x[vidP]
                 distance = (x1 - x2)**2
                 if distance < 1e-12:
                     vmapP[:, j, i] = vidP
 
-        vmapP = vmapP[:]
-        vmapM = vmapM[:]
+        vmapP = vmapP.reshape((nelem*nface, 1), order='F')
+        vmapM = vmapM.reshape((nelem*nface, 1), order='F')
 
         # boundary data
-        mapB = int(vmapP[np.where(vmapP == vmapM)])
+        mapB = np.asarray(vmapP == vmapM).nonzero()
         vmapB = vmapM[mapB]
 
         # maps at inflow and outflow
         mapI = 0
-        mapO = nelem*nface
+        mapO = nelem*nface - 1
         vmapI = 0
-        vmapO = nelem*n
+        vmapO = nelem*n - 1
 
-        return vmapM, vmapP, vmapB, mapB
+        return {'vmapM': vmapM, 'vmapP': vmapP, 'vmapB': vmapB, 'mapB': mapB, 'mapI': mapI, 'mapO': mapO,
+                'vmapI': vmapI, 'vmapO': vmapO}
 
 
-mesh = MeshGenerator.line_mesh(0, 2, 9, 10, scheme='LGL')
-etov = mesh[1]
-x = mesh[0]
-x_ref = mesh[2]
-con = MeshTools.connectivity_1d(etov)
-etoe =con[0]
-etof = con[1]
-masks = MeshTools.fmask_1d(x_ref, x)
-fmask = masks[1]
-maps = MeshTools.buildmaps_1d(etoe, etof, fmask)
-print(con)
+    @staticmethod
+    def jacobian_1d(x, d_mat_ref):
+        """Computes the 1D mesh Jacobian
+        inputs: x - nodal location of an element on the physical domain
+                d_mat_ref - derivative operator on the reference element
+        outputs: rx - the derivative of the reference x with respect to the physical x
+                 jac - the transformation Jacobian"""
+        n = d_mat_ref.shape[0]
+        nelem = int(len(x)/n)
+        x = x.reshape((n, nelem), order='F')
+        jac = d_mat_ref @ x
+        rx = 1/jac
+        return {'rx': rx, 'jac': jac}
+
+# mesh = MeshGenerator.line_mesh(0, 2, 9, 10, scheme='LGL')
+# etov = mesh['etov']
+# x = mesh['x']
+# x_ref = mesh['x_ref']
+# con = MeshTools.connectivity_1d(etov)
+# etoe =con['etoe']
+# etof = con['etof']
+# masks = MeshTools.fmask_1d(x_ref, x)
+# fmask = masks['fmask']
+# maps = MeshTools.buildmaps_1d(etoe, etof, fmask)
+# print(con)

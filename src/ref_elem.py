@@ -1,8 +1,5 @@
 import numpy as np
-import quadpy
 import orthopy
-from mesh.mesh_tools import *
-
 
 class Ref1D:
     """ Collects tools for 1D reference element
@@ -65,7 +62,7 @@ class Ref1D:
             tl[0] = 1
             tr[m-1] = 1
 
-        return tl, tr
+        return {'tl': tl, 'tr': tr}
 
     @staticmethod
     def lagrange(p, x0, x_ref):
@@ -89,15 +86,13 @@ class Ref1D:
         return lift
 
 
-
-
 # shp = Ref1D.vandermonde_1d(8, quadpy.line_segment.gauss_lobatto(9).points)
 # shpx = Ref1D.grad_vandermonde_1d(8, quadpy.line_segment.gauss_lobatto(9).points)
-x = quadpy.line_segment.gauss_lobatto(9).points
-d_mat = Ref1D.derivative_1d(8, x)
-tl, tr = Ref1D.projectors_1d(-1, 1, x, scheme='LGL')
-v = Ref1D.vandermonde_1d(8, x)
-lift = Ref1D.lift_1d(v, tl, tr)
-# e_mat = Ref1D.e_mat_1d(tl, tr)
-nx = MeshTools.normals_1d(9)
-print(d_mat)
+# x = quadpy.line_segment.gauss_lobatto(9).points
+# d_mat = Ref1D.derivative_1d(8, x)
+# tl, tr = Ref1D.projectors_1d(-1, 1, x, scheme='LGL')
+# v = Ref1D.vandermonde_1d(8, x)
+# lift = Ref1D.lift_1d(v, tl, tr)
+# # e_mat = Ref1D.e_mat_1d(tl, tr)
+# nx = MeshTools.normals_1d(9)
+# print(d_mat)

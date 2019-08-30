@@ -14,27 +14,120 @@ class MeshTools:
 
     @staticmethod
     def connectivity_1d (etov):
-        etov = np.array([[0, 1, 2, 4], [1, 2, 4, 3]], np.int).T
         nelem = etov.shape[0]   # number of elments
         nv = nelem+1            # number of vertices
         nface = 2               # number of face per element
         tot_face = nface*nelem  # total number of faces
         vn = np.array([[0], [1]], np.int)    # local face to local vertex connection
 
-        ftov = np.zeros((2*nelem, nelem+1), np.int)     # face to vertix connectivity
-
+        # face to vertex and face to face connectivities
+        ftov = np.zeros((2*nelem, nelem+1), np.int)
         k = 0
         for elem in range(0, nelem):
             for face in range(0, nface):
                 ftov[k, etov[elem, vn[face, 0]]] = 1
                 k = k+1
+        ftof = ftov @ (ftov.T) - np.eye(tot_face, dtype=int)
 
-        ftof = ftov @ (ftov.T) #- np.eye(tot_face)
+        # complete face to face connectivity
+        (faces2, faces1) = ftof.nonzero()
 
-        return ftov
+        # convert global face number to element and face number
+        elem1 = np.array([np.floor(faces1/nface)], dtype=int).T
+        face1 = np.array([np.mod(faces1, nface)], dtype=int).T
+        elem2 = np.array([np.floor(faces2/nface)], dtype=int).T
+        face2 = np.array([np.mod(faces2, nface)], dtype=int).T
+
+        # element to element and face to face connectivities
+        ind = MeshTools.sub2ind((nelem, nface), elem1, face1)
+        etoe = np.array([range(0, nelem)]).T @ np.ones((1, nface), dtype=int)
+        etof = np.array([np.ones((nelem, 1)) @ np.array([range(0, nface)])], dtype=int)
+
+        etoe = etoe.reshape((nelem*nface, 1), order='F')
+        etoe[ind] = elem2
+        etoe = etoe.reshape((nelem, nface), order='F')
+
+        etof = etof.reshape((nelem * nface, 1), order='F')
+        etof[ind] = face2
+        etof = etof .reshape((nelem, nface), order='F')
+
+        return etoe, etof
+
+    @staticmethod
+    def sub2ind(array_shape, v1, v2):
+        """returns the linear index equivalents to the row (v1) and column (v2) subscripts
+        Inputs: array_shape - the shape of the array
+                v1 - the row subscript
+                v2 - the column subscript
+        Output: ind - index of the linear array
+        e.g., if the a = [[a01, a02], [a11, a11]]
+            sub2ind((2,2), 1, 0) = 2
+            because the linear array is: a = [a01, a02, a10, a11] and the [0,1] subscript is now located at a[2]"""
+        ind = np.asarray(v1 + v2*(array_shape[0]), dtype=int)
+        return ind.T
+
+    @staticmethod
+    def fmask_1d(x_ref, x):
+        nelem = int(len(x)/len(x_ref))
+        fmask1 = ((np.abs(x_ref+1) < 1e-12).nonzero())[0][0]
+        fmask2 = ((np.abs(x_ref-1) < 1e-12).nonzero())[0][0]
+        fmask = np.array([fmask1, fmask2])
+        f = np.array([np.arange(0, nelem).T, np.arange(1, nelem+1).T])
+        f = f *(fmask2+1)
+        f[1, :] -= 1
+        f = f.reshape((2*nelem, 1), order='F')
+        fx = (x[f[:]]).reshape((2, nelem), order='F')
+        return fx, fmask
+
+    @staticmethod
+    def buildmaps_1d(etoe, etof, fmask):
+        nelem = etoe.shape[0]
+        nface = 2
+        n = fmask[1] + 1    # number of nodes per element
+        nodeids = np.reshape([np.arange(0, nelem*n)], (nelem, n)).T
+        vmapM = np.zeros((1, nface, nelem))
+        vmapP = np.zeros((1, nface, nelem))
+
+        for i in range(0, nelem):
+            for j in range(0, nface):
+                vmapM[:, j, i] = nodeids[fmask[j], i]
+
+        for i in range(0, nelem):
+            for j in range(0, nface):
+                i2 = etoe[i, j]
+                j2 = etof[i, j]
+                vidM = int(vmapM[:, j, i])
+                vidP = int(vmapP[:, j2, i2])
+                x1 = x[vidM]
+                x2 = x[vidP]
+                distance = (x1 - x2)**2
+                if distance < 1e-12:
+                    vmapP[:, j, i] = vidP
+
+        vmapP = vmapP[:]
+        vmapM = vmapM[:]
+
+        # boundary data
+        mapB = int(vmapP[np.where(vmapP == vmapM)])
+        vmapB = vmapM[mapB]
+
+        # maps at inflow and outflow
+        mapI = 0
+        mapO = nelem*nface
+        vmapI = 0
+        vmapO = nelem*n
+
+        return vmapM, vmapP, vmapB, mapB
 
 
-mesh = MeshGenerator.line_mesh(0, 2.5, 9, 4, scheme='LGL')
+mesh = MeshGenerator.line_mesh(0, 2, 9, 10, scheme='LGL')
 etov = mesh[1]
+x = mesh[0]
+x_ref = mesh[2]
 con = MeshTools.connectivity_1d(etov)
+etoe =con[0]
+etof = con[1]
+masks = MeshTools.fmask_1d(x_ref, x)
+fmask = masks[1]
+maps = MeshTools.buildmaps_1d(etoe, etof, fmask)
 print(con)

@@ -1,6 +1,7 @@
 import numpy as np
 import orthopy
 
+
 class Ref1D:
     """ Collects tools for 1D reference element
         Uses the normalized-legendre vandermonde matrix"""

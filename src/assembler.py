@@ -11,10 +11,11 @@ class Assembler:
     def assembler_1d(self, xl, xr, nelem):
         # number of nodes and faces per element
         n = self.p+1
+        quad_type = self.quad_type
         nface = 2
 
         # obtain mesh information
-        mesh = MeshGenerator.line_mesh(xl, xr, n, nelem)
+        mesh = MeshGenerator.line_mesh(xl, xr, n, nelem, scheme=quad_type)
         x = mesh['x']
         etov = mesh['etov']
         x_ref = mesh['x_ref']
@@ -65,7 +66,7 @@ class Assembler:
 
         return {'d_mat': d_mat, 'lift': lift, 'rx': rx, 'fscale': fscale, 'vmapM': vmapM, 'vmapP': vmapP,
                 'vmapB': vmapB, 'mapB': mapB, 'mapI': mapI, 'mapO': mapO, 'vmapI': vmapI, 'vmapO': vmapO,
-                'jac': jac}
+                'jac': jac, 'x': x}
 
 
 # a = Assembler(8, 'LGL')

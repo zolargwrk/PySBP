@@ -1,5 +1,4 @@
 import numpy as np
-from mesh.mesh_generator import MeshGenerator
 
 
 class MeshTools:

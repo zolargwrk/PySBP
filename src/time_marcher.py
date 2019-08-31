@@ -1,6 +1,4 @@
 import numpy as np
-from solver.plot_figure import plot_figure_1d
-import matplotlib.pyplot as plt
 
 
 class TimeMarcher:
@@ -57,6 +55,8 @@ class TimeMarcher:
         vmapI = rhs_data['vmapI']
         vmapO = rhs_data['vmapO']
         jac = rhs_data['jac']
+        tl = rhs_data['tl']
+        tr = rhs_data['tr']
 
         t = t0
         res = np.zeros((n, nelem))
@@ -64,16 +64,10 @@ class TimeMarcher:
         for i in range(0, nstep):
             for j in range(0, 5):
                 t_local = t + rk4c[j]*dt
-                rhs = rhs_calculator(u, t_local, a, d_mat, vmapM, vmapP, mapI, mapO, vmapI,
+                rhs = rhs_calculator(u, t_local, a, d_mat, vmapM, vmapP, mapI, mapO, vmapI, tl, tr,
                          rx, lift, fscale, nx, u_init, flux_type)
                 res = rk4a[j]*res + dt*rhs
                 u = u + rk4b[j]*res
             t += dt
-
-            # exact solution
-            # u_exact = np.sin(x - a * t)
-            # plot_figure_1d(x, u, u_exact)
-            # plt.pause(1)
-
 
         return u

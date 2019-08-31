@@ -69,22 +69,34 @@ class MeshTools:
         return ind.T
 
     @staticmethod
-    def fmask_1d(x_ref, x):
-        nelem = int(len(x)/len(x_ref))
-        fmask1 = ((np.abs(x_ref+1) < 1e-12).nonzero())[0][0]
-        fmask2 = ((np.abs(x_ref-1) < 1e-12).nonzero())[0][0]
+    def fmask_1d(x_ref, x, tl, tr):
+        n = len(x_ref)
+        nelem = int(len(x)/n)
+        x_ref_end = x_ref @ tr
+        x_ref_0 = x_ref @ tl
+        x_ref[len(x_ref) - 1] = x_ref_end
+        x_ref[0] = x_ref_0
+        fmask1 = ((np.abs(x_ref + 1) < 1e-12).nonzero())[0][0]
+        fmask2 = ((np.abs(x_ref - 1) < 1e-12).nonzero())[0][0]
         fmask = np.array([fmask1, fmask2])
-        f = (np.array([np.arange(0, nelem).T, np.arange(1, nelem+1).T]))*(fmask2+1)
-        f[1, :] -= 1
-        f = f.reshape((2*nelem, 1), order='F')
-        fx = (x[f[:]]).reshape((2, nelem), order='F')
+
+        # f = (np.array([np.arange(0, nelem).T, np.arange(1, nelem+1).T]))*(fmask2+1)
+        # f[1, :] -= 1
+        # f = f.reshape((2*nelem, 1), order='F')
+        # fx = (x[f[:]]).reshape((2, nelem), order='F')
+
+        fx = np.zeros((2, nelem))
+        x = x.reshape((n, nelem), order='F')
+        fx[0, :] = (x.T @ tl)[:, 0]
+        fx[1, :] = (x.T @ tr)[:, 0]
+
         return {'fx': fx, 'fmask': fmask}
 
     @staticmethod
-    def buildmaps_1d(x, etoe, etof, fmask):
+    def buildmaps_1d(x, etoe, etof, fmask, tl, tr):
         nelem = etoe.shape[0]
         nface = 2
-        n = fmask[1] + 1    # number of nodes per element
+        n = len(tl)    # number of nodes per element
         nodeids = np.reshape([np.arange(0, nelem*n)], (nelem, n)).T
         vmapM = np.zeros((1, nface, nelem), dtype=int)
         vmapP = np.zeros((1, nface, nelem), dtype=int)
@@ -93,17 +105,22 @@ class MeshTools:
             for j in range(0, nface):
                 vmapM[:, j, i] = int(nodeids[fmask[j], i])
 
+        x = x.reshape((n, nelem), order='F')
+
         for i in range(0, nelem):
             for j in range(0, nface):
                 i2 = etoe[i, j]
                 j2 = etof[i, j]
                 vidM = vmapM[:, j, i]
                 vidP = vmapM[:, j2, i2]
-                x1 = x[vidM]
-                x2 = x[vidP]
-                distance = (x1 - x2)**2
-                if distance < 1e-12:
-                    vmapP[:, j, i] = vidP
+                vmapP[:, j, i] = vidP
+                # # x1 = x[vidM]
+                # # x2 = x[vidP]
+                # x1 = x[i, :] @ tl
+                # x2 = x[i, :] @ tr
+                # distance = (x1 - x2)**2
+                # if distance < 1e-12:
+                #     vmapP[:, j, i] = vidP
 
         vmapP = vmapP.reshape((nelem*nface, 1), order='F')
         vmapM = vmapM.reshape((nelem*nface, 1), order='F')

@@ -33,5 +33,6 @@ def advection_solver_1d(p, xl, xr, nelem, t0, tf, a, quad_type, flux_type = 'Cen
     return u
 
 
-u = advection_solver_1d(8, 0, 2, 10, 0, 10, 2*np.pi, 'LGL', 'Upwind')
+# advection_solver_1d(p, xl, xr, nelem, t0, tf, a, quad_type, flux_type = 'Central')
+u = advection_solver_1d(15, 0, 2, 3, 0, 10, 2*np.pi, 'LG', 'Upwind')
 

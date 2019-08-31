@@ -40,7 +40,7 @@ class Assembler:
         jac = jac_mapping['jac']
 
         # edge node location
-        masks = MeshTools.fmask_1d(x_ref, x)
+        masks = MeshTools.fmask_1d(x_ref, x, tl, tr)
         fx = masks['fx']
         fmask = masks['fmask']
 
@@ -54,7 +54,7 @@ class Assembler:
         etof = connect['etof']
 
         # build connectivity maps
-        maps = MeshTools.buildmaps_1d(x, etoe, etof, fmask)
+        maps = MeshTools.buildmaps_1d(x, etoe, etof, fmask, tl, tr)
         vmapM = maps['vmapM']
         vmapP = maps['vmapP']
         vmapB = maps['vmapB']
@@ -66,7 +66,7 @@ class Assembler:
 
         return {'d_mat': d_mat, 'lift': lift, 'rx': rx, 'fscale': fscale, 'vmapM': vmapM, 'vmapP': vmapP,
                 'vmapB': vmapB, 'mapB': mapB, 'mapI': mapI, 'mapO': mapO, 'vmapI': vmapI, 'vmapO': vmapO,
-                'jac': jac, 'x': x}
+                'jac': jac, 'x': x, 'tl': tl, 'tr': tr}
 
 
 # a = Assembler(8, 'LGL')

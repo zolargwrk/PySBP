@@ -6,13 +6,12 @@ from mesh.mesh_tools import MeshTools
 from solver.plot_figure import plot_figure_1d
 
 
-def advection_solver_1d(p, xl, xr, nelem, t0, tf, a, quad_type, flux_type = 'Central'):
-
-    n = p+1
+def advection_solver_1d(p, xl, xr, nelem, t0, tf, a, quad_type, flux_type = 'Central', n = 1):
 
     self_assembler = Assembler(p, quad_type)
-    rhs_data = Assembler.assembler_1d(self_assembler, xl, xr, nelem)
+    rhs_data = Assembler.assembler_1d(self_assembler, xl, xr, nelem, n)
     x = rhs_data['x']
+    n = rhs_data['n']
 
     nx = MeshTools.normals_1d(nelem)
 
@@ -34,5 +33,5 @@ def advection_solver_1d(p, xl, xr, nelem, t0, tf, a, quad_type, flux_type = 'Cen
 
 
 # advection_solver_1d(p, xl, xr, nelem, t0, tf, a, quad_type, flux_type = 'Central')
-u = advection_solver_1d(15, 0, 2, 3, 0, 10, 2*np.pi, 'LG', 'Upwind')
+u = advection_solver_1d(3, 0, 2, 2, 0, 5, 2*np.pi, 'CSBP', 'Upwind', n=40)
 

@@ -80,11 +80,6 @@ class MeshTools:
         fmask2 = ((np.abs(x_ref - 1) < 1e-12).nonzero())[0][0]
         fmask = np.array([fmask1, fmask2])
 
-        # f = (np.array([np.arange(0, nelem).T, np.arange(1, nelem+1).T]))*(fmask2+1)
-        # f[1, :] -= 1
-        # f = f.reshape((2*nelem, 1), order='F')
-        # fx = (x[f[:]]).reshape((2, nelem), order='F')
-
         fx = np.zeros((2, nelem))
         x = x.reshape((n, nelem), order='F')
         fx[0, :] = (x.T @ tl)[:, 0]
@@ -114,13 +109,6 @@ class MeshTools:
                 vidM = vmapM[:, j, i]
                 vidP = vmapM[:, j2, i2]
                 vmapP[:, j, i] = vidP
-                # # x1 = x[vidM]
-                # # x2 = x[vidP]
-                # x1 = x[i, :] @ tl
-                # x2 = x[i, :] @ tr
-                # distance = (x1 - x2)**2
-                # if distance < 1e-12:
-                #     vmapP[:, j, i] = vidP
 
         vmapP = vmapP.reshape((nelem*nface, 1), order='F')
         vmapM = vmapM.reshape((nelem*nface, 1), order='F')

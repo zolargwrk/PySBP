@@ -1,23 +1,28 @@
 import quadpy
 import numpy as np
+import warnings
 
 
 class MeshGenerator:
     """Contains methods that create meshes for 1D, 2D, and 3D implementations"""
 
     @staticmethod
-    def line_mesh(xl, xr, n, nelem, **kwargs):
+    def line_mesh(xl, xr, n, nelem, quad_type=0, x_ref=[]):
         """Creates equidistance nodes for a given interval
         Inputs: xl - left end point
                 xr - right end point
                 n  - number of nodes per element
                 nelem  - number of elements
-        **kwargs:   scheme = 'CC'  - Clenshaw-Curtis
-                    scheme = 'LGL' - Gauss-Lagendre
-                    scheme = 'LG'  - Gauss-Lobatto
-                    scheme = 'LGR' - Gauss-Radau
-                    scheme = 'NC'  - Newton-Cotes
-                    scheme = 'Uniform' - Uniform distribution
+        quad_types: 'CC'  - Clenshaw-Curtis
+                    'LGL' - Gauss-Lagendre
+                    'LG'  - Gauss-Lobatto
+                    'LGR' - Gauss-Radau
+                    'NC'  - Newton-Cotes
+                    'Uniform' - Uniform distribution
+                    'CSBP' - Uniform distribution
+                    'HGTL' - Hybrid-Gauss-Trapezoidal-Lobatto (expects x_ref to be provided)
+                    'HGT'  - Hybrid-Gauss-Trapezoidal(expects x_ref to be provided)
+
         Output: coord       - coordinate of the nodal locations
                 convty_id   - connectivity
                 bgrp        - boundary vertex location ID
@@ -27,25 +32,40 @@ class MeshGenerator:
         """
 
         # obtain the mesh distribution for the scheme of choice on reference element [-1, 1]
-        if 'CC' in list(kwargs.values()):
+        if quad_type == 'CC':
             scheme = quadpy.line_segment.clenshaw_curtis(n)
-            xp = scheme.points
-        elif 'LG' in list(kwargs.values()):
+            x_ref = scheme.points
+        elif quad_type == 'LG':
             scheme = quadpy.line_segment.gauss_legendre(n)
-            xp = scheme.points
-        elif 'LGL' in list(kwargs.values()):
+            x_ref = scheme.points
+        elif quad_type == 'LGL-Dense' or quad_type == 'LGL':
             scheme = quadpy.line_segment.gauss_lobatto(n)
-            xp = scheme.points
-        elif 'NC' in list(kwargs.values()):
+            x_ref = scheme.points
+        elif quad_type == 'NC':
             scheme = quadpy.line_segment.newton_cotes_closed(n)
-            xp = scheme.points
-        elif 'LGR' in list(kwargs.values()):
+            x_ref = scheme.points
+        elif quad_type == 'LGR':
             scheme = quadpy.line_segment.gauss_radau(n)
-            xp = scheme.points
-        elif 'Uniform' in list(kwargs.values()):
-            xp = np.linspace(-1, 1, n)
+            x_ref = scheme.points
+        elif quad_type == 'Uniform' or quad_type == 'CSBP':
+            x_ref = np.linspace(-1, 1, n)
+        elif quad_type == 'HGTL':
+            x_ref = x_ref
+            if x_ref == []:
+                raise Exception("Please provide reference element: x_ref is missing.")
+            if x_ref[0] != -1:
+                warnings.warn("It looks like x_ref is not HGT type, it should include boundary nodes and should be "
+                              "defined on [-1, 1].")
+        elif quad_type == 'HGT':
+            x_ref = x_ref
+            if x_ref == []:
+                raise Exception("Please provide reference element: x_ref is missing.")
+            if x_ref[0] == -1:
+                warnings.warn("It looks like x_ref is not HGT type, it should not include boundary nodes and should"
+                              "be defined on [-1, 1].")
         else:
-            xp = np.linspace(-1, 1, n)
+            x_ref = np.linspace(-1, 1, n)
+            warnings.warn("x_ref is uniform")
 
         # identify the coordinate position of each element and obtain the coordinates on the mesh [xl, xr]
         ne = nelem + 1  # number of end vertices
@@ -56,7 +76,7 @@ class MeshGenerator:
 
         # affine mapping to the physical elements
         for elem in range(0, nelem):
-            coord_elem[0, elem, :] = 1/2 * (xl_elem[elem] * (1 - xp) + xr_elem[elem] * (1 + xp))
+            coord_elem[0, elem, :] = 1/2 * (xl_elem[elem] * (1 - x_ref) + xr_elem[elem] * (1 + x_ref))
 
         coord = coord_elem.reshape((nelem*n, 1))
         coord_elem = coord_elem[0, :, :].T
@@ -74,7 +94,7 @@ class MeshGenerator:
         bgrp[1] = nelem*n - 1
 
         # x coordinates on the reference element
-        x_ref = xp
+        x_ref = x_ref
 
         # x coordinate on the physical element
         x = coord

@@ -29,7 +29,7 @@ class TimeMarcher:
         n = u.shape[0]
         nelem = u.shape[1]
 
-        xmin = np.min(np.abs(x[0,:] - x[1,:]))
+        xmin = np.min(np.abs(x[0, :] - x[1, :]))
         dt = (cfl/a)*xmin
         nstep = int(np.ceil(tf/(0.5*dt)))
         dt = tf/nstep

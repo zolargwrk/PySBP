@@ -1,38 +1,114 @@
+import numpy as np
+import quadpy
 from mesh.mesh_tools import MeshTools
 from mesh.mesh_generator import MeshGenerator
 from src.ref_elem import Ref1D
-
+from src.csbp_type_operators import CSBPTypeOperators
 
 class Assembler:
     def __init__(self, p, quad_type):
         self.p = p
         self.quad_type = quad_type
 
-    def assembler_1d(self, xl, xr, nelem):
-        # number of nodes and faces per element
-        n = self.p+1
+    def assembler_1d(self, xl, xr, nelem, n, b=1, app=1):
         quad_type = self.quad_type
         nface = 2
 
-        # obtain mesh information
-        mesh = MeshGenerator.line_mesh(xl, xr, n, nelem, scheme=quad_type)
-        x = mesh['x']
-        etov = mesh['etov']
-        x_ref = mesh['x_ref']
+        # b: is the variable coefficient for second derivative problems
+        if b == 1:
+            b = np.eye(n)
+        # app: is set to 1 for first derivative twice, 2 for order-matched and compatible operators
+        v = 0       # vandermonde matrix
+        h_mat = 0   # H norm (Mass) matrix
+        tl = 0      # left projector
+        tr = 0      # right projector
+        x = 0       # physical domain mesh
+        x_ref = 0   # refernce element mesh
+        d_mat = 0   # D1 - derivative matrix
+        etov = 0    # element to vertex connectivity
 
-        # vandermonde matrix
-        v = Ref1D.vandermonde_1d(self.p, x_ref)
+        if quad_type == 'LG' or quad_type == 'LGL-Dense':
+            # number of nodes and faces per element
+            n = self.p + 1
+            # obtain mesh information
+            mesh = MeshGenerator.line_mesh(xl, xr, n, nelem, quad_type)
+            x = mesh['x']
+            etov = mesh['etov']
+            x_ref = mesh['x_ref']
 
-        # derivative operator on reference mesh
-        d_mat = Ref1D.derivative_1d(self.p, x_ref)
+            # left and right projector operators
+            projectors = Ref1D.projectors_1d(-1, 1, x_ref, scheme=self.quad_type)
+            tl = projectors['tl']
+            tr = projectors['tr']
 
-        # left and right projector operators
-        projectors = Ref1D.projectors_1d(-1, 1, x_ref, scheme=self.quad_type)
-        tl = projectors['tl']
-        tr = projectors['tr']
+            # vandermonde matrix
+            v = Ref1D.vandermonde_1d(self.p, x_ref)
+            # derivative operator on reference mesh
+            d_mat = Ref1D.derivative_1d(self.p, x_ref)
+
+        if quad_type == 'LGL':
+            # number of nodes and faces per element
+            n = self.p + 1
+            # obtain mesh information
+            mesh = MeshGenerator.line_mesh(xl, xr, n, nelem, quad_type)
+            x = mesh['x']
+            etov = mesh['etov']
+            x_ref = mesh['x_ref']
+
+            # left and right projector operators
+            projectors = Ref1D.projectors_1d(-1, 1, x_ref, scheme=self.quad_type)
+            tl = projectors['tl']
+            tr = projectors['tr']
+
+            # vandermonde matrix
+            v = Ref1D.vandermonde_1d(self.p, x_ref)
+            # derivative operator on reference mesh
+            d_mat = Ref1D.derivative_1d(self.p, x_ref)
+            scheme = quadpy.line_segment.gauss_lobatto(n)
+            wq = scheme.weights
+            h_mat = np.diag(wq)
+
+        elif quad_type == 'CSBP':
+            opers = CSBPTypeOperators.hqd_csbp(self.p, -1, 1, n, b, app)
+            d_mat = opers['d_mat_ref']
+            h_mat = opers['h_mat_ref']
+            tl = opers['tl']
+            tr = opers['tr']
+            x_ref = opers['x_ref']
+
+            # obtain mesh information
+            mesh = MeshGenerator.line_mesh(xl, xr, n, nelem, quad_type, x_ref)
+            x = mesh['x']
+            etov = mesh['etov']
+
+        elif quad_type == 'HGTL':
+            opers = CSBPTypeOperators.hqd_hgtl(self.p, -1, 1, n, b, app)
+            d_mat = opers['d_mat_ref']
+            h_mat = opers['h_mat_ref']
+            tl = opers['tl']
+            tr = opers['tr']
+            x_ref = opers['x_ref']
+
+            # obtain mesh information
+            mesh = MeshGenerator.line_mesh(xl, xr, n, nelem, quad_type, x_ref)
+            x = mesh['x']
+            etov = mesh['etov']
+
+        elif quad_type == 'HGT':
+            opers = CSBPTypeOperators.hqd_hgt(self.p, -1, 1, n, b, app)
+            d_mat = opers['d_mat_ref']
+            h_mat = opers['h_mat_ref']
+            tl = opers['tl']
+            tr = opers['tr']
+            x_ref = opers['x_ref']
+
+            # obtain mesh information
+            mesh = MeshGenerator.line_mesh(xl, xr, n, nelem, quad_type, x_ref)
+            x = mesh['x']
+            etov = mesh['etov']
 
         # surface integral on the reference element
-        lift = Ref1D.lift_1d(v, tl, tr)
+        lift = Ref1D.lift_1d(tl, tr, quad_type, v, h_mat)
 
         # mapping jacobian from reference to physical elements
         jac_mapping = MeshTools.jacobian_1d(x, d_mat)
@@ -40,7 +116,7 @@ class Assembler:
         jac = jac_mapping['jac']
 
         # edge node location
-        masks = MeshTools.fmask_1d(x_ref, x)
+        masks = MeshTools.fmask_1d(x_ref, x, tl, tr)
         fx = masks['fx']
         fmask = masks['fmask']
 
@@ -54,7 +130,7 @@ class Assembler:
         etof = connect['etof']
 
         # build connectivity maps
-        maps = MeshTools.buildmaps_1d(x, etoe, etof, fmask)
+        maps = MeshTools.buildmaps_1d(x, etoe, etof, fmask, tl, tr)
         vmapM = maps['vmapM']
         vmapP = maps['vmapP']
         vmapB = maps['vmapB']
@@ -66,7 +142,7 @@ class Assembler:
 
         return {'d_mat': d_mat, 'lift': lift, 'rx': rx, 'fscale': fscale, 'vmapM': vmapM, 'vmapP': vmapP,
                 'vmapB': vmapB, 'mapB': mapB, 'mapI': mapI, 'mapO': mapO, 'vmapI': vmapI, 'vmapO': vmapO,
-                'jac': jac, 'x': x}
+                'jac': jac, 'x': x, 'tl': tl, 'tr': tr, 'n': n}
 
 
 # a = Assembler(8, 'LGL')

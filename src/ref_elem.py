@@ -81,9 +81,13 @@ class Ref1D:
         return y
 
     @staticmethod
-    def lift_1d(v, tl, tr):
-        e_mat_dg = np.column_stack((tl, tr))
-        lift = v @ (v.T @ e_mat_dg)
+    def lift_1d(tl, tr, quad_type, v=1, h_mat_ref=1):
+        if quad_type == 'LG' or quad_type == 'LGL-Dense':
+            e_mat_dg = np.column_stack((tl, tr))
+            lift = v @ (v.T @ e_mat_dg)
+        else:
+            e_mat = np.column_stack((tl, tr))
+            lift = np.linalg.inv(h_mat_ref) @ e_mat
         return lift
 
 

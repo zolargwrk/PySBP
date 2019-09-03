@@ -374,11 +374,11 @@
     </configuration>
     <list>
       <item itemvalue="Python.HOPSolve" />
-      <item itemvalue="Python.ref_1d" />
-      <item itemvalue="Python.mesh_tools" />
+      <item itemvalue="Python.advection_solver" />
       <item itemvalue="Python.assemble_1d" />
       <item itemvalue="Python.assembler" />
-      <item itemvalue="Python.advection_solver" />
+      <item itemvalue="Python.mesh_tools" />
+      <item itemvalue="Python.ref_1d" />
     </list>
     <recent_temporary>
       <list>

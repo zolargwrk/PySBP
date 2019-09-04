@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class MeshTools:
+class MeshTools1D:
     """Collects methods used for operations on the meshes
         Some methods are adopted from the book by Hesthaven, Jan S., and Tim Warburton.
         Nodal discontinuous Galerkin methods: algorithms, analysis, and applications.
@@ -41,7 +41,7 @@ class MeshTools:
         face2 = np.array([np.mod(faces2, nface)], dtype=int).T
 
         # element to element and face to face connectivities
-        ind = MeshTools.sub2ind((nelem, nface), elem1, face1)
+        ind = MeshTools1D.sub2ind((nelem, nface), elem1, face1)
         etoe = np.array([range(0, nelem)]).T @ np.ones((1, nface), dtype=int)
         etof = np.array([np.ones((nelem, 1)) @ np.array([range(0, nface)])], dtype=int)
 
@@ -141,14 +141,15 @@ class MeshTools:
         rx = 1/jac
         return {'rx': rx, 'jac': jac}
 
+
 # mesh = MeshGenerator.line_mesh(0, 2, 9, 10, scheme='LGL')
 # etov = mesh['etov']
 # x = mesh['x']
 # x_ref = mesh['x_ref']
-# con = MeshTools.connectivity_1d(etov)
+# con = MeshTools1D.connectivity_1d(etov)
 # etoe =con['etoe']
 # etof = con['etof']
-# masks = MeshTools.fmask_1d(x_ref, x)
+# masks = MeshTools1D.fmask_1d(x_ref, x)
 # fmask = masks['fmask']
-# maps = MeshTools.buildmaps_1d(etoe, etof, fmask)
+# maps = MeshTools1D.buildmaps_1d(etoe, etof, fmask)
 # print(con)

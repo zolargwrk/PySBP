@@ -1,6 +1,6 @@
 import numpy as np
 import quadpy
-from mesh.mesh_tools import MeshTools
+from mesh.mesh_tools import MeshTools1D
 from mesh.mesh_generator import MeshGenerator
 from src.ref_elem import Ref1D
 from src.csbp_type_operators import CSBPTypeOperators
@@ -111,26 +111,26 @@ class Assembler:
         lift = Ref1D.lift_1d(tl, tr, quad_type, v, h_mat)
 
         # mapping jacobian from reference to physical elements
-        jac_mapping = MeshTools.jacobian_1d(x, d_mat)
+        jac_mapping = MeshTools1D.jacobian_1d(x, d_mat)
         rx = jac_mapping['rx']
         jac = jac_mapping['jac']
 
         # edge node location
-        masks = MeshTools.fmask_1d(x_ref, x, tl, tr)
+        masks = MeshTools1D.fmask_1d(x_ref, x, tl, tr)
         fx = masks['fx']
         fmask = masks['fmask']
 
         # surface normals and inverse metric at surface
-        nx = MeshTools.normals_1d(nelem)
+        nx = MeshTools1D.normals_1d(nelem)
         fscale = 1./jac[fmask, :]
 
         # build connectivity matrices
-        connect = MeshTools.connectivity_1d(etov)
+        connect = MeshTools1D.connectivity_1d(etov)
         etoe = connect['etoe']
         etof = connect['etof']
 
         # build connectivity maps
-        maps = MeshTools.buildmaps_1d(x, etoe, etof, fmask, tl, tr)
+        maps = MeshTools1D.buildmaps_1d(x, etoe, etof, fmask, tl, tr)
         vmapM = maps['vmapM']
         vmapP = maps['vmapP']
         vmapB = maps['vmapB']

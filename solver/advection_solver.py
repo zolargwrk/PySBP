@@ -2,7 +2,7 @@ import numpy as np
 from src.assembler import Assembler
 from src.time_marcher import TimeMarcher
 from src.rhs_calculator import RHSCalculator
-from mesh.mesh_tools import MeshTools
+from mesh.mesh_tools import MeshTools1D
 from solver.plot_figure import plot_figure_1d
 
 
@@ -13,7 +13,7 @@ def advection_solver_1d(p, xl, xr, nelem, t0, tf, a, quad_type, flux_type = 'Cen
     x = rhs_data['x']
     n = rhs_data['n']
 
-    nx = MeshTools.normals_1d(nelem)
+    nx = MeshTools1D.normals_1d(nelem)
 
     x = x.reshape((n, nelem), order='F')
     u = np.sin(x)

@@ -286,7 +286,7 @@ class Ref2D:
         return {'Dr': Dr, 'Ds': Ds}
 
 
-p = 10
+p = 3
 kk = Ref2D.nodes_2d(p)
 x = kk['x']
 y = kk['y']

@@ -179,7 +179,7 @@ class Ref2D:
         x = x + w1 + np.cos(2*np.pi/3)*w2 + np.cos(4*np.pi/3)*w3
         y = y + 0*w1 + np.sin(2*np.pi/3)*w2 + np.sin(4*np.pi/3)*w3
 
-        return {'x': x, 'y': y}
+        return {'x_ref': x, 'y_ref': y}
 
     @staticmethod
     def xytors(x, y):
@@ -288,8 +288,8 @@ class Ref2D:
 
 p = 3
 kk = Ref2D.nodes_2d(p)
-x = kk['x']
-y = kk['y']
+x = kk['x_ref']
+y = kk['y_ref']
 rs = Ref2D.xytors(x, y)
 r = rs['r']
 s = rs['s']

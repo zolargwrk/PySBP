@@ -1,7 +1,8 @@
 import numpy as np
+import numpy as np
 import quadpy
 from mesh.mesh_tools import MeshTools1D
-from mesh.mesh_generator import MeshGenerator
+from mesh.mesh_generator import MeshGenerator1D
 from src.ref_elem import Ref1D
 from src.csbp_type_operators import CSBPTypeOperators
 
@@ -31,7 +32,7 @@ class Assembler:
             # number of nodes and faces per element
             n = self.p + 1
             # obtain mesh information
-            mesh = MeshGenerator.line_mesh(xl, xr, n, nelem, quad_type)
+            mesh = MeshGenerator1D.line_mesh(xl, xr, n, nelem, quad_type)
             x = mesh['x']
             etov = mesh['etov']
             x_ref = mesh['x_ref']
@@ -50,7 +51,7 @@ class Assembler:
             # number of nodes and faces per element
             n = self.p + 1
             # obtain mesh information
-            mesh = MeshGenerator.line_mesh(xl, xr, n, nelem, quad_type)
+            mesh = MeshGenerator1D.line_mesh(xl, xr, n, nelem, quad_type)
             x = mesh['x']
             etov = mesh['etov']
             x_ref = mesh['x_ref']
@@ -77,7 +78,7 @@ class Assembler:
             x_ref = opers['x_ref']
 
             # obtain mesh information
-            mesh = MeshGenerator.line_mesh(xl, xr, n, nelem, quad_type, x_ref)
+            mesh = MeshGenerator1D.line_mesh(xl, xr, n, nelem, quad_type, x_ref)
             x = mesh['x']
             etov = mesh['etov']
 
@@ -90,7 +91,7 @@ class Assembler:
             x_ref = opers['x_ref']
 
             # obtain mesh information
-            mesh = MeshGenerator.line_mesh(xl, xr, n, nelem, quad_type, x_ref)
+            mesh = MeshGenerator1D.line_mesh(xl, xr, n, nelem, quad_type, x_ref)
             x = mesh['x']
             etov = mesh['etov']
 
@@ -103,7 +104,7 @@ class Assembler:
             x_ref = opers['x_ref']
 
             # obtain mesh information
-            mesh = MeshGenerator.line_mesh(xl, xr, n, nelem, quad_type, x_ref)
+            mesh = MeshGenerator1D.line_mesh(xl, xr, n, nelem, quad_type, x_ref)
             x = mesh['x']
             etov = mesh['etov']
 
@@ -111,7 +112,7 @@ class Assembler:
         lift = Ref1D.lift_1d(tl, tr, quad_type, v, h_mat)
 
         # mapping jacobian from reference to physical elements
-        jac_mapping = MeshTools1D.jacobian_1d(x, d_mat)
+        jac_mapping = MeshTools1D.geometric_factors_1d(x, d_mat)
         rx = jac_mapping['rx']
         jac = jac_mapping['jac']
 
@@ -130,7 +131,7 @@ class Assembler:
         etof = connect['etof']
 
         # build connectivity maps
-        maps = MeshTools1D.buildmaps_1d(x, etoe, etof, fmask, tl, tr)
+        maps = MeshTools1D.buildmaps_1d(n, x, etoe, etof, fmask)
         vmapM = maps['vmapM']
         vmapP = maps['vmapP']
         vmapB = maps['vmapB']

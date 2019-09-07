@@ -1,9 +1,13 @@
 import quadpy
 import numpy as np
 import warnings
+import meshzoo
+import meshio
+import dmsh
+import optimesh
 
 
-class MeshGenerator:
+class MeshGenerator1D:
     """Contains methods that create meshes for 1D, 2D, and 3D implementations"""
 
     @staticmethod
@@ -105,7 +109,43 @@ class MeshGenerator:
         return {'x': x, 'etov': etov, 'x_ref': x_ref, 'bgrp': bgrp, 'coord_elem': coord_elem}
 
 
-# mesh = MeshGenerator()
+class MeshGenerator2D:
+
+    @staticmethod
+    def triangle_mesh(n):
+        points, cells = meshzoo.triangle(n)
+        cells = {'triangle': cells}
+        meshio.write_points_cells('tri.vtu', points, cells)
+        return
+
+    @staticmethod
+    def rectangle_mesh(h):
+        geo = dmsh.Rectangle(-1.0, 1.0, -1.0, 1.0)
+
+        # vertex coordiante and element to vertex connectivity
+        vxy, etov = dmsh.generate(geo, h)
+        vxy, etov = optimesh.cvt.quasi_newton_uniform_full(vxy, etov, 1.0e-12, 100)
+
+        vx = vxy[:, 0]
+        vy = vxy[:, 1]
+
+        # number of elments and number of vertex
+        nelem = etov.shape[0]
+        nvert = vxy.shape[0]
+
+        if vxy.shape[1] == 2:
+            points = np.append(vxy, np.zeros((vxy.shape[0], 1)), axis=1)
+        else:
+            points = etov
+
+        cells = {'triangle': etov}
+        meshio.write_points_cells('rec.vtu', points, cells)
+        return {'etov': etov, 'vx': vx, 'vy': vy, 'nelem': nelem, 'nvert': nvert}
+
+
+# mesh = meshio.read('Maxwell025.neu')
+# mesh = MeshGenerator2D.rectangle_mesh(11)
+# mesh = MeshGenerator2D.triangle_mesh(11)
 # x = mesh.line_mesh(0, 2, 9, 10, scheme='LGL')
 
 # coord = x[0]

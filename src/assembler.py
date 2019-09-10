@@ -1,9 +1,8 @@
 import numpy as np
-import numpy as np
 import quadpy
-from mesh.mesh_tools import MeshTools1D
-from mesh.mesh_generator import MeshGenerator1D
-from src.ref_elem import Ref1D
+from mesh.mesh_tools import MeshTools1D, MeshTools2D
+from mesh.mesh_generator import MeshGenerator1D, MeshGenerator2D
+from src.ref_elem import Ref1D, Ref2D
 from src.csbp_type_operators import CSBPTypeOperators
 
 class Assembler:
@@ -24,7 +23,7 @@ class Assembler:
         tl = 0      # left projector
         tr = 0      # right projector
         x = 0       # physical domain mesh
-        x_ref = 0   # refernce element mesh
+        x_ref = 0   # reference element mesh
         d_mat = 0   # D1 - derivative matrix
         etov = 0    # element to vertex connectivity
 
@@ -117,7 +116,7 @@ class Assembler:
         jac = jac_mapping['jac']
 
         # edge node location
-        masks = MeshTools1D.fmask_1d(x_ref, x, tl, tr)
+        masks = Ref1D.fmask_1d(x_ref, x, tl, tr)
         fx = masks['fx']
         fmask = masks['fmask']
 
@@ -146,6 +145,79 @@ class Assembler:
                 'jac': jac, 'x': x, 'tl': tl, 'tr': tr, 'n': n}
 
 
-# a = Assembler(8, 'LGL')
+    def assembler_2d(self):
+        p = self.p
+        quad_type = self.quad_type
+
+        nfp = p+1
+        n = int((p+1)*(p+2)/2)
+        nface = 3
+
+        # obtain mesh data on reference element
+        x_ref, y_ref = Ref2D.nodes_2d(p)    # on equilateral triangle element
+        r, s = Ref2D.xytors(x_ref, y_ref)   # on right triangle reference element
+
+        # obtain mesh data on the physical element
+        h = 0.25    # mesh size
+        mesh = MeshGenerator2D.rectangle_mesh(h)
+        vx = mesh['vx']
+        vy = mesh['vy']
+        etov = mesh['etov']
+        nelem = mesh['nelem']
+
+        # apply affine mapping and obtain mesh location of all nodes on the physical element
+        x, y = MeshTools2D.affine_map_2d(vx, vy, r, s, etov)
+
+        # obtain the nodes on the edges of the triangles on the physical element
+        mask = Ref2D.fmask_2d(r, s, x_ref, y_ref)
+        fx = mask['fx']
+        fy = mask['fy']
+        fmask = mask['fmask']
+
+        # get derivative and mass matrices on the reference element
+        v = Ref2D.vandermonde_2d(p, r, s)
+        Dr, Ds = Ref2D.derivative_2d(p, r, s, v)
+        Mmat = (np.linalg.inv(v @ v.T))
+
+        # obtain the lift
+        lift = Ref2D.lift_2d(p, r, s, fmask)
+
+        # get necessary the geometric factors
+        geo = MeshTools2D.geometric_factors_2d(x, y, Dr, Ds)
+        rx = geo['rx']
+        ry = geo['ry']
+        sx = geo['sx']
+        sy = geo['sy']
+        jac = geo['jac']
+
+        # get normals and surface scaling factor
+        norm = MeshTools2D.normals_2d(p, x, y, Dr, Ds, fmask)
+        nx = norm['nx']
+        ny = norm['ny']
+        surf_jac = norm['surf_jac']
+        fscale = surf_jac/jac[fmask.reshape((fmask.shape[0]*fmask.shape[1], 1), order='F'), :].reshape(surf_jac.shape)
+
+        # build connectivity matrices
+        connect = MeshTools2D.connectivity_2d(etov)
+        etoe = connect['etoe']
+        etof = connect['etof']
+
+        # build connectivity maps
+        maps = MeshTools2D.buildmaps_2d(p, n, x, y, etov, etoe, etof, fmask)
+        mapM = maps['mapM']
+        mapP = maps['mapP']
+        vmapM = maps['vmapM']
+        vmapP = maps['vmapP']
+        vmapB = maps['vmapB']
+        mapB = maps['mapB']
+
+        return {'nfp': nfp, 'n': n, 'nface': nface, 'nelem': nelem, 'Dr': Dr, 'Ds': Ds, 'Mmat': Mmat, 'lift':lift,
+                'rx': rx, 'ry': ry, 'sx': sx, 'sy': sy, 'jac': jac, 'nx': nx, 'ny': ny, 'surf_jac': surf_jac,
+                'fscale': fscale, 'mapM': mapM, 'mapP': mapP, 'vmapM': vmapM, 'vmapP': vmapP, 'vmapB': vmapB,
+                'mapB': mapB}
+
+a = Assembler(3, 'DG')
+kk = Assembler.assembler_2d(a)
+
 # result = Assembler.assembler_1d(a, 0, 2, 10)
 # d_mat = result['d_mat']

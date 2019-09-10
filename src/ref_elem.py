@@ -91,6 +91,25 @@ class Ref1D:
             lift = np.linalg.inv(h_mat_ref) @ e_mat
         return lift
 
+    @staticmethod
+    def fmask_1d(x_ref, x, tl, tr):
+        n = len(x_ref)
+        nelem = int(len(x) / n)
+        x_ref_end = x_ref @ tr
+        x_ref_0 = x_ref @ tl
+        x_ref[len(x_ref) - 1] = x_ref_end
+        x_ref[0] = x_ref_0
+        fmask1 = ((np.abs(x_ref + 1) < 1e-12).nonzero())[0][0]
+        fmask2 = ((np.abs(x_ref - 1) < 1e-12).nonzero())[0][0]
+        fmask = np.array([fmask1, fmask2])
+
+        fx = np.zeros((2, nelem))
+        x = x.reshape((n, nelem), order='F')
+        fx[0, :] = (x.T @ tl)[:, 0]
+        fx[1, :] = (x.T @ tr)[:, 0]
+
+        return {'fx': fx, 'fmask': fmask}
+
 
 class Ref2D:
 
@@ -128,10 +147,9 @@ class Ref2D:
         warp = lagr_mat.T @ (rLGL - req)
 
         # make warp zero at vertices (i.e., r +or- 1) and divide by the factor 1-rout^2
-        ver_warp = ((abs(rout) < (1 - 1e-12)) - 1).nonzero()[0]
-        warp = warp/(1 - rout**2)
-        warp[ver_warp] = 0
+        warp = np.divide(warp, (1-rout**2), out=np.zeros_like(warp), where=(1-rout**2) != 0)
         warp = warp.reshape(len(warp), 1)
+
         return warp
 
     @ staticmethod
@@ -179,7 +197,10 @@ class Ref2D:
         x = x + w1 + np.cos(2*np.pi/3)*w2 + np.cos(4*np.pi/3)*w3
         y = y + 0*w1 + np.sin(2*np.pi/3)*w2 + np.sin(4*np.pi/3)*w3
 
-        return {'x_ref': x, 'y_ref': y}
+        x_ref = x
+        y_ref = y
+
+        return x_ref, y_ref
 
     @staticmethod
     def xytors(x, y):
@@ -193,7 +214,7 @@ class Ref2D:
         s = 1/3*((2*np.sqrt(3))*y - 1)
         r = 1/2*(2*x - 1 - s)
 
-        return {'r': r, 's': s}
+        return r, s
 
     @staticmethod
     def rstoab(r, s):
@@ -283,21 +304,163 @@ class Ref2D:
         Dr = vdr @ np.linalg.inv(v)
         Ds = vds @ np.linalg.inv(v)
 
-        return {'Dr': Dr, 'Ds': Ds}
+        return Dr, Ds
 
+    @staticmethod
+    def fmask_2d(r, s, x, y):
+        fmask1 = ((np.abs(s + 1) < 1e-12).nonzero())[0]
+        fmask2 = ((np.abs(r + s) < 1e-12).nonzero())[0]
+        fmask3 = ((np.abs(r + 1) < 1e-12).nonzero())[0]
+        fmask = (np.array([fmask1, fmask2, fmask3])).T
 
-p = 3
-kk = Ref2D.nodes_2d(p)
-x = kk['x_ref']
-y = kk['y_ref']
-rs = Ref2D.xytors(x, y)
-r = rs['r']
-s = rs['s']
-v = Ref2D.vandermonde_2d(p, r, s)
-ab = Ref2D.rstoab(r, s)
-a = ab['a']
-b = ab['b']
+        fx = x[fmask[:]]
+        fy = y[fmask[:]]
 
-grad_v = Ref2D.grad_vandermonde2d(p, r, s)
+        return {'fx': fx, 'fy': fy, 'fmask': fmask}
 
-der = Ref2D.derivative_2d(p, r, s, v)
+    @staticmethod
+    def lift_2d(p, r, s, fmask):
+        # construct empty E matrix
+        nfp = p+1
+        nface = 3
+        n = len(r)
+        e_mat = np.zeros((n, nfp*nface))
+
+        # evaluate the vandermonde matrix at face 0
+        v_1d = Ref1D.vandermonde_1d(p, r[fmask[:, 0]].flatten())
+        # compute mass matrix and E matrix at face 0
+        mass_f0 = np.linalg.inv(v_1d @ v_1d.T)
+        e_mat[fmask[:, 0].reshape(nfp, 1), np.arange(0, nfp)] = mass_f0
+
+        # evaluate the vandermonde matrix at face 1
+        v_1d = Ref1D.vandermonde_1d(p, s[fmask[:, 1]].flatten())
+        # compute mass matrix and E matrix at face 1
+        mass_f1 = np.linalg.inv(v_1d @ v_1d.T)
+        e_mat[fmask[:, 1].reshape(nfp, 1), np.arange(nfp, 2*nfp)] = mass_f1
+
+        # evaluate the vandermonde matrix at face 2
+        v_1d = Ref1D.vandermonde_1d(p, s[fmask[:, 2]].flatten())
+        # compute mass matrix and E matrix at face 2
+        mass_f2 = np.linalg.inv(v_1d @ v_1d.T)
+        e_mat[fmask[:, 2].reshape(nfp, 1), np.arange(2*nfp, 3*nfp)] = mass_f2
+
+        # compute the 2D vandermonde matrix
+        v = Ref2D.vandermonde_2d(p, r, s)
+        # compute lift
+        lift = v @ (v.T @ e_mat)
+
+        return lift
+
+    @staticmethod
+    def compute_der_geom_ref(x, y, Dr, Ds, u_x, u_y=1, u_z=1):
+        # compute derivative in x, y, and z directions with respect to r and s
+        uxr = Dr @ u_x
+        uxs = Ds @ u_x
+
+        if u_y == 1:
+            uyr = 0
+            uys = 0
+        else:
+            uyr = Dr @ u_y
+            uys = Ds @ u_y
+
+        if u_z == 1:
+            uzr = 0
+            uzs = 0
+        else:
+            uzr = Dr @ u_z
+            uzs = Ds @ u_z
+
+        # evaluate geometric factors
+        xr = Dr @ x
+        xs = Ds @ x
+        yr = Dr @ y
+        ys = Ds @ y
+        jac = -xs * yr + xr * ys
+        rx = ys / jac
+        sx = -yr / jac
+        ry = -xs
+        sy = xr / jac
+
+        return {'uxr': uxr, 'uxs': uxs, 'uyr': uyr, 'uys': uys, 'uzr': uzr, 'uzs': uzs, 'xr': xr, 'xs':xs, 'yr': yr,
+                'ys': ys, 'jac': jac, 'rx': rx, 'sx': sx, 'ry': ry, 'sy': sy}
+
+    @staticmethod
+    def gradient_2d(x, y, Dr, Ds, u_x, u_y=1, u_z=1):
+
+        # compute necessary derivatives and geometric factors
+        der_geom = Ref2D.compute_der_geom_ref(x, y, Dr, Ds, u_x, u_y, u_z)
+        uxr = der_geom['uxr']
+        uxs = der_geom['uxs']
+        rx = der_geom['rx']
+        sx = der_geom['sx']
+        ry = der_geom['ry']
+        sy = der_geom['sy']
+
+        # evaluate gradient
+        ux = rx*uxr + sx*uxs
+        uy = ry*uxr + sy*uxs
+
+        return ux, uy
+
+    @staticmethod
+    def divergence_2d(x, y, Dr, Ds, u_x, u_y=1, u_z=1):
+        # compute necessary derivatives and geometric factors
+        der_geom = Ref2D.compute_der_geom_ref(x, y, Dr, Ds, u_x, u_y, u_z)
+        uxr = der_geom['uxr']
+        uxs = der_geom['uxs']
+        uyr = der_geom['uyr']
+        uys = der_geom['uys']
+        rx = der_geom['rx']
+        sx = der_geom['sx']
+        ry = der_geom['ry']
+        sy = der_geom['sy']
+
+        # evaluate divergence
+        divu = rx * uxr + sx * uxs + ry * uyr + sy * uys
+
+        return divu
+
+    @staticmethod
+    def curl_2d(x, y, Dr, Ds, u_x, u_y=1, u_z=1):
+        # compute necessary derivatives and geometric factors
+        der_geom = Ref2D.compute_der_geom_ref(x, y, Dr, Ds, u_x, u_y, u_z)
+        uxr = der_geom['uxr']
+        uxs = der_geom['uxs']
+        uyr = der_geom['uyr']
+        uys = der_geom['uys']
+        uzr = der_geom['uzr']
+        uzs = der_geom['uzs']
+        rx = der_geom['rx']
+        sx = der_geom['sx']
+        ry = der_geom['ry']
+        sy = der_geom['sy']
+
+        # evaluate curl
+        curlx = ry * uzr + sy * uzs
+        curly = -rx * uzr - sx * uzs
+        curlz = rx * uyr + sx * uys - ry * uxr - sy * uxs
+
+        return {'curlx': curlx, 'curly': curly, 'curlz': curlz}
+
+#
+# p = 3
+# n = int((p+1)*(p+2)/2)
+# kk = Ref2D.nodes_2d(p)
+# x_ref = kk['x_ref']
+# y_ref = kk['y_ref']
+# rs = Ref2D.xytors(x_ref, y_ref)
+# r = rs['r']
+# s = rs['s']
+# edge_nodes = Ref2D.fmask_2d(r, s, x_ref, y_ref)
+# fmask = edge_nodes['fmask']
+#
+#
+# v = Ref2D.vandermonde_2d(p, r, s)
+#
+# drvtv = Ref2D.derivative_2d(p, r, s, v)
+# Dr = drvtv['Dr']
+# Ds = drvtv['Ds']
+#
+#
+# lift = Ref2D.lift_2d(p, r, s, fmask)

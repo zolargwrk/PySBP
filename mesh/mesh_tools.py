@@ -1,5 +1,4 @@
 import numpy as np
-from scipy import sparse
 from mesh.mesh_generator import MeshGenerator2D
 from src.ref_elem import Ref2D
 
@@ -72,25 +71,6 @@ class MeshTools1D:
         return ind.T
 
     @staticmethod
-    def fmask_1d(x_ref, x, tl, tr):
-        n = len(x_ref)
-        nelem = int(len(x)/n)
-        x_ref_end = x_ref @ tr
-        x_ref_0 = x_ref @ tl
-        x_ref[len(x_ref) - 1] = x_ref_end
-        x_ref[0] = x_ref_0
-        fmask1 = ((np.abs(x_ref + 1) < 1e-12).nonzero())[0][0]
-        fmask2 = ((np.abs(x_ref - 1) < 1e-12).nonzero())[0][0]
-        fmask = np.array([fmask1, fmask2])
-
-        fx = np.zeros((2, nelem))
-        x = x.reshape((n, nelem), order='F')
-        fx[0, :] = (x.T @ tl)[:, 0]
-        fx[1, :] = (x.T @ tr)[:, 0]
-
-        return {'fx': fx, 'fmask': fmask}
-
-    @staticmethod
     def buildmaps_1d(n, x, etoe, etof, fmask):
         # n : number of nodes per element, -->  n = p + 1 for LG and LGL operators
         nelem = etoe.shape[0]
@@ -161,20 +141,9 @@ class MeshTools2D:
 
         return {'xr': xr, 'xs': xs, 'yr': yr, 'ys': ys, 'jac': jac, 'rx': rx, 'sx': sx, 'ry': ry, 'sy': sy}
 
-    @staticmethod
-    def fmask_2d(r, s, x_ref, y_ref):
-        fmask1 = ((np.abs(s + 1) < 1e-12).nonzero())[0]
-        fmask2 = ((np.abs(r + s) < 1e-12).nonzero())[0]
-        fmask3 = ((np.abs(r + 1) < 1e-12).nonzero())[0]
-        fmask = (np.array([fmask1, fmask2, fmask3])).T
-
-        fx = x_ref[fmask[:]]
-        fy = y_ref[fmask[:]]
-
-        return {'fx': fx, 'fy': fy, 'fmask': fmask}
 
     @staticmethod
-    def connect_2d(etov):
+    def connectivity_2d(etov):
         #number of faces, elements, and vertices
         nface = 3
         nelem = etov.shape[0]
@@ -223,10 +192,10 @@ class MeshTools2D:
         x = 0.5*(-(r+s)*vx[va] + (1+r)*vx[vb] + (1+s)*vx[vc])
         y = 0.5*(-(r+s)*vy[va] + (1+r)*vy[vb] + (1+s)*vy[vc])
 
-        return {'x': x, 'y': y}
+        return x, y
 
     @staticmethod
-    def buildmaps_2d(p, n, x, y, etov, etof, fmask):
+    def buildmaps_2d(p, n, x, y, etov, etoe, etof, fmask):
         # n = (p+1)*(p+2)/2 : number of degrees of freedom per element
         nelem = etov.shape[0]
         nfp = p+1   # number of nodes on each facet
@@ -288,32 +257,85 @@ class MeshTools2D:
 
         return {'mapM': mapM, 'mapP': mapP, 'vmapM': vmapM, 'vmapP': vmapP, 'vmapB': vmapB, 'mapB': mapB}
 
-mesh = MeshGenerator2D.rectangle_mesh(0.25)
-vx = mesh['vx']
-vy = mesh['vy']
-etov = mesh['etov']
+    @staticmethod
+    def normals_2d(p, x, y, Dr, Ds, fmask):
+        nface = 3
+        nfp = p+1
+        nelem = x.shape[1]
+        # obtain the Jacobian
+        xr = Dr @ x
+        yr = Dr @ y
+        xs = Ds @ x
+        ys = Ds @ y
+        jac = xr*ys - xs*yr
 
-p = 3
-n = int((p+1)*(p+2)/2)
-kk = Ref2D.nodes_2d(p)
-x_ref = kk['x_ref']
-y_ref = kk['y_ref']
-rs = Ref2D.xytors(x_ref, y_ref)
-r = rs['r']
-s = rs['s']
-edge_nodes = MeshTools2D.fmask_2d(r, s, x_ref, y_ref)
-fmask = edge_nodes['fmask']
+        # obtain geometric factors at the face nodes
+        fxr = xr[fmask.flatten(order='F'), :]
+        fxs = xs[fmask.flatten(order='F'), :]
+        fyr = yr[fmask.flatten(order='F'), :]
+        fys = ys[fmask.flatten(order='F'), :]
 
-connect2d = MeshTools2D.connect_2d(etov)
-etoe = connect2d['etoe']
-etof = connect2d['etof']
+        # build normals and face ids
+        nx = np.zeros((nface*nfp, nelem))
+        ny = np.zeros((nface*nfp, nelem))
+        fid1 = (np.arange(0, nfp)).reshape((nfp, 1))
+        fid2 = (np.arange(nfp, 2*nfp)).reshape((nfp, 1))
+        fid3 = (np.arange(2*nfp, 3*nfp)).reshape((nfp, 1))
 
-xy = MeshTools2D.affine_map_2d(vx, vy, r, s, etov)
-x = xy['x']
-y = xy['y']
-maps = MeshTools2D.buildmaps_2d(p, n, x, y, etov, etof, fmask)
-mapB = maps['mapB']
+        # The normals are computed as shown in Fig. 6.1 of the Nodal DG book by Hesthaven and following his code
+        # face 0
+        nx[fid1, :] = fyr[fid1, :]
+        ny[fid1, :] = -fxr[fid1, :]
+        # face 1
+        nx[fid2, :] = fys[fid2, :] - fyr[fid2, :]
+        ny[fid2, :] = -fxs[fid2, :] + fxr[fid2, :]
+        # face 3
+        nx[fid3, :] = -fys[fid3, :]
+        ny[fid3, :] = fxs[fid3, :]
 
+        # normalize
+        surf_jac = np.sqrt(nx*nx + ny*ny)
+        nx = nx/surf_jac
+        ny = ny/surf_jac
+
+        return {'nx': nx, 'ny': ny, 'surf_jac': surf_jac}
+
+
+# mesh = MeshGenerator2D.rectangle_mesh(0.25)
+# vx = mesh['vx']
+# vy = mesh['vy']
+# etov = mesh['etov']
+#
+# p = 3
+# n = int((p+1)*(p+2)/2)
+# x_ref, y_ref = Ref2D.nodes_2d(p)
+#
+# r, s = Ref2D.xytors(x_ref, y_ref)
+#
+# edge_nodes = Ref2D.fmask_2d(r, s, x_ref, y_ref)
+# fmask = edge_nodes['fmask']
+#
+# connect2d = MeshTools2D.connectivity_2d(etov)
+# etoe = connect2d['etoe']
+# etof = connect2d['etof']
+#
+# x, y = MeshTools2D.affine_map_2d(vx, vy, r, s, etov)
+#
+# maps = MeshTools2D.buildmaps_2d(p, n, x, y, etov, etoe, etof, fmask)
+# mapB = maps['mapB']
+# mapM = maps['mapM']
+# mapP = maps['mapP']
+# vmapM = maps['vmapM']
+# vmapP = maps['vmapP']
+# vmapB = maps['vmapB']
+#
+# v = Ref2D.vandermonde_2d(p, r, s)
+#
+# drvtv = Ref2D.derivative_2d(p, r, s, v)
+# Dr = drvtv['Dr']
+# Ds = drvtv['Ds']
+#
+# normals = MeshTools2D.normals_2d(p, x, y, Dr, Ds, fmask)
 # mesh = MeshGenerator1D.line_mesh(0, 2, 9, 10, scheme='LGL')
 # etov = mesh['etov']
 # x = mesh['x']

@@ -1,4 +1,5 @@
 import numpy as np
+from src.ref_elem import Ref2D
 
 
 class RHSCalculator:
@@ -43,3 +44,47 @@ class RHSCalculator:
         rhs = (-a*rx)*(d_mat @ u) + lift @ (fscale * du)
 
         return rhs
+
+
+    @staticmethod
+    def rhs_advection_2d(u, time, x, y, ax, ay, Dr, Ds, vmapM, vmapP, vmapD, mapD, nelem, nfp,
+                         rx, lift, fscale, nx, ny, u_initial_function=1, flux_type='Upwind'):
+        nface = 3
+
+        # phase speed in the normal direction
+        an = ax*nx + ay*ny
+
+        # set central or upwind flux parameter
+        if flux_type == 'Central':
+            k = 0.5
+        else:
+            k = 0.5 * (1 + an/abs(an))
+
+        # convert matrix form of arrays into array form
+        u = u.flatten(order='F')
+        vmapM = vmapM.flatten(order='F')
+        vmapP = vmapP.flatten(order='F')
+        mapD = mapD.flatten(order='F')
+
+        # evaluate difference in solution along interface for flux calculation
+        du = np.zeros((nfp * nface * nelem), 1)
+        u_star = k*u(vmapM) + (1-k)*u(vmapP)
+        du = u(vmapM) - u_star
+
+        # boundary condition
+        if u_initial_function != 1:
+            u0 = u_initial_function(mapD)
+        else:
+            u0 = 0
+
+        uM = u(vmapD)
+        du[mapD] = uM - (k[mapD]*uM + (1-k[vmapD])) * u0
+
+        # calculate flux
+        df = an*du
+
+        # evaluate RHS
+        ux, uy = Ref2D.gradient_2d(x, y, Dr, Ds, u)
+        rhs = -(an*ux + ay*uy) + lift*(fscale*df)
+
+        return

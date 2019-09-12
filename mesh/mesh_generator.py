@@ -140,11 +140,61 @@ class MeshGenerator2D:
 
         cells = {'triangle': etov}
         meshio.write_points_cells('rec.vtu', points, cells)
-        return {'etov': etov, 'vx': vx, 'vy': vy, 'nelem': nelem, 'nvert': nvert}
+
+        vxy_mid, edge = MeshGenerator2D.mid_edge(vxy, etov)
+
+        tol = 1e-6
+        bgrp = list()
+        # left boundary
+        i = np.abs(vxy_mid[:, 1] - (-1)) < tol
+        temp = edge[i, :]
+        edge_sorted = temp[temp[:, 0].argsort(), ]
+        bgrp.append(edge_sorted)
+
+        # right boundary
+        i = np.abs((vxy_mid[:, 1] - 1)) < tol
+        temp = edge[i, :]
+        edge_sorted = temp[temp[:, 0].argsort(),]
+        bgrp.append(edge_sorted)
+
+        # bottom boundary
+        i = np.abs(vxy_mid[:, 0] - (-1)) < tol
+        temp = edge[i, :]
+        edge_sorted = temp[temp[:, 0].argsort(),]
+        bgrp.append(edge_sorted)
+
+        # top boundary
+        i = np.abs(vxy_mid[:, 0] - 1) < tol
+        temp = edge[i, :]
+        edge_sorted = temp[temp[:, 0].argsort(),]
+        bgrp.append(edge_sorted)
+
+        return {'etov': etov, 'vx': vx, 'vy': vy, 'vxy': vxy, 'nelem': nelem, 'nvert': nvert, 'bgrp': bgrp, 'edge': edge}
+
+    @staticmethod
+    def mid_edge(vxy, etov):
+        """Obtains the global vertex number of each edge and
+        calculates the coordinate point at the middle of each edge"""
+
+        nelem = etov.shape[0]
+        # create boundary edge group
+        edge = np.zeros((nelem * 3, 2), dtype=int)
+        edge[0:nelem, [0, 1]] = etov[:, [1, 2]]
+        edge[nelem:2 * nelem, [0, 1]] = etov[:, [2, 0]]
+        edge[2 * nelem:3 * nelem, [0, 1]] = etov[:, [0, 1]]
+
+        # calculate mid edge coordinate all edges
+        edge_vec = edge.reshape((nelem * 3 * 2, 1))
+        vxy_edge = vxy[edge_vec, :].reshape((2, 3 * nelem * 2), order='F')
+        vxy_mid = np.mean(vxy_edge, axis=0).reshape((3 * nelem, 2), order='F')
+
+        return vxy_mid, edge
+
 
 
 # mesh = meshio.read('Maxwell025.neu')
-# mesh = MeshGenerator2D.rectangle_mesh(11)
+mesh = MeshGenerator2D.rectangle_mesh(0.25)
+
 # mesh = MeshGenerator2D.triangle_mesh(11)
 # x = mesh.line_mesh(0, 2, 9, 10, scheme='LGL')
 

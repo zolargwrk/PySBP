@@ -144,7 +144,7 @@ class MeshTools2D:
 
     @staticmethod
     def connectivity_2d(etov):
-        #number of faces, elements, and vertices
+        # number of faces, elements, and vertices
         nface = 3
         nelem = etov.shape[0]
         nvert = np.max(np.max(etov))
@@ -160,12 +160,12 @@ class MeshTools2D:
 
         # give unique id number for faces using their node number
         id = fnodes[:, 0]*nvert + fnodes[:, 1] + 1
-        spNodetoNode = np.asarray([id.reshape(nelem*nface, 1), np.array((np.arange(0, nelem*nface)).reshape((nelem*nface, 1), order='F')),
+        vtov = np.asarray([id.reshape(nelem*nface, 1), np.array((np.arange(0, nelem*nface)).reshape((nelem*nface, 1), order='F')),
                                 np.array(etoe.reshape((nelem*nface, 1),order='F')), np.array(etof.reshape((nface*nelem, 1), order='F'))])
-        spNodetoNode = (spNodetoNode.reshape((nelem*nface*4, 1))).reshape((nelem*nface, 4), order='F')
+        vtov = (vtov.reshape((nelem*nface*4, 1))).reshape((nelem*nface, 4), order='F')
 
         # sort by global face number (first row)
-        sorted = spNodetoNode[spNodetoNode[:, 0].argsort(), ]
+        sorted = vtov[vtov[:, 0].argsort(), ]
 
         # find matches
         indx = np.where(sorted[0:-1, 0] == sorted[1:, 0])[0]
@@ -300,8 +300,59 @@ class MeshTools2D:
 
         return {'nx': nx, 'ny': ny, 'surf_jac': surf_jac}
 
+    @staticmethod
+    def mesh_bgrp(mesh):
+        """Includes element number and local face number to the boundary information contained in bgrp"""
+        etov = mesh['etov']
+        nelem = mesh['nelem']
+        vxy = mesh['vxy']
+        bgrp = mesh['bgrp']
+        edge = mesh['edge']
 
-# mesh = MeshGenerator2D.rectangle_mesh(0.25)
+        connect = MeshTools2D.connectivity_2d(etov)
+        etof = connect['etof']
+        etoe = connect['etoe']
+
+        for ibgrp in range(0, len(bgrp)):
+            # find indices where the boundary edge number matches those contained in edge
+            s1 = np.char.array(edge[:, 0]*10) + np.char.array(edge[:, 1]*10)
+            s2 = np.char.array(bgrp[ibgrp][:, 0]*10) + np.char.array(bgrp[ibgrp][:, 1]*10)
+            ind_edge = np.where(np.in1d(s1, s2))[0]
+
+            # get element number of elements containing the boundary edge
+            # this is done using the fact that edge is obtained by reshaping element to vertex connectivity
+            # see "min_edge" method of MeshGenerator2D class in mesh_generator.py file
+            belem = list()
+            bface = np.zeros((len(ind_edge), 1), dtype=int)
+
+            # if index is below nelem, the element number doesn't change and the local face number is 2 due to
+            # how the edge matrix is constructed in "min_edge" method
+            belem.append(ind_edge[np.where(ind_edge < nelem)])
+            bface[np.where(ind_edge < nelem)] = 1
+
+            # if index is >= nelem but < 2*nelem, element number = ind_edge - nelem and local face number is 1
+            belem.append(ind_edge[np.where(np.logical_and(nelem <= ind_edge, ind_edge < 2*nelem))] - nelem)
+            bface[np.where(np.logical_and(nelem <= ind_edge, ind_edge < 2*nelem))] = 2
+
+            # if index is >= 2*nelem  but < 3*nelem, element number = ind_edge - 2*nelem and local face number is 0
+            belem.append(ind_edge[np.where(np.logical_and(2*nelem <= ind_edge, ind_edge < 3 * nelem))] - 2*nelem)
+            bface[np.where(np.logical_and(2*nelem <= ind_edge, ind_edge < 3*nelem))] = 0
+
+            belem = [i for j in belem for i in j]
+            belem = (np.asarray(belem)).reshape(len(belem), 1)
+
+            bgrp[ibgrp] = np.vstack([bgrp[ibgrp][:, 0], bgrp[ibgrp][:, 1], belem.flatten(), bface.flatten()]).T
+
+        return bgrp
+
+    @staticmethod
+    def boundary_nodes(mesh):
+
+
+        return
+mesh = MeshGenerator2D.rectangle_mesh(0.25)
+bgrp= MeshTools2D.mesh_bgrp(mesh)
+
 # vx = mesh['vx']
 # vy = mesh['vy']
 # etov = mesh['etov']

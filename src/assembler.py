@@ -6,7 +6,7 @@ from src.ref_elem import Ref1D, Ref2D
 from src.csbp_type_operators import CSBPTypeOperators
 
 class Assembler:
-    def __init__(self, p, quad_type):
+    def __init__(self, p, quad_type=None):
         self.p = p
         self.quad_type = quad_type
 
@@ -140,12 +140,14 @@ class Assembler:
         vmapI = maps['vmapI']
         vmapO = maps['vmapO']
 
+        # normals at the faces
+        nx = MeshTools1D.normals_1d(nelem)
+
         return {'d_mat': d_mat, 'lift': lift, 'rx': rx, 'fscale': fscale, 'vmapM': vmapM, 'vmapP': vmapP,
                 'vmapB': vmapB, 'mapB': mapB, 'mapI': mapI, 'mapO': mapO, 'vmapI': vmapI, 'vmapO': vmapO,
-                'jac': jac, 'x': x, 'tl': tl, 'tr': tr, 'n': n}
+                'jac': jac, 'x': x, 'tl': tl, 'tr': tr, 'n': n, 'nx': nx}
 
-
-    def assembler_2d(self):
+    def assembler_2d(self, mesh):
         p = self.p
         quad_type = self.quad_type
 
@@ -158,8 +160,6 @@ class Assembler:
         r, s = Ref2D.xytors(x_ref, y_ref)   # on right triangle reference element
 
         # obtain mesh data on the physical element
-        h = 0.25    # mesh size
-        mesh = MeshGenerator2D.rectangle_mesh(h)
         vx = mesh['vx']
         vy = mesh['vy']
         etov = mesh['etov']
@@ -169,7 +169,7 @@ class Assembler:
         x, y = MeshTools2D.affine_map_2d(vx, vy, r, s, etov)
 
         # obtain the nodes on the edges of the triangles on the physical element
-        mask = Ref2D.fmask_2d(r, s, x_ref, y_ref)
+        mask = Ref2D.fmask_2d(r, s, x, y)
         fx = mask['fx']
         fy = mask['fy']
         fmask = mask['fmask']
@@ -211,13 +211,20 @@ class Assembler:
         vmapB = maps['vmapB']
         mapB = maps['mapB']
 
+        # boundary groups and boundary nodes
+        bgrp0 = mesh['bgrp']
+        edge = mesh['edge']
+        bgrp = MeshTools2D.mesh_bgrp(nelem, bgrp0, edge)
+        bnodes = MeshTools2D.boundary_nodes(p, nelem, bgrp, vmapB, vmapM)
+
         return {'nfp': nfp, 'n': n, 'nface': nface, 'nelem': nelem, 'Dr': Dr, 'Ds': Ds, 'Mmat': Mmat, 'lift':lift,
                 'rx': rx, 'ry': ry, 'sx': sx, 'sy': sy, 'jac': jac, 'nx': nx, 'ny': ny, 'surf_jac': surf_jac,
                 'fscale': fscale, 'mapM': mapM, 'mapP': mapP, 'vmapM': vmapM, 'vmapP': vmapP, 'vmapB': vmapB,
-                'mapB': mapB}
+                'mapB': mapB, 'bgrp': bgrp, 'bnodes': bnodes, 'x': x, 'y': y, 'fx': fx, 'fy': fy}
 
-a = Assembler(3, 'DG')
-kk = Assembler.assembler_2d(a)
+
+# a = Assembler(3, 'DG')
+# kk = Assembler.assembler_2d(a)
 
 # result = Assembler.assembler_1d(a, 0, 2, 10)
 # d_mat = result['d_mat']

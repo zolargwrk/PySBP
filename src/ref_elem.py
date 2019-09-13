@@ -308,13 +308,13 @@ class Ref2D:
 
     @staticmethod
     def fmask_2d(r, s, x, y):
-        fmask1 = ((np.abs(s + 1) < 1e-12).nonzero())[0]
-        fmask2 = ((np.abs(r + s) < 1e-12).nonzero())[0]
-        fmask3 = ((np.abs(r + 1) < 1e-12).nonzero())[0]
-        fmask = (np.array([fmask1, fmask2, fmask3])).T
+        fmask0 = ((np.abs(s + 1) < 1e-8).nonzero())[0]
+        fmask1 = ((np.abs(r + s) < 1e-8).nonzero())[0]
+        fmask2 = ((np.abs(r + 1) < 1e-8).nonzero())[0]
+        fmask = (np.array([fmask0, fmask1, fmask2])).T
 
-        fx = x[fmask[:]]
-        fy = y[fmask[:]]
+        fx = x[fmask.reshape((fmask.shape[0]*fmask.shape[1], 1), order='F'), :]
+        fy = y[fmask.reshape((fmask.shape[0]*fmask.shape[1], 1), order='F'), :]
 
         return {'fx': fx, 'fy': fy, 'fmask': fmask}
 

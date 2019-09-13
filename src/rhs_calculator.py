@@ -87,4 +87,4 @@ class RHSCalculator:
         ux, uy = Ref2D.gradient_2d(x, y, Dr, Ds, u)
         rhs = -(an*ux + ay*uy) + lift*(fscale*df)
 
-        return
+        return rhs

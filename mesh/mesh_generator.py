@@ -146,27 +146,27 @@ class MeshGenerator2D:
         tol = 1e-6
         bgrp = list()
         # left boundary
-        i = np.abs(vxy_mid[:, 1] - (-1)) < tol
+        i = np.abs(vxy_mid[:, 0] - (-1)) < tol
         temp = edge[i, :]
         edge_sorted = temp[temp[:, 0].argsort(), ]
         bgrp.append(edge_sorted)
 
         # right boundary
-        i = np.abs((vxy_mid[:, 1] - 1)) < tol
+        i = np.abs((vxy_mid[:, 0] - 1)) < tol
         temp = edge[i, :]
-        edge_sorted = temp[temp[:, 0].argsort(),]
+        edge_sorted = temp[temp[:, 0].argsort(), ]
         bgrp.append(edge_sorted)
 
         # bottom boundary
-        i = np.abs(vxy_mid[:, 0] - (-1)) < tol
+        i = np.abs(vxy_mid[:, 1] - (-1)) < tol
         temp = edge[i, :]
-        edge_sorted = temp[temp[:, 0].argsort(),]
+        edge_sorted = temp[temp[:, 0].argsort(), ]
         bgrp.append(edge_sorted)
 
         # top boundary
-        i = np.abs(vxy_mid[:, 0] - 1) < tol
+        i = np.abs(vxy_mid[:, 1] - 1) < tol
         temp = edge[i, :]
-        edge_sorted = temp[temp[:, 0].argsort(),]
+        edge_sorted = temp[temp[:, 0].argsort(), ]
         bgrp.append(edge_sorted)
 
         return {'etov': etov, 'vx': vx, 'vy': vy, 'vxy': vxy, 'nelem': nelem, 'nvert': nvert, 'bgrp': bgrp, 'edge': edge}
@@ -184,7 +184,7 @@ class MeshGenerator2D:
         edge[2 * nelem:3 * nelem, [0, 1]] = etov[:, [0, 1]]
 
         # calculate mid edge coordinate all edges
-        edge_vec = edge.reshape((nelem * 3 * 2, 1))
+        edge_vec = edge.reshape((nelem*3*2, 1))
         vxy_edge = vxy[edge_vec, :].reshape((2, 3 * nelem * 2), order='F')
         vxy_mid = np.mean(vxy_edge, axis=0).reshape((3 * nelem, 2), order='F')
 
@@ -193,7 +193,7 @@ class MeshGenerator2D:
 
 
 # mesh = meshio.read('Maxwell025.neu')
-mesh = MeshGenerator2D.rectangle_mesh(0.25)
+# mesh = MeshGenerator2D.rectangle_mesh(0.25)
 
 # mesh = MeshGenerator2D.triangle_mesh(11)
 # x = mesh.line_mesh(0, 2, 9, 10, scheme='LGL')

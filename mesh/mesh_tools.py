@@ -253,7 +253,7 @@ class MeshTools2D:
         # obtain list of boundary nodes
         mapB = np.where(vmapM == vmapP)[0]
         mapB = mapB.reshape((len(mapB), 1))
-        vmapB = vmapM[mapB]
+        vmapB = (vmapM[mapB]).reshape(len(mapB), 1)
 
         return {'mapM': mapM, 'mapP': mapP, 'vmapM': vmapM, 'vmapP': vmapP, 'vmapB': vmapB, 'mapB': mapB}
 
@@ -301,17 +301,8 @@ class MeshTools2D:
         return {'nx': nx, 'ny': ny, 'surf_jac': surf_jac}
 
     @staticmethod
-    def mesh_bgrp(mesh):
+    def mesh_bgrp(nelem, bgrp, edge):
         """Includes element number and local face number to the boundary information contained in bgrp"""
-        etov = mesh['etov']
-        nelem = mesh['nelem']
-        vxy = mesh['vxy']
-        bgrp = mesh['bgrp']
-        edge = mesh['edge']
-
-        connect = MeshTools2D.connectivity_2d(etov)
-        etof = connect['etof']
-        etoe = connect['etoe']
 
         for ibgrp in range(0, len(bgrp)):
             # find indices where the boundary edge number matches those contained in edge
@@ -346,13 +337,44 @@ class MeshTools2D:
         return bgrp
 
     @staticmethod
-    def boundary_nodes(mesh):
+    def boundary_nodes(p, nelem, bgrp, vmapB, vmapM):
+        nface = 3
 
+        # get vertex on each element
+        vmapM = vmapM.reshape((nelem, p+1, nface), order='F')
 
-        return
-mesh = MeshGenerator2D.rectangle_mesh(0.25)
-bgrp= MeshTools2D.mesh_bgrp(mesh)
+        # get element number of boundary nodes
+        s1 = np.char.array(vmapM[:, :, :]*10)
+        s2 = np.char.array(vmapB[:, 0] * 10)
+        indx = np.where(np.reshape((np.in1d(s1, s2)), (nelem, p + 1, nface), order='F'))[0]
+        indx = np.unique(indx)
 
+        # get the boundary nodes that the elements in indx contain at its boundary on the face contained in the bgrp
+        bnodes = list()
+        for i in range(0, len(bgrp)):
+            vmapMgrp = vmapM[bgrp[i][:, 2], :, bgrp[i][:, 3]]
+            bnodes.append(np.unique(vmapMgrp.flatten()))
+
+        return bnodes
+
+    @staticmethod
+    def set_bndry(u, x, y, time_loc, btype, bnodes, u_bndry_dirchlet=None):
+
+        u_vec = u.reshape((len(u.flatten()), 1), order='F')
+        x_vec = x.reshape((len(x.flatten()), 1), order='F')
+        y_vec = y.reshape((len(y.flatten()), 1), order='F')
+        for i in range(0, len(btype)):
+            bndry = btype[i]
+            if bndry == 'd':
+                u_vec[bnodes[i]] = u_bndry_dirchlet(x_vec[bnodes[i]], y_vec[bnodes[i]], time_loc)
+
+        u = u_vec.reshape((u.shape), order='F')
+        return u
+
+#
+# mesh = MeshGenerator2D.rectangle_mesh(0.5)
+# bgrp= MeshTools2D.mesh_bgrp(mesh)
+#
 # vx = mesh['vx']
 # vy = mesh['vy']
 # etov = mesh['etov']
@@ -379,6 +401,11 @@ bgrp= MeshTools2D.mesh_bgrp(mesh)
 # vmapM = maps['vmapM']
 # vmapP = maps['vmapP']
 # vmapB = maps['vmapB']
+#
+# bnodes = MeshTools2D.boundary_nodes(p, mesh, vmapB, vmapM)
+
+
+
 #
 # v = Ref2D.vandermonde_2d(p, r, s)
 #

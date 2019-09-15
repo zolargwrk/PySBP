@@ -1,5 +1,8 @@
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import axes3d
+import numpy as np
 import pylab
+
 
 def plot_figure_1d(x, u, u_exact):
 
@@ -15,3 +18,20 @@ def plot_figure_1d(x, u, u_exact):
     plt.ylabel('y')
     # plt.ion()
     plt.show()
+    return
+
+
+def plot_figure_2d(x, y, u_exact):
+    x = (x.flatten(order='F')).T
+    y = (y.flatten(order='F')).T
+    u_exact = u_exact.flatten(order='F').T
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.plot_trisurf(x, y, u_exact, cmap='viridis')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('u')
+    plt.show()
+    return

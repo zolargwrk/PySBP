@@ -357,14 +357,14 @@ class Ref2D:
         uxr = Dr @ u_x
         uxs = Ds @ u_x
 
-        if u_y == 1:
+        if np.shape(u_y) == ():
             uyr = 0
             uys = 0
         else:
             uyr = Dr @ u_y
             uys = Ds @ u_y
 
-        if u_z == 1:
+        if np.shape(u_z) == ():
             uzr = 0
             uzs = 0
         else:
@@ -379,7 +379,7 @@ class Ref2D:
         jac = -xs * yr + xr * ys
         rx = ys / jac
         sx = -yr / jac
-        ry = -xs
+        ry = -xs / jac
         sy = xr / jac
 
         return {'uxr': uxr, 'uxs': uxs, 'uyr': uyr, 'uys': uys, 'uzr': uzr, 'uzs': uzs, 'xr': xr, 'xs':xs, 'yr': yr,

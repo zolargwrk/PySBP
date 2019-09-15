@@ -201,14 +201,14 @@ class MeshTools2D:
         nfp = p+1   # number of nodes on each facet
         nface = 3
         nodeids = (np.arange(0, n*nelem)).reshape((n, nelem), order='F')
-        vmapM = np.zeros((nelem, nfp, nface), dtype=int)
-        vmapP = np.zeros((nelem, nfp, nface), dtype=int)
+        vmapM = np.zeros((nelem, nface, nfp), dtype=int)
+        vmapP = np.zeros((nelem, nface,  nfp), dtype=int)
         mapM = (np.arange(0, nelem*nfp*nface)).reshape((nelem*nfp*nface, 1))
-        mapP = mapM.reshape((nelem, nfp, nface))
+        mapP = (mapM.copy()).reshape((nelem, nface, nfp))
 
         for elem in range(0, nelem):
             for face in range(0, nface):
-                vmapM[elem, :, face] = nodeids[fmask[:, face], elem]
+                vmapM[elem, face, :] = nodeids[fmask[:, face], elem]
 
         for elem in range(0, nelem):
             for face in range(0, nface):
@@ -223,8 +223,8 @@ class MeshTools2D:
                 d_ref = np.sqrt((x_vec[v1] - x_vec[v2])**2 + (y_vec[v1] - y_vec[v2])**2)
 
                 # volume node number on left and right element
-                vidM = vmapM[elem, :, face]
-                vidP = vmapM[elem2, :, face2]
+                vidM = vmapM[elem, face, :]
+                vidP = vmapM[elem2, face2, :]
 
                 # obtain the coordinate values of the facet nodes on the left and right element
                 x1 = x_vec[vidM] @ np.ones((1, nfp), dtype=int)
@@ -236,19 +236,24 @@ class MeshTools2D:
                 distance = (x1 - x2.T)**2 + (y1 - y2.T)**2
 
                 # find nodes sharing a coordinate (distance = 0)
-                (idM, idP) = np.where(np.sqrt(distance) < 1e-10)
+                (idP, idM) = np.where(np.sqrt(distance) < 1e-10)
 
                 # find the vertex numbers on the right element (vmapP)
-                vmapP[elem, idM, face] = vidP[idP]
+                vmapP[elem, face, idM] = vidP[idP]
 
                 # global numbering to nodes on the facet (relative to mapM which number the nodes from 0 to nfp*nface*nelem -1)
-                mapP[elem, idM, face] = idP + (face2 - 1)*nfp + (elem2-1)*nface*nfp
+                mapP[elem, face, idM] = idP + face2*nfp + elem2*nface*nfp
 
         # reshape the maps into vectors
-        vmapM = vmapM.reshape((nelem*nfp*nface, 1), order='F')
-        mapM = mapM.reshape((nelem*nfp*nface, 1), order='F')
-        vmapP = vmapP.reshape((nelem*nfp*nface, 1), order='F')
-        mapP = mapP.reshape((nelem*nfp*nface, 1), order='F')
+        vmapM =(vmapM.transpose(0, 1, 2)).reshape(nelem*nfp*nface, 1)
+        # mapM = (mapM.transpose(0, 1, 2)).reshape(nelem*nfp*nface, 1)
+        vmapP = (vmapP.transpose(0, 1, 2)).reshape(nelem*nfp*nface, 1)
+        mapP = (mapP.transpose(0, 1, 2)).reshape(nelem*nfp*nface, 1)
+
+        # vmapM = vmapM.reshape((nelem * nfp * nface, 1), order='F')
+        # mapM = mapM.reshape((nelem * nfp * nface, 1), order='F')
+        # vmapP = vmapP.reshape((nelem * nfp * nface, 1), order='F')
+        # mapP = mapP.reshape((nelem * nfp * nface, 1), order='F')
 
         # obtain list of boundary nodes
         mapB = np.where(vmapM == vmapP)[0]
@@ -312,12 +317,12 @@ class MeshTools2D:
 
             # get element number of elements containing the boundary edge
             # this is done using the fact that edge is obtained by reshaping element to vertex connectivity
-            # see "min_edge" method of MeshGenerator2D class in mesh_generator.py file
+            # see "mid_edge" method of MeshGenerator2D class in mesh_generator.py file
             belem = list()
             bface = np.zeros((len(ind_edge), 1), dtype=int)
 
-            # if index is below nelem, the element number doesn't change and the local face number is 2 due to
-            # how the edge matrix is constructed in "min_edge" method
+            # if index is below nelem, the element number doesn't change and the local face number is 0 due to
+            # how the edge matrix is constructed in "mid_edge" method
             belem.append(ind_edge[np.where(ind_edge < nelem)])
             bface[np.where(ind_edge < nelem)] = 1
 
@@ -325,7 +330,7 @@ class MeshTools2D:
             belem.append(ind_edge[np.where(np.logical_and(nelem <= ind_edge, ind_edge < 2*nelem))] - nelem)
             bface[np.where(np.logical_and(nelem <= ind_edge, ind_edge < 2*nelem))] = 2
 
-            # if index is >= 2*nelem  but < 3*nelem, element number = ind_edge - 2*nelem and local face number is 0
+            # if index is >= 2*nelem  but < 3*nelem, element number = ind_edge - 2*nelem and local face number is 2
             belem.append(ind_edge[np.where(np.logical_and(2*nelem <= ind_edge, ind_edge < 3 * nelem))] - 2*nelem)
             bface[np.where(np.logical_and(2*nelem <= ind_edge, ind_edge < 3*nelem))] = 0
 
@@ -337,47 +342,63 @@ class MeshTools2D:
         return bgrp
 
     @staticmethod
-    def boundary_nodes(p, nelem, bgrp, vmapB, vmapM):
+    def boundary_nodes(p, nelem, bgrp, vmapB, vmapM, mapB, mapM):
         nface = 3
+        nfp = p+1
 
         # get vertex on each element
-        vmapM = vmapM.reshape((nelem, p+1, nface), order='F')
+        vmapM = vmapM.reshape(nelem, nface, nfp).transpose(0, 1, 2)
+        mapM = mapM.reshape((nelem, nface, nfp)).transpose(0, 1, 2)
 
-        # get element number of boundary nodes
-        s1 = np.char.array(vmapM[:, :, :]*10)
-        s2 = np.char.array(vmapB[:, 0] * 10)
-        indx = np.where(np.reshape((np.in1d(s1, s2)), (nelem, p + 1, nface), order='F'))[0]
-        indx = np.unique(indx)
+        # # get element number of boundary nodes
+        # s1 = np.char.array(vmapM[:, :, :]*10)
+        # s2 = np.char.array(vmapB[:, 0] * 10)
+        # indx = np.where(np.reshape((np.in1d(s1, s2)), (nelem, nfp, nface), order='F'))[0]
+        # indx = np.unique(indx)
 
         # get the boundary nodes that the elements in indx contain at its boundary on the face contained in the bgrp
         bnodes = list()
         for i in range(0, len(bgrp)):
-            vmapMgrp = vmapM[bgrp[i][:, 2], :, bgrp[i][:, 3]]
-            bnodes.append(np.unique(vmapMgrp.flatten()))
+            vmapMgrp = vmapM[bgrp[i][:, 2], bgrp[i][:, 3], :]
+            bnodes.append(vmapMgrp.flatten())
 
-        return bnodes
+        # get boundary nodes with index of mapB
+        bnodesB = list()
+        for i in range(0, len(bgrp)):
+            mapMgrp = mapM[bgrp[i][:, 2], bgrp[i][:, 3], :]
+            bnodesB.append(mapMgrp.flatten())
+
+        return bnodes, bnodesB
 
     @staticmethod
-    def set_bndry(u, x, y, time_loc, btype, bnodes, u_bndry_dirchlet=None):
+    def set_bndry(u, x, y, ax, ay, time_loc, btype, bnodes, u_bndry_fun=None):
 
-        u_vec = u.reshape((len(u.flatten()), 1), order='F')
-        x_vec = x.reshape((len(x.flatten()), 1), order='F')
-        y_vec = y.reshape((len(y.flatten()), 1), order='F')
-        for i in range(0, len(btype)):
-            bndry = btype[i]
-            if bndry == 'd':
-                u_vec[bnodes[i]] = u_bndry_dirchlet(x_vec[bnodes[i]], y_vec[bnodes[i]], time_loc)
+        u_vec = (u.copy()).reshape((len(u.flatten()), 1), order='F')
+        x_vec = (x.copy()).reshape((len(x.flatten()), 1), order='F')
+        y_vec = (y.copy()).reshape((len(y.flatten()), 1), order='F')
+        # for i in range(0, len(btype)):
+        #     bndry = btype[i]
+        #     if bndry == 'd':
+                # u_vec[bnodes[i]] = u_bndry_fun(x_vec[bnodes[i]], y_vec[bnodes[i]], ax, ay, time_loc)
+        u0 = u_bndry_fun(x_vec, y_vec, ax, ay, time_loc)
+        bnodes_dirichlet = np.hstack([bnodes[0], bnodes[2]])
+        u_vec[bnodes_dirichlet] = u0[bnodes_dirichlet]
 
-        u = u_vec.reshape((u.shape), order='F')
+        u = u_vec.reshape(u.shape, order='F')
         return u
 
 #
 # mesh = MeshGenerator2D.rectangle_mesh(0.5)
-# bgrp= MeshTools2D.mesh_bgrp(mesh)
+#
 #
 # vx = mesh['vx']
 # vy = mesh['vy']
 # etov = mesh['etov']
+# nelem = mesh['nelem']
+# bgrp0= mesh['bgrp']
+# edge = mesh['edge']
+#
+# bgrp = MeshTools2D.mesh_bgrp(nelem, bgrp0, edge)
 #
 # p = 3
 # n = int((p+1)*(p+2)/2)
@@ -402,9 +423,9 @@ class MeshTools2D:
 # vmapP = maps['vmapP']
 # vmapB = maps['vmapB']
 #
-# bnodes = MeshTools2D.boundary_nodes(p, mesh, vmapB, vmapM)
-
-
+# bnodes = MeshTools2D.boundary_nodes(p, nelem, bgrp, vmapB, vmapM)
+#
+#
 
 #
 # v = Ref2D.vandermonde_2d(p, r, s)

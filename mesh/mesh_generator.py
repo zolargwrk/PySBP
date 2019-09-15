@@ -5,6 +5,8 @@ import meshzoo
 import meshio
 import dmsh
 import optimesh
+from mat4py import loadmat
+
 
 
 class MeshGenerator1D:
@@ -122,6 +124,16 @@ class MeshGenerator2D:
     def rectangle_mesh(h):
         geo = dmsh.Rectangle(-1.0, 1.0, -1.0, 1.0)
 
+        # mat = loadmat('C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\THOM\\mesh\\square_mesh_data.mat')
+        # etov = np.asarray(mat['etov'])-1
+        # vxy = np.asarray(mat['vxy'])
+        # bgrp_mat = np.asarray(mat['bgrp'])
+        # bgrp = list()
+        # bgrp.append((np.asarray(bgrp_mat[0]) - 1))
+        # bgrp.append((np.asarray(bgrp_mat[1]) - 1))
+        # bgrp.append((np.asarray(bgrp_mat[2]) - 1))
+        # bgrp.append((np.asarray(bgrp_mat[3]) - 1))
+
         # vertex coordiante and element to vertex connectivity
         vxy, etov = dmsh.generate(geo, h)
         vxy, etov = optimesh.cvt.quasi_newton_uniform_full(vxy, etov, 1.0e-12, 100)
@@ -139,7 +151,7 @@ class MeshGenerator2D:
             points = etov
 
         cells = {'triangle': etov}
-        meshio.write_points_cells('rec.vtu', points, cells)
+        meshio.write_points_cells('square.vtu', points, cells)
 
         vxy_mid, edge = MeshGenerator2D.mid_edge(vxy, etov)
 
@@ -147,27 +159,31 @@ class MeshGenerator2D:
         bgrp = list()
         # left boundary
         i = np.abs(vxy_mid[:, 0] - (-1)) < tol
-        temp = edge[i, :]
-        edge_sorted = temp[temp[:, 0].argsort(), ]
-        bgrp.append(edge_sorted)
+        bgrp.append(edge[i, :])
+        # temp = edge[i, :]
+        # edge_sorted = temp[temp[:, 0].argsort(), ]
+        # bgrp.append(edge_sorted)
 
         # right boundary
         i = np.abs((vxy_mid[:, 0] - 1)) < tol
-        temp = edge[i, :]
-        edge_sorted = temp[temp[:, 0].argsort(), ]
-        bgrp.append(edge_sorted)
+        bgrp.append(edge[i, :])
+        # temp = edge[i, :]
+        # edge_sorted = temp[temp[:, 0].argsort(), ]
+        # bgrp.append(edge_sorted)
 
         # bottom boundary
         i = np.abs(vxy_mid[:, 1] - (-1)) < tol
-        temp = edge[i, :]
-        edge_sorted = temp[temp[:, 0].argsort(), ]
-        bgrp.append(edge_sorted)
+        bgrp.append(edge[i, :])
+        # temp = edge[i, :]
+        # edge_sorted = temp[temp[:, 0].argsort(), ]
+        # bgrp.append(edge_sorted)
 
         # top boundary
         i = np.abs(vxy_mid[:, 1] - 1) < tol
-        temp = edge[i, :]
-        edge_sorted = temp[temp[:, 0].argsort(), ]
-        bgrp.append(edge_sorted)
+        bgrp.append(edge[i, :])
+        # temp = edge[i, :]
+        # edge_sorted = temp[temp[:, 0].argsort(), ]
+        # bgrp.append(edge_sorted)
 
         return {'etov': etov, 'vx': vx, 'vy': vy, 'vxy': vxy, 'nelem': nelem, 'nvert': nvert, 'bgrp': bgrp, 'edge': edge}
 
@@ -179,6 +195,18 @@ class MeshGenerator2D:
         nelem = etov.shape[0]
         # create boundary edge group
         edge = np.zeros((nelem * 3, 2), dtype=int)
+        # the relation between element k, edge and face
+        #           2
+        #           |\
+        #           | \
+        #           |  \            --> etov[k] = [0, 1, 2]
+        #      face1|   \ face0     --> etov[k, [1, 2]] = edge[1, 2] --> face 0
+        #           |  k \          --> etov[k, [2, 0]] = edge[2, 0] --> face 1
+        #           |     \         --> etov[k, [0, 1]] = edge[0, 1] --> face 0
+        #           |______\
+        #          0 face2  1
+        #
+
         edge[0:nelem, [0, 1]] = etov[:, [1, 2]]
         edge[nelem:2 * nelem, [0, 1]] = etov[:, [2, 0]]
         edge[2 * nelem:3 * nelem, [0, 1]] = etov[:, [0, 1]]

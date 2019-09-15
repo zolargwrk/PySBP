@@ -1,5 +1,6 @@
 import numpy as np
 from src.ref_elem import Ref2D
+from mesh.mesh_tools import MeshTools2D
 
 
 class RHSCalculator:
@@ -47,10 +48,10 @@ class RHSCalculator:
 
 
     @staticmethod
-    def rhs_advection_2d(u, time, x, y, ax, ay, Dr, Ds, vmapM, vmapP, vmapD, mapD, nelem, nfp,
-                         rx, lift, fscale, nx, ny, u_initial_function=1, flux_type='Upwind'):
+    def rhs_advection_2d(u, time_loc, x, y, ax, ay, Dr, Ds, vmapM, vmapP, bnodes, bnodesB, mapB, vmapB, nelem, nfp,
+                         btype, lift, fscale, nx, ny, u_bndry_fun=None, flux_type='Upwind'):
         nface = 3
-
+        n = u.shape[0]
         # phase speed in the normal direction
         an = ax*nx + ay*ny
 
@@ -64,27 +65,56 @@ class RHSCalculator:
         u = u.flatten(order='F')
         vmapM = vmapM.flatten(order='F')
         vmapP = vmapP.flatten(order='F')
-        mapD = mapD.flatten(order='F')
+        mapB = mapB.flatten(order='F')
+        vmapB = vmapB.flatten(order='F')
+        nx = nx.flatten(order='F')
+        ny = ny.flatten(order='F')
+        bnodes_arr = [i for j in bnodes for i in j]
+        bnodesB_arr = [i for j in bnodesB for i in j]
 
         # evaluate difference in solution along interface for flux calculation
-        du = np.zeros((nfp * nface * nelem), 1)
-        u_star = k*u(vmapM) + (1-k)*u(vmapP)
-        du = u(vmapM) - u_star
+        # du = np.zeros((nfp*nface*nelem), 1)
+        # df = np.zeros(((nfp*nface*nelem), 1))
+        du = u[vmapM] - u[vmapP]
+        # u_star = k*u[vmapM] + (1-k)*u[vmapP]
+        # du = u[vmapM] - u_star
 
-        # boundary condition
-        if u_initial_function != 1:
-            u0 = u_initial_function(mapD)
-        else:
-            u0 = 0
+        # set boundary conditions
+        u0 = MeshTools2D.set_bndry(u, x, y, ax, ay, time_loc, btype, bnodes, u_bndry_fun)
 
-        uM = u(vmapD)
-        du[mapD] = uM - (k[mapD]*uM + (1-k[vmapD])) * u0
+        bnodes_dirichlet = np.hstack([bnodes[0], bnodes[2]])
+        bnodesB_dirichlet = np.hstack([bnodesB[0], bnodesB[2]])
+
+        du[bnodesB_dirichlet] = u[bnodes_dirichlet] - u0[bnodes_dirichlet]
+
+        # du[mapB] = u[vmapB] - u0[vmapB]
+
+        df = 0.5*du*(nx*ax + ny*ay)
+
+        # uM = u[bnodes]
+        # du[mapD] = uM - (k[mapD]*uM + (1-k[vmapD])) * u0
 
         # calculate flux
-        df = an*du
+        # df = an*du
+
+        x = x.reshape((n, nelem), order='F')
+        y = y.reshape((n, nelem), order='F')
+        u = u.reshape((n, nelem), order='F')
+        df = df.reshape((nfp*nface, nelem), order='F')
 
         # evaluate RHS
-        ux, uy = Ref2D.gradient_2d(x, y, Dr, Ds, u)
-        rhs = -(an*ux + ay*uy) + lift*(fscale*df)
+        ux, uy = Ref2D.gradient_2d(x, y, Dr, Ds, u, u)
+        rhs = -(ax*ux + ay*uy) + lift@(fscale*df)
+
+        # print('time = ', time_loc)
+        # print('sum (u) = ', np.sum(u))
+        # print('sum (ux) = ', np.sum(ux))
+        # print('sum (uy) = ', np.sum(uy))
+        # print('sum (lift) = ', np.sum(lift))
+        # print('sum (fscale) = ', np.sum(fscale))
+        # print('sum (df) = ', np.sum(df))
+        # print('sum (du) = ', np.sum(du))
+        # print('sum (u0) = ', np.sum(u0[bnodes_dirichlet]))
+        # print(' ')
 
         return rhs

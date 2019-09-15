@@ -215,12 +215,12 @@ class Assembler:
         bgrp0 = mesh['bgrp']
         edge = mesh['edge']
         bgrp = MeshTools2D.mesh_bgrp(nelem, bgrp0, edge)
-        bnodes = MeshTools2D.boundary_nodes(p, nelem, bgrp, vmapB, vmapM)
+        bnodes, bnodesB = MeshTools2D.boundary_nodes(p, nelem, bgrp, vmapB, vmapM, mapB, mapM)
 
         return {'nfp': nfp, 'n': n, 'nface': nface, 'nelem': nelem, 'Dr': Dr, 'Ds': Ds, 'Mmat': Mmat, 'lift':lift,
                 'rx': rx, 'ry': ry, 'sx': sx, 'sy': sy, 'jac': jac, 'nx': nx, 'ny': ny, 'surf_jac': surf_jac,
                 'fscale': fscale, 'mapM': mapM, 'mapP': mapP, 'vmapM': vmapM, 'vmapP': vmapP, 'vmapB': vmapB,
-                'mapB': mapB, 'bgrp': bgrp, 'bnodes': bnodes, 'x': x, 'y': y, 'fx': fx, 'fy': fy}
+                'mapB': mapB, 'bgrp': bgrp, 'bnodes': bnodes, 'bnodesB': bnodesB, 'x': x, 'y': y, 'fx': fx, 'fy': fy}
 
 
 # a = Assembler(3, 'DG')

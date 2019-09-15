@@ -121,8 +121,8 @@ class TimeMarcher:
 
             for j in range(0, 5):
                 time_loc = t + rk4c[j] * dt
-                rhs = rhs_calculator(u, time_loc, x, y, ax, ay, Dr, Ds, vmapM, vmapP, bnodes, bnodesB, mapB, vmapB,
-                                     nelem, nfp, btype, lift, fscale, nx, ny, u_bndry, flux_type='Central')
+                rhs = rhs_calculator(u, time_loc, x, y, ax, ay, Dr, Ds, vmapM, vmapP, bnodes, bnodesB,
+                                     nelem, nfp, btype, lift, fscale, nx, ny, u_bndry, flux_type)
                 res = rk4a[j] * res + dt * rhs
                 u = u + rk4b[j] * res
             t += dt

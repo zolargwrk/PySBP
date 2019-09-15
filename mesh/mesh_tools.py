@@ -376,17 +376,28 @@ class MeshTools2D:
         u_vec = (u.copy()).reshape((len(u.flatten()), 1), order='F')
         x_vec = (x.copy()).reshape((len(x.flatten()), 1), order='F')
         y_vec = (y.copy()).reshape((len(y.flatten()), 1), order='F')
-        # for i in range(0, len(btype)):
-        #     bndry = btype[i]
-        #     if bndry == 'd':
-                # u_vec[bnodes[i]] = u_bndry_fun(x_vec[bnodes[i]], y_vec[bnodes[i]], ax, ay, time_loc)
-        u0 = u_bndry_fun(x_vec, y_vec, ax, ay, time_loc)
-        bnodes_dirichlet = np.hstack([bnodes[0], bnodes[2]])
-        u_vec[bnodes_dirichlet] = u0[bnodes_dirichlet]
+        for i in range(0, len(btype)):
+            bndry = btype[i]
+            if bndry == 'd':
+                u_vec[bnodes[i]] = u_bndry_fun(x_vec[bnodes[i]], y_vec[bnodes[i]], ax, ay, time_loc)
 
         u = u_vec.reshape(u.shape, order='F')
         return u
 
+    @ staticmethod
+    def bndry_list(btype, bnodes, bnodesB):
+        vmapD = list()
+        mapD = list()
+        for i in range(0, len(btype)):
+            bndry = btype[i]
+            if bndry == 'd':
+                vmapD.append(bnodes[i])
+                mapD.append(bnodesB[i])
+
+        vmapB = np.hstack(vmapD)
+        mapB = np.hstack(mapD)
+
+        return mapB, vmapB
 #
 # mesh = MeshGenerator2D.rectangle_mesh(0.5)
 #

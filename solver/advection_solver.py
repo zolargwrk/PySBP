@@ -33,7 +33,7 @@ def advection_solver_1d(p, xl, xr, nelem, t0, tf, a, quad_type, flux_type='Centr
     return u
 
 
-def advection_solver_2d(p, h, t0, tf):
+def advection_solver_2d(p, h, t0, tf, flux_type='Central'):
 
     # generate mesh
     mesh = MeshGenerator2D.rectangle_mesh(h)
@@ -43,7 +43,6 @@ def advection_solver_2d(p, h, t0, tf):
     rhs_data = Assembler.assembler_2d(self_assembler, mesh)
     x = rhs_data['x']
     y = rhs_data['y']
-    bnodes = rhs_data['bnodes']
 
     # set initial condition and wave speed constants
     ax = 1
@@ -56,10 +55,9 @@ def advection_solver_2d(p, h, t0, tf):
 
     # set type of boundary: [left, right, bottom, top]
     btype = ['d', '-', 'd', '-']
-    # u = MeshTools2D.set_bndry(u, x, y, 0, btype, bnodes, u_bndry)
 
     rhs_calculator = RHSCalculator.rhs_advection_2d
-    self_time_marcher = TimeMarcher(u, t0, tf, rhs_calculator, rhs_data, u_bndry_fun, flux_type='Central')
+    self_time_marcher = TimeMarcher(u, t0, tf, rhs_calculator, rhs_data, u_bndry_fun, flux_type)
     u = TimeMarcher.low_storage_rk4_2d(self_time_marcher, p, x, y, btype, ax, ay)
 
     u_exact = np.sin(np.pi * (x-ax*tf)) * np.sin(np.pi*(y-ay*tf))
@@ -71,4 +69,4 @@ def advection_solver_2d(p, h, t0, tf):
 # advection_solver_1d(p, xl, xr, nelem, t0, tf, a, quad_type, flux_type = 'Central')
 # u = advection_solver_1d(4, 0, 2, 4, 0, 5, 2*np.pi, 'LGL', 'Upwind', n=40)
 
-u = advection_solver_2d(4, 0.25, 0, 1)
+u = advection_solver_2d(2, 0.25, 0, 3, flux_type='Upwind')

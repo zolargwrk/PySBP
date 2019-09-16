@@ -150,40 +150,11 @@ class MeshGenerator2D:
         else:
             points = etov
 
-        cells = {'triangle': etov}
-        meshio.write_points_cells('square.vtu', points, cells)
+        # cells = {'triangle': etov}
+        # meshio.write_points_cells('square.vtu', points, cells)
 
         vxy_mid, edge = MeshGenerator2D.mid_edge(vxy, etov)
-
-        tol = 1e-6
-        bgrp = list()
-        # left boundary
-        i = np.abs(vxy_mid[:, 0] - (-1)) < tol
-        bgrp.append(edge[i, :])
-        # temp = edge[i, :]
-        # edge_sorted = temp[temp[:, 0].argsort(), ]
-        # bgrp.append(edge_sorted)
-
-        # right boundary
-        i = np.abs((vxy_mid[:, 0] - 1)) < tol
-        bgrp.append(edge[i, :])
-        # temp = edge[i, :]
-        # edge_sorted = temp[temp[:, 0].argsort(), ]
-        # bgrp.append(edge_sorted)
-
-        # bottom boundary
-        i = np.abs(vxy_mid[:, 1] - (-1)) < tol
-        bgrp.append(edge[i, :])
-        # temp = edge[i, :]
-        # edge_sorted = temp[temp[:, 0].argsort(), ]
-        # bgrp.append(edge_sorted)
-
-        # top boundary
-        i = np.abs(vxy_mid[:, 1] - 1) < tol
-        bgrp.append(edge[i, :])
-        # temp = edge[i, :]
-        # edge_sorted = temp[temp[:, 0].argsort(), ]
-        # bgrp.append(edge_sorted)
+        bgrp = MeshGenerator2D.get_bgrp(vxy_mid, edge)
 
         return {'etov': etov, 'vx': vx, 'vy': vy, 'vxy': vxy, 'nelem': nelem, 'nvert': nvert, 'bgrp': bgrp, 'edge': edge}
 
@@ -202,14 +173,14 @@ class MeshGenerator2D:
         #           |  \            --> etov[k] = [0, 1, 2]
         #      face1|   \ face0     --> etov[k, [1, 2]] = edge[1, 2] --> face 0
         #           |  k \          --> etov[k, [2, 0]] = edge[2, 0] --> face 1
-        #           |     \         --> etov[k, [0, 1]] = edge[0, 1] --> face 0
+        #           |     \         --> etov[k, [0, 1]] = edge[0, 1] --> face 2
         #           |______\
         #          0 face2  1
         #
 
-        edge[0:nelem, [0, 1]] = etov[:, [1, 2]]
-        edge[nelem:2 * nelem, [0, 1]] = etov[:, [2, 0]]
-        edge[2 * nelem:3 * nelem, [0, 1]] = etov[:, [0, 1]]
+        edge[0:nelem, [0, 1]] = etov[:, [1, 2]]                 # face 0
+        edge[nelem:2 * nelem, [0, 1]] = etov[:, [2, 0]]         # face 1
+        edge[2 * nelem:3 * nelem, [0, 1]] = etov[:, [0, 1]]     # face 2
 
         # calculate mid edge coordinate all edges
         edge_vec = edge.reshape((nelem*3*2, 1))
@@ -218,7 +189,27 @@ class MeshGenerator2D:
 
         return vxy_mid, edge
 
+    @staticmethod
+    def get_bgrp(vxy_mid, edge):
+        tol = 1e-10
+        bgrp = list()
+        # left boundary
+        i = np.abs(vxy_mid[:, 0] - (-1)) < tol
+        bgrp.append(edge[i, :])
 
+        # right boundary
+        i = np.abs((vxy_mid[:, 0] - 1)) < tol
+        bgrp.append(edge[i, :])
+
+        # bottom boundary
+        i = np.abs(vxy_mid[:, 1] - (-1)) < tol
+        bgrp.append(edge[i, :])
+
+        # top boundary
+        i = np.abs(vxy_mid[:, 1] - 1) < tol
+        bgrp.append(edge[i, :])
+
+        return bgrp
 
 # mesh = meshio.read('Maxwell025.neu')
 # mesh = MeshGenerator2D.rectangle_mesh(0.25)

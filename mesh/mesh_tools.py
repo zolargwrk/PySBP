@@ -1,4 +1,5 @@
 import numpy as np
+from types import SimpleNamespace
 from mesh.mesh_generator import MeshGenerator2D
 from src.ref_elem import Ref2D
 
@@ -161,10 +162,10 @@ class MeshTools2D:
         # give unique id number for faces using their node number
         id = fnodes[:, 0]*nvert + fnodes[:, 1] + 1
         vtov = np.asarray([id.reshape(nelem*nface, 1), np.array((np.arange(0, nelem*nface)).reshape((nelem*nface, 1), order='F')),
-                                np.array(etoe.reshape((nelem*nface, 1),order='F')), np.array(etof.reshape((nface*nelem, 1), order='F'))])
+                                np.array(etoe.reshape((nelem*nface, 1), order='F')), np.array(etof.reshape((nface*nelem, 1), order='F'))])
         vtov = (vtov.reshape((nelem*nface*4, 1))).reshape((nelem*nface, 4), order='F')
 
-        # sort by global face number (first row)
+        # sort by global face number (first column)
         sorted = vtov[vtov[:, 0].argsort(), ]
 
         # find matches
@@ -189,8 +190,8 @@ class MeshTools2D:
         va = etov[:, 0].T
         vb = etov[:, 1].T
         vc = etov[:, 2].T
-        x = 0.5*(-(r+s)*vx[va] + (1+r)*vx[vb] + (1+s)*vx[vc])
-        y = 0.5*(-(r+s)*vy[va] + (1+r)*vy[vb] + (1+s)*vy[vc])
+        x = 0.5*(-(r+s)*(vx[va]).flatten() + (1+r)*(vx[vb]).flatten()+ (1+s)*(vx[vc]).flatten())
+        y = 0.5*(-(r+s)*(vy[va]).flatten() + (1+r)*(vy[vb]).flatten()+ (1+s)*(vy[vc]).flatten())
 
         return x, y
 
@@ -246,14 +247,8 @@ class MeshTools2D:
 
         # reshape the maps into vectors
         vmapM =(vmapM.transpose(0, 1, 2)).reshape(nelem*nfp*nface, 1)
-        # mapM = (mapM.transpose(0, 1, 2)).reshape(nelem*nfp*nface, 1)
         vmapP = (vmapP.transpose(0, 1, 2)).reshape(nelem*nfp*nface, 1)
         mapP = (mapP.transpose(0, 1, 2)).reshape(nelem*nfp*nface, 1)
-
-        # vmapM = vmapM.reshape((nelem * nfp * nface, 1), order='F')
-        # mapM = mapM.reshape((nelem * nfp * nface, 1), order='F')
-        # vmapP = vmapP.reshape((nelem * nfp * nface, 1), order='F')
-        # mapP = mapP.reshape((nelem * nfp * nface, 1), order='F')
 
         # obtain list of boundary nodes
         mapB = np.where(vmapM == vmapP)[0]
@@ -321,16 +316,16 @@ class MeshTools2D:
             belem = list()
             bface = np.zeros((len(ind_edge), 1), dtype=int)
 
-            # if index is below nelem, the element number doesn't change and the local face number is 0 due to
+            # if index is below nelem, the element number doesn't change and the local face number is 1 due to
             # how the edge matrix is constructed in "mid_edge" method
             belem.append(ind_edge[np.where(ind_edge < nelem)])
             bface[np.where(ind_edge < nelem)] = 1
 
-            # if index is >= nelem but < 2*nelem, element number = ind_edge - nelem and local face number is 1
+            # if index is >= nelem but < 2*nelem, element number = ind_edge - nelem and local face number is 2
             belem.append(ind_edge[np.where(np.logical_and(nelem <= ind_edge, ind_edge < 2*nelem))] - nelem)
             bface[np.where(np.logical_and(nelem <= ind_edge, ind_edge < 2*nelem))] = 2
 
-            # if index is >= 2*nelem  but < 3*nelem, element number = ind_edge - 2*nelem and local face number is 2
+            # if index is >= 2*nelem  but < 3*nelem, element number = ind_edge - 2*nelem and local face number is 0
             belem.append(ind_edge[np.where(np.logical_and(2*nelem <= ind_edge, ind_edge < 3 * nelem))] - 2*nelem)
             bface[np.where(np.logical_and(2*nelem <= ind_edge, ind_edge < 3*nelem))] = 0
 
@@ -349,12 +344,6 @@ class MeshTools2D:
         # get vertex on each element
         vmapM = vmapM.reshape(nelem, nface, nfp).transpose(0, 1, 2)
         mapM = mapM.reshape((nelem, nface, nfp)).transpose(0, 1, 2)
-
-        # # get element number of boundary nodes
-        # s1 = np.char.array(vmapM[:, :, :]*10)
-        # s2 = np.char.array(vmapB[:, 0] * 10)
-        # indx = np.where(np.reshape((np.in1d(s1, s2)), (nelem, nfp, nface), order='F'))[0]
-        # indx = np.unique(indx)
 
         # get the boundary nodes that the elements in indx contain at its boundary on the face contained in the bgrp
         bnodes = list()
@@ -398,7 +387,107 @@ class MeshTools2D:
         mapB = np.hstack(mapD)
 
         return mapB, vmapB
-#
+
+    @staticmethod
+    def hrefine_uniform_2d(rhs_data):
+        # unpack data
+        rdata = SimpleNamespace(**rhs_data)
+        etov = rdata.etov
+        etoe = rdata.etoe
+        etof = rdata.etof
+        vx = rdata.vx
+        vy = rdata.vy
+        nelem = rdata.nelem
+        nface = 3
+
+        # number face centers uniquely
+        v3 = np.amax([0 + nface * np.arange(0, nelem), etof[:, 0] + nface * etoe[:, 0]], axis=0)    # face 0
+        v4 = np.amax([1 + nface * np.arange(0, nelem), etof[:, 1] + nface * etoe[:, 1]], axis=0)    # face 1
+        v5 = np.amax([2 + nface * np.arange(0, nelem), etof[:, 2] + nface * etoe[:, 2]], axis=0)    # face 2
+
+        # test if unique face number is given
+        bgrp = rdata.bgrp
+        bgrp_nodes = np.sum(len(bgrp[0])+len(bgrp[1])+len(bgrp[2])+len(bgrp[3]))
+        unique_faces = int((3*nelem-bgrp_nodes)/2) + bgrp_nodes
+        unique_nodes = len(np.unique(np.hstack([v3, v4, v5]).flatten()))
+        test_unique_face = (unique_faces == unique_nodes)
+
+        # renumber face centers starting from nv which is due to the already existing vertices 0 to nv,
+        # where nv is the total number of vertices
+        nv = np.max(etov)+1
+        ids = np.unique(np.hstack([v3, v4, v5]))
+        newids = np.zeros((max(ids)+1, 1), dtype=int)
+        newids[ids, 0] = np.arange(0, len(ids), dtype=int)
+
+        v3 = nv + newids[v3]
+        v4 = nv + newids[v4]
+        v5 = nv + newids[v5]
+
+        # get the vertices of the original triangles to be refined
+        # see fig
+        # the relation between element k, edge and face
+        #           2
+        #           |\
+        #           | \
+        #           |  \                --> etov[k] = [1, 2, 0]
+        #         5 |   \ 4             --> etov[k, [1, 2]] = edge[2, 0] --> face 1
+        #           |  k \              --> etov[k, [2, 0]] = edge[0, 1] --> face 2
+        #           |     \  face0      --> etov[k, [0, 1]] = edge[1, 2] --> face 0
+        #    face1  |______\
+        #          0    3   1
+        #            face2
+        #
+
+        v0 = etov[:, 0].reshape(len(etov[:, 0]), 1)
+        v1 = etov[:, 1].reshape(len(etov[:, 1]), 1)
+        v2 = etov[:, 2].reshape(len(etov[:, 2]), 1)
+
+        # replace etov with the newly formed center triangle, i.e., (3 4 5)
+        etov = np.zeros((4*nelem, 3), dtype=int)    # because 1 tringle is divided into 4
+        etov[0:nelem, :] = np.hstack([v3, v4, v5])  # see fig in method mid_edge of class MeshGenerator2D
+
+        # add the rest of the triangles at the bottom of the etov table
+        # etov = np.vstack([etov, np.hstack([v0, v3, v5]), np.hstack([v3, v1, v4]), np.hstack([v5, v4, v2])])
+        etov[nelem:4*nelem, 0] = np.vstack([v0, v1, v2]).flatten()
+        etov[nelem:4*nelem, 1] = np.vstack([v3, v4, v5]).flatten()
+        etov[nelem:4*nelem, 2] = np.vstack([v5, v3, v4]).flatten()
+
+        # evaluate the coordinate values of each vertex
+        x0 = vx[v0]
+        x1 = vx[v1]
+        x2 = vx[v2]
+        y0 = vy[v0]
+        y1 = vy[v1]
+        y2 = vy[v2]
+
+        vmax = np.max([v3, v4, v5])
+        vx = np.vstack([vx.reshape(len(vx), 1), np.zeros((vmax - len(vx) + 1, 1))])
+        vy = np.vstack([vy.reshape(len(vy), 1), np.zeros((vmax - len(vy) + 1, 1))])
+
+        vx[v3, 0] = 0.5*(x0 + x1)
+        vy[v3, 0] = 0.5*(y0 + y1)
+        vx[v4, 0] = 0.5*(x1 + x2)
+        vy[v4, 0] = 0.5*(y1 + y2)
+        vx[v5, 0] = 0.5*(x2 + x0)
+        vy[v5, 0] = 0.5*(y2 + y0)
+
+        # vxy = np.hstack([vx.flatten(), vy.flatten()])
+        vxy = np.array([vx.flatten(), vy.flatten()]).T
+
+        # get edge
+        vxy_mid, edge = MeshGenerator2D.mid_edge(vxy, etov)
+
+        # get boundary group
+        bgrp = MeshGenerator2D.get_bgrp(vxy_mid, edge)
+
+        # update number of elments and number of vertex
+        nelem = etov.shape[0]
+        nvert = vxy.shape[0]
+        vx = vx.flatten()
+        vy = vy.flatten()
+
+        return {'etov': etov, 'vx': vx, 'vy': vy, 'vxy': vxy, 'nelem': nelem, 'nvert': nvert, 'bgrp': bgrp, 'edge': edge}
+
 # mesh = MeshGenerator2D.rectangle_mesh(0.5)
 #
 #

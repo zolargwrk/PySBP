@@ -33,7 +33,7 @@ def advection_solver_1d(p, xl, xr, nelem, t0, tf, a, quad_type, flux_type='Centr
     return u
 
 
-def advection_solver_2d(p, h, t0, tf, flux_type='Central'):
+def advection_solver_2d(p, h, t0, tf, flux_type='Central', cfl=1):
 
     # generate mesh
     mesh = MeshGenerator2D.rectangle_mesh(h)
@@ -41,6 +41,15 @@ def advection_solver_2d(p, h, t0, tf, flux_type='Central'):
     # obtain all data necessary for the residual (RHS) calculation
     self_assembler = Assembler(p)
     rhs_data = Assembler.assembler_2d(self_assembler, mesh)
+
+    # mesh = MeshTools2D.hrefine_uniform_2d(rhs_data)
+
+    # refine mesh
+    nrefine = 2
+    for i in range(0, nrefine):
+        mesh = MeshTools2D.hrefine_uniform_2d(rhs_data)
+        rhs_data = Assembler.assembler_2d(self_assembler, mesh)
+
     x = rhs_data['x']
     y = rhs_data['y']
 
@@ -58,7 +67,7 @@ def advection_solver_2d(p, h, t0, tf, flux_type='Central'):
 
     rhs_calculator = RHSCalculator.rhs_advection_2d
     self_time_marcher = TimeMarcher(u, t0, tf, rhs_calculator, rhs_data, u_bndry_fun, flux_type)
-    u = TimeMarcher.low_storage_rk4_2d(self_time_marcher, p, x, y, btype, ax, ay)
+    u = TimeMarcher.low_storage_rk4_2d(self_time_marcher, p, x, y, btype, ax, ay, cfl)
 
     u_exact = np.sin(np.pi * (x-ax*tf)) * np.sin(np.pi*(y-ay*tf))
     plot_figure_2d(x, y, u)
@@ -69,4 +78,4 @@ def advection_solver_2d(p, h, t0, tf, flux_type='Central'):
 # advection_solver_1d(p, xl, xr, nelem, t0, tf, a, quad_type, flux_type = 'Central')
 # u = advection_solver_1d(4, 0, 2, 4, 0, 5, 2*np.pi, 'LGL', 'Upwind', n=40)
 
-u = advection_solver_2d(2, 0.25, 0, 3, flux_type='Upwind')
+u = advection_solver_2d(3, 0.75, 0, 1, flux_type='Upwind', cfl=1)

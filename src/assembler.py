@@ -220,7 +220,8 @@ class Assembler:
         return {'nfp': nfp, 'n': n, 'nface': nface, 'nelem': nelem, 'Dr': Dr, 'Ds': Ds, 'Mmat': Mmat, 'lift':lift,
                 'rx': rx, 'ry': ry, 'sx': sx, 'sy': sy, 'jac': jac, 'nx': nx, 'ny': ny, 'surf_jac': surf_jac,
                 'fscale': fscale, 'mapM': mapM, 'mapP': mapP, 'vmapM': vmapM, 'vmapP': vmapP, 'vmapB': vmapB,
-                'mapB': mapB, 'bgrp': bgrp, 'bnodes': bnodes, 'bnodesB': bnodesB, 'x': x, 'y': y, 'fx': fx, 'fy': fy}
+                'mapB': mapB, 'bgrp': bgrp, 'bnodes': bnodes, 'bnodesB': bnodesB, 'x': x, 'y': y, 'fx': fx, 'fy': fy,
+                'etov': etov, 'r': r, 's': s, 'etoe': etoe, 'etof': etof, 'vx': vx, 'vy': vy}
 
 
 # a = Assembler(3, 'DG')

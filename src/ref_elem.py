@@ -311,12 +311,31 @@ class Ref2D:
         fmask0 = ((np.abs(s + 1) < 1e-8).nonzero())[0]
         fmask1 = ((np.abs(r + s) < 1e-8).nonzero())[0]
         fmask2 = ((np.abs(r + 1) < 1e-8).nonzero())[0]
-        fmask = (np.array([fmask0, fmask1, fmask2])).T
+        fmask = np.array([fmask0, fmask1, fmask2]).T
+        fmask_list = (np.hstack([fmask1, fmask2, fmask0]))
+        nface = 3
 
-        fx = x[fmask.reshape((fmask.shape[0]*fmask.shape[1], 1), order='F'), :]
-        fy = y[fmask.reshape((fmask.shape[0]*fmask.shape[1], 1), order='F'), :]
+        # coordinate of nodes on the edges 1, 2, and 0 (ordered as 1, 2, 0 along each column)
+        fx = x[fmask_list, :]
+        fy = y[fmask_list, :]
 
-        return {'fx': fx, 'fy': fy, 'fmask': fmask}
+        # coordinates of the triangle vertices 1, 2, 0 (ordered as 1, 2, 0 along each column)
+        # get the indices corresponding to the vertex of the triangles
+        indx0 = np.arange(0, len(fx)+1, int(len(fx)/nface))
+        indx0[1:] = indx0[1:] - 1
+        indx1 = indx0[1: len(indx0)-1]+1
+        indx = np.sort(np.hstack([indx0, indx1]))
+
+        fvx = fx[indx, :]
+        fvy = fy[indx, :]
+
+        # calculate distance between vertices of the triangles
+        distance_vertices12 = np.sqrt((fvx[1, :] - fvx[0, :])**2 + (fvy[1, :] - fvy[0, :])**2)
+        distance_vertices20 = np.sqrt((fvx[3, :] - fvx[2, :])**2 + (fvy[3, :] - fvy[2, :])**2)
+        distance_vertices01 = np.sqrt((fvx[5, :] - fvx[4, :])**2 + (fvy[5, :] - fvy[4, :])**2)
+        distance_vertices = np.vstack([distance_vertices12, distance_vertices20, distance_vertices01])
+
+        return {'fx': fx, 'fy': fy, 'fvx': fvx, 'fvy': fvy, 'distance_vertices': distance_vertices, 'fmask': fmask}
 
     @staticmethod
     def lift_2d(p, r, s, fmask):

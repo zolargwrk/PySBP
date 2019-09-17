@@ -125,6 +125,51 @@ class MeshTools1D:
         rx = 1/jac
         return {'rx': rx, 'jac': jac}
 
+    @staticmethod
+    def hrefine_uniform_1d(rhs_data):
+        # unpack data
+        rdata = SimpleNamespace(**rhs_data)
+        fx = rdata.fx   # the facet vertex coordinate value of the reference elemment
+        x = rdata.x     # physical coordinate
+        x_ref = rdata.x_ref
+        n = rdata.n     # number of degrees of freedom on the reference element
+
+        # find the center of the elements (this will be changed with marked elements for adaptive mesh refinement)
+        xc = np.mean([fx[0, :], fx[1, :]], axis=0)
+
+        # add vertices at the center of the elements
+        velem = np.sort(np.hstack([fx.reshape((1, np.prod(fx.shape))).flatten(), xc.flatten()]))
+
+        # renumber the vertices
+        nv = len(velem)   # update the total number of vertices
+        nelem = nv - 1    # update the total number of elements
+        xl_elem = velem[0:-1]
+        xr_elem = velem[1:]
+
+        # affine mapping to the physical elements
+        coord_elem = np.zeros((1, nelem, n))
+        for elem in range(0, nelem):
+            coord_elem[0, elem, :] = 1 / 2 * (xl_elem[elem] * (1 - x_ref) + xr_elem[elem] * (1 + x_ref))
+
+        coord_elem = coord_elem[0, :, :].T
+
+        # identify vertex to element connectivity
+        convty = np.zeros((nelem, 2))
+        convty[:, 0] = xl_elem
+        convty[:, 1] = xr_elem
+
+        convty_id = np.array([range(0, nelem), range(1, nelem + 1)], np.int).T
+
+        # element to vertex connectivity
+        etov = convty_id
+
+        # boundary group
+        bgrp = np.zeros((2, 1), np.int)
+        bgrp[0] = 0
+        bgrp[1] = nelem*n - 1
+
+        return {'x': x, 'etov': etov, 'x_ref': x_ref, 'bgrp': bgrp, 'coord_elem': coord_elem, 'nelem': nelem}
+
 
 class MeshTools2D:
 

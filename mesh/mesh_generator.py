@@ -13,7 +13,7 @@ class MeshGenerator1D:
     """Contains methods that create meshes for 1D, 2D, and 3D implementations"""
 
     @staticmethod
-    def line_mesh(xl, xr, n, nelem, quad_type=0, x_ref=[]):
+    def line_mesh(xl, xr, n, nelem, quad_type=0, x_ref=None):
         """Creates equidistance nodes for a given interval
         Inputs: xl - left end point
                 xr - right end point

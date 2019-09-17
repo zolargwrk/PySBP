@@ -11,10 +11,18 @@ def advection_solver_1d(p, xl, xr, nelem, t0, tf, a, quad_type, flux_type='Centr
 
     self_assembler = Assembler(p, quad_type)
     rhs_data = Assembler.assembler_1d(self_assembler, xl, xr, nelem, n)
-    x = rhs_data['x']
-    n = rhs_data['n']
 
-    nx = MeshTools1D.normals_1d(nelem)
+    # refine mesh uniformly
+    nrefine = 2     # number of uniform refinements
+    for i in range(0, nrefine):
+        mesh = MeshTools1D.hrefine_uniform_1d(rhs_data)
+        nelem = mesh['nelem']       # update the number of elements
+        rhs_data = Assembler.assembler_1d(self_assembler, xl, xr, nelem, n)
+
+    x = rhs_data['x']
+    n = rhs_data['n']   # degrees of freedom
+
+    # nx = MeshTools1D.normals_1d(nelem)
 
     x = x.reshape((n, nelem), order='F')
     u = np.sin(x)
@@ -42,10 +50,8 @@ def advection_solver_2d(p, h, t0, tf, flux_type='Central', cfl=1):
     self_assembler = Assembler(p)
     rhs_data = Assembler.assembler_2d(self_assembler, mesh)
 
-    # mesh = MeshTools2D.hrefine_uniform_2d(rhs_data)
-
     # refine mesh
-    nrefine = 2
+    nrefine = 3
     for i in range(0, nrefine):
         mesh = MeshTools2D.hrefine_uniform_2d(rhs_data)
         rhs_data = Assembler.assembler_2d(self_assembler, mesh)
@@ -76,6 +82,6 @@ def advection_solver_2d(p, h, t0, tf, flux_type='Central', cfl=1):
 
 
 # advection_solver_1d(p, xl, xr, nelem, t0, tf, a, quad_type, flux_type = 'Central')
-# u = advection_solver_1d(4, 0, 2, 4, 0, 5, 2*np.pi, 'LGL', 'Upwind', n=40)
+u = advection_solver_1d(1, 0, 2, 1, 0, 1, 2*np.pi, 'LG', 'Upwind', n=5)
 
-u = advection_solver_2d(3, 0.75, 0, 1, flux_type='Upwind', cfl=1)
+# u = advection_solver_2d(3, 0.75, 0, 1, flux_type='Upwind', cfl=1)

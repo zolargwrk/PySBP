@@ -6,20 +6,13 @@ from mesh.mesh_tools import MeshTools2D
 class RHSCalculator:
 
     @staticmethod
-    def rhs_advection_1d(u, time, a, d_mat, vmapM, vmapP, mapI, mapO, vmapI, tl, tr,
-                         rx, lift, fscale, nx, u_initial_function=1, flux_type='Upwind'):
+    def rhs_advection_1d(u, x, time, a, xl, xr, d_mat, vmapM, vmapP, mapI, mapO, vmapI, tl, tr,
+                         rx, lift, fscale, nx, u_bndry_fun=None, flux_type='Upwind', boundary_type=None):
 
         if flux_type == 'Central':
             alpha = 1
         else:
             alpha = 0
-
-        if u_initial_function == 1:
-            def u_init(arg1, arg2):
-                return 0
-        else:
-            u_init = u_initial_function
-
 
         nface = 2
         n = u.shape[0]
@@ -34,12 +27,20 @@ class RHSCalculator:
 
         du = np.zeros((nface, nelem))
         du = du.reshape((nface * nelem, 1), order='F')
-        du[0:] = (u_proj.reshape((n*nelem, 1), order='F')[vmapM][:, 0] - u_proj.reshape((n*nelem, 1), order='F')[vmapP][:, 0])\
-                 *((a*nx.reshape(nface*nelem, 1) - (1-alpha)*np.abs(a*nx.reshape(nface*nelem, 1)))/2)
 
-        u0 = u_init(a, time)
-        du[mapI] = (u_proj.reshape((n * nelem, 1), order='F')[vmapI] - u0)*(a*nx.reshape((nface * nelem, 1), order='F')[mapI] - (1 - alpha) * np.abs(a * nx.reshape((nface * nelem, 1), order='F')[mapI])) / 2
-        du[mapO] = 0
+        # reshape some matrices and calculate du
+        u_projF = u_proj.reshape((n*nelem, 1), order='F')
+        nx_tempC = nx.reshape((nface*nelem, 1), order='C')
+
+        du[0:] = (u_projF[vmapM][:, 0] - u_projF[vmapP][:, 0])*((a*nx_tempC - (1-alpha)*np.abs(a*nx_tempC))/2)
+
+        if boundary_type != 'Periodic':
+            # set dirichlet boundary condition
+            u0 = u_bndry_fun(a, time, xl, xr)
+            # set periodic boundary condition
+            du[mapI] = (u_projF[vmapI] - u0)*(a*nx_tempC[mapI] - (1 - alpha) * np.abs(a * nx_tempC[mapI])) / 2
+            du[mapO] = 0
+
         du = du.reshape((nface, nelem), order='F')
 
         rhs = (-a*rx)*(d_mat @ u) + lift @ (fscale * du)
@@ -48,8 +49,8 @@ class RHSCalculator:
 
 
     @staticmethod
-    def rhs_advection_2d(u, time_loc, x, y, ax, ay, Dr, Ds, vmapM, vmapP, bnodes, bnodesB, nelem, nfp,
-                         btype, lift, fscale, nx, ny, u_bndry_fun=None, flux_type='Upwind'):
+    def rhs_advection_2d(u, time_loc, x, y, fx, fy, ax, ay, Dr, Ds, vmapM, vmapP, bnodes, bnodesB, nelem, nfp,
+                         btype, lift, fscale, nx, ny, u_bndry_fun=None, flux_type='Upwind', boundary_type=None):
         nface = 3
         n = u.shape[0]  # n = (p+1)*(p+2)/2
         # phase speed in the normal direction
@@ -72,14 +73,17 @@ class RHSCalculator:
         u_star = k*u[vmapM] + (1-k)*u[vmapP]
         du = u[vmapM] - u_star
 
-        # set boundary conditions
-        u0 = MeshTools2D.set_bndry(u, x, y, ax, ay, time_loc, btype, bnodes, u_bndry_fun)
+        if boundary_type != 'Periodic':
+            # set boundary conditions
+            u0 = MeshTools2D.set_bndry(u, x, y, ax, ay, time_loc, btype, bnodes, u_bndry_fun)
 
-        # get boundary types into list
-        mapB, vmapB = MeshTools2D.bndry_list(btype, bnodes, bnodesB)
+            # get boundary types into list
+            mapB, vmapB = MeshTools2D.bndry_list(btype, bnodes, bnodesB)
 
-        # get solution difference at the boundary and calculate flux
-        du[mapB] = u[vmapB] - (k[mapB]*u[vmapB] + (1-k[mapB])*u0[vmapB])
+            # get solution difference at the boundary and calculate flux
+            du[mapB] = u[vmapB] - (k[mapB]*u[vmapB] + (1-k[mapB])*u0[vmapB])
+
+        # calculate flux
         df = an*du
 
         # reshape vectors in to number of nodes per element by number of elements matrix form

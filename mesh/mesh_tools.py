@@ -72,7 +72,7 @@ class MeshTools1D:
         return ind.T
 
     @staticmethod
-    def buildmaps_1d(n, x, etoe, etof, fmask):
+    def buildmaps_1d(n, x, a, etoe, etof, fmask, boundary_type=None):
         # n : number of nodes per element, -->  n = p + 1 for LG and LGL operators
         nelem = etoe.shape[0]
         nface = 2
@@ -102,14 +102,23 @@ class MeshTools1D:
         vmapB = vmapM[mapB]
 
         # maps at inflow and outflow
-        mapI = 0
-        mapO = nelem*nface - 1
-        vmapI = 0
-        vmapO = nelem*n - 1
+        if a >= 0:
+            mapI = 0
+            mapO = nelem*nface - 1
+            vmapI = 0
+            vmapO = nelem*n - 1
+        else:
+            mapI = nelem * nface - 1
+            mapO = 0
+            vmapI = nelem * n - 1
+            vmapO = 0
+
+        if boundary_type == 'Periodic':
+            vmapP[0] = vmapM[-1]
+            vmapP[-1] = vmapM[0]
 
         return {'vmapM': vmapM, 'vmapP': vmapP, 'vmapB': vmapB, 'mapB': mapB, 'mapI': mapI, 'mapO': mapO,
                 'vmapI': vmapI, 'vmapO': vmapO}
-
 
     @staticmethod
     def geometric_factors_1d(x, d_mat_ref):
@@ -139,6 +148,7 @@ class MeshTools1D:
 
         # add vertices at the center of the elements
         velem = np.sort(np.hstack([fx.reshape((1, np.prod(fx.shape))).flatten(), xc.flatten()]))
+        velem = np.unique(np.floor(1e12*velem)/1e12)    # identify unique vertices
 
         # renumber the vertices
         nv = len(velem)   # update the total number of vertices
@@ -235,13 +245,13 @@ class MeshTools2D:
         va = etov[:, 0].T
         vb = etov[:, 1].T
         vc = etov[:, 2].T
-        x = 0.5*(-(r+s)*(vx[va]).flatten() + (1+r)*(vx[vb]).flatten()+ (1+s)*(vx[vc]).flatten())
-        y = 0.5*(-(r+s)*(vy[va]).flatten() + (1+r)*(vy[vb]).flatten()+ (1+s)*(vy[vc]).flatten())
+        x = 0.5*(-(r+s)*(vx[va]).flatten() + (1+r)*(vx[vb]).flatten() + (1+s)*(vx[vc]).flatten())
+        y = 0.5*(-(r+s)*(vy[va]).flatten() + (1+r)*(vy[vb]).flatten() + (1+s)*(vy[vc]).flatten())
 
         return x, y
 
     @staticmethod
-    def buildmaps_2d(p, n, x, y, etov, etoe, etof, fmask):
+    def buildmaps_2d(p, n, x, y, etov, etoe, etof, fmask, boundary_type=None):
         # n = (p+1)*(p+2)/2 : number of degrees of freedom per element
         nelem = etov.shape[0]
         nfp = p+1   # number of nodes on each facet
@@ -262,11 +272,8 @@ class MeshTools2D:
                 face2 = etof[elem, face]    # neighboring face
 
                 # reference length
-                v1 = etov[elem, face]
-                v2 = etov[elem, face % nface]
                 x_vec = x.reshape((nelem*n, 1), order='F')
                 y_vec = y.reshape((nelem*n, 1), order='F')
-                d_ref = np.sqrt((x_vec[v1] - x_vec[v2])**2 + (y_vec[v1] - y_vec[v2])**2)
 
                 # volume node number on left and right element
                 vidM = vmapM[elem, face, :]
@@ -290,10 +297,16 @@ class MeshTools2D:
                 # global numbering to nodes on the facet (relative to mapM which number the nodes from 0 to nfp*nface*nelem -1)
                 mapP[elem, face, idM] = idP + face2*nfp + elem2*nface*nfp
 
+        if boundary_type == 'Periodic':
+            vmapP[0] = vmapM[-1]
+            vmapP[-1] = vmapM[0]
+            mapP[0] = mapM[-1]
+            mapP[-1] = mapM[0]
+
         # reshape the maps into vectors
-        vmapM =(vmapM.transpose(0, 1, 2)).reshape(nelem*nfp*nface, 1)
-        vmapP = (vmapP.transpose(0, 1, 2)).reshape(nelem*nfp*nface, 1)
-        mapP = (mapP.transpose(0, 1, 2)).reshape(nelem*nfp*nface, 1)
+        vmapM = ((vmapM.copy()).transpose(0, 1, 2)).reshape(nelem*nfp*nface, 1)
+        vmapP = ((vmapP.copy()).transpose(0, 1, 2)).reshape(nelem*nfp*nface, 1)
+        mapP = ((mapP.copy()).transpose(0, 1, 2)).reshape(nelem*nfp*nface, 1)
 
         # obtain list of boundary nodes
         mapB = np.where(vmapM == vmapP)[0]
@@ -415,8 +428,8 @@ class MeshTools2D:
             if bndry == 'd':
                 u_vec[bnodes[i]] = u_bndry_fun(x_vec[bnodes[i]], y_vec[bnodes[i]], ax, ay, time_loc)
 
-        u = u_vec.reshape(u.shape, order='F')
-        return u
+        u0 = u_vec.reshape(u.shape, order='F')
+        return u0
 
     @ staticmethod
     def bndry_list(btype, bnodes, bnodesB):
@@ -523,7 +536,7 @@ class MeshTools2D:
         vxy_mid, edge = MeshGenerator2D.mid_edge(vxy, etov)
 
         # get boundary group
-        bgrp = MeshGenerator2D.get_bgrp(vxy_mid, edge)
+        bgrp = MeshGenerator2D.get_bgrp(vxy_mid, edge, )
 
         # update number of elments and number of vertex
         nelem = etov.shape[0]

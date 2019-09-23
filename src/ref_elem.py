@@ -156,7 +156,7 @@ class Ref2D:
     def nodes_2d(p):
         """Computes the nodal location on equilateral triangle for a degree p operator.
         Input: p - degree of operator
-        Outputs: x, y - coordinates of the nodes"""
+        Outputs: x, y - coordinates of the nodes on the reference element"""
 
         # total number of degrees of freedom
         nd = int((p+1)*(p+2)/2)
@@ -312,10 +312,10 @@ class Ref2D:
         fmask1 = ((np.abs(r + s) < 1e-8).nonzero())[0]
         fmask2 = ((np.abs(r + 1) < 1e-8).nonzero())[0]
         fmask = np.array([fmask0, fmask1, fmask2]).T
-        fmask_list = (np.hstack([fmask1, fmask2, fmask0]))
+        fmask_list = (np.hstack([fmask0, fmask1, fmask2]))
         nface = 3
 
-        # coordinate of nodes on the edges 1, 2, and 0 (ordered as 1, 2, 0 along each column)
+        # coordinate of nodes on the edges 2, 0, and 1 (ordered as 2, 0, 1 along each column)
         fx = x[fmask_list, :]
         fy = y[fmask_list, :]
 
@@ -462,15 +462,125 @@ class Ref2D:
 
         return {'curlx': curlx, 'curly': curly, 'curlz': curlz}
 
-#
+    @staticmethod
+    def quad_rule_tri(p, rule='Liu-Vinokur'):
+        if p==1:
+            if rule=='Liu-Vinokur':
+                scheme = quadpy.triangle.liu_vinokur_01()
+            elif rule=='Witherden-Vincent':
+                scheme = quadpy.triangle.witherden_vincent_01()
+            else:
+                raise("Quadrature type not implemented, use either 'Liu-Vinokur' or 'Witherden-Vincent' rules")
+        elif p==2:
+            if rule=='Liu-Vinokur':
+                scheme = quadpy.triangle.liu_vinokur_02()
+            elif rule=='Witherden-Vincent':
+                scheme = quadpy.triangle.witherden_vincent_02()
+            else:
+                raise("Quadrature type not implemented, use either 'Liu-Vinokur' or 'Witherden-Vincent' rules")
+        elif p == 2:
+            if rule == 'Liu-Vinokur':
+                scheme = quadpy.triangle.liu_vinokur_02()
+            elif rule == 'Witherden-Vincent':
+                scheme = quadpy.triangle.witherden_vincent_02()
+            else:
+                raise("Quadrature type not implemented, use either 'Liu-Vinokur' or 'Witherden-Vincent' rules")
+        elif p == 3:
+            if rule == 'Liu-Vinokur':
+                scheme = quadpy.triangle.liu_vinokur_03()
+            elif rule == 'Witherden-Vincent':
+                scheme = quadpy.triangle.witherden_vincent_04()
+            else:
+                raise("Quadrature type not implemented, use either 'Liu-Vinokur' or 'Witherden-Vincent' rules")
+        elif p == 4:
+            if rule == 'Liu-Vinokur':
+                scheme = quadpy.triangle.liu_vinokur_04()
+            elif rule == 'Witherden-Vincent':
+                scheme = quadpy.triangle.witherden_vincent_04()
+            else:
+                raise("Quadrature type not implemented, use either 'Liu-Vinokur' or 'Witherden-Vincent' rules")
+        elif p == 5:
+            if rule == 'Liu-Vinokur':
+                scheme = quadpy.triangle.liu_vinokur_05()
+            elif rule == 'Witherden-Vincent':
+                scheme = quadpy.triangle.witherden_vincent_05()
+            else:
+                raise("Quadrature type not implemented, use either 'Liu-Vinokur' or 'Witherden-Vincent' rules")
+        elif p == 6:
+            if rule == 'Liu-Vinokur':
+                scheme = quadpy.triangle.liu_vinokur_06()
+            elif rule == 'Witherden-Vincent':
+                scheme = quadpy.triangle.witherden_vincent_06()
+            else:
+                raise("Quadrature type not implemented, use either 'Liu-Vinokur' or 'Witherden-Vincent' rules")
+        elif p == 7:
+            if rule == 'Liu-Vinokur':
+                scheme = quadpy.triangle.liu_vinokur_07()
+            elif rule == 'Witherden-Vincent':
+                scheme = quadpy.triangle.witherden_vincent_07()
+            else:
+                raise("Quadrature type not implemented, use either 'Liu-Vinokur' or 'Witherden-Vincent' rules")
+        elif p == 8:
+            if rule == 'Liu-Vinokur':
+                scheme = quadpy.triangle.liu_vinokur_08()
+            elif rule == 'Witherden-Vincent':
+                scheme = quadpy.triangle.witherden_vincent_08()
+            else:
+                raise("Quadrature type not implemented, use either 'Liu-Vinokur' or 'Witherden-Vincent' rules")
+        else:
+            raise('Degree greater than 8 not implemented so far')
+
+        wts = scheme.weights
+        pts = scheme.points
+
+        pts = np.array([pts[:, 0], pts[:, 1], pts[:, 2]]).T
+        r = pts @ np.array([[-1], [1], [-1]])
+        s = pts @ np.array([[-1], [-1], [1]])
+
+        return {'weights': wts, 'r': r, 's': s}
+
+    @staticmethod
+    def mass_matrix(p):
+        # get quadrature rule
+        if p == 1:
+            scheme = quadpy.triangle.witherden_vincent_02()
+        elif p == 2:
+            scheme = quadpy.triangle.witherden_vincent_04()
+        else:
+            raise("Degree not implemented.")
+
+        # points are returned in barycentric coordinate from quadpy, hence get x and y on the right triangle ref element
+        pts = scheme.points
+        # shuffle columns of pts to have them in barycentric order lambda 2, 3, 1
+        # pts = np.array([pts[:, 1], pts[:, 2], pts[:, 0]]).T
+        pts = np.array([pts[:, 0], pts[:, 1], pts[:, 2]]).T
+        r = pts @ np.array([[-1], [1], [-1]])
+        s = pts @ np.array([[-1], [-1], [1]])
+
+        v = Ref2D.vandermonde_2d(p, r, s)
+
+        M = (np.linalg.inv(v)).T @ np.linalg.inv(v)
+
+        # mass matrix on nodes of Hesthaven
+        x_ref, y_ref = Ref2D.nodes_2d(p)
+
+        r2, s2 = Ref2D.xytors(x_ref, y_ref)
+        v2 = Ref2D.vandermonde_2d(p, r2, s2)
+
+        M2 = (np.linalg.inv(v2)).T @ np.linalg.inv(v2)
+
+        return M, M2
+
+M = Ref2D.mass_matrix(1)
+
+
+# print(M)
 # p = 3
 # n = int((p+1)*(p+2)/2)
-# kk = Ref2D.nodes_2d(p)
-# x_ref = kk['x_ref']
-# y_ref = kk['y_ref']
-# rs = Ref2D.xytors(x_ref, y_ref)
-# r = rs['r']
-# s = rs['s']
+# x_ref, y_ref = Ref2D.nodes_2d(p)
+#
+# r, s = Ref2D.xytors(x_ref, y_ref)
+
 # edge_nodes = Ref2D.fmask_2d(r, s, x_ref, y_ref)
 # fmask = edge_nodes['fmask']
 #

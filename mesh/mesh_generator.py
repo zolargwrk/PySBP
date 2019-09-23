@@ -122,7 +122,12 @@ class MeshGenerator2D:
 
     @staticmethod
     def rectangle_mesh(h):
-        geo = dmsh.Rectangle(-1.0, 1.0, -1.0, 1.0)
+        # geo = dmsh.Rectangle(-1.0, 1.0, -1.0, 1.0)
+        left = -1 * np.pi
+        right = 1 * np.pi
+        bottom = -1 * np.pi
+        top = 1 * np.pi
+        geo = dmsh.Rectangle(left, right, bottom, top)
 
         # mat = loadmat('C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\THOM\\mesh\\square_mesh_data.mat')
         # etov = np.asarray(mat['etov'])-1
@@ -136,7 +141,9 @@ class MeshGenerator2D:
 
         # vertex coordiante and element to vertex connectivity
         vxy, etov = dmsh.generate(geo, h)
-        vxy, etov = optimesh.cvt.quasi_newton_uniform_full(vxy, etov, 1.0e-12, 100)
+        # vxy, etov = optimesh.cvt.quasi_newton_uniform_full(vxy, etov, 1.0e-10, 100)
+        # NOTE: optimesh gives rise to error when solving with h=0.4 (this is very weired, took me a whole day to figure
+        #       out that the issue for the solution divergence was the mesh, got to consider changing the mesher!)
 
         vx = vxy[:, 0]
         vy = vxy[:, 1]
@@ -191,22 +198,27 @@ class MeshGenerator2D:
 
     @staticmethod
     def get_bgrp(vxy_mid, edge):
-        tol = 1e-10
+        left = -1 * np.pi
+        right = 1 * np.pi
+        bottom = -1 * np.pi
+        top = 1 * np.pi
+
+        tol = 1e-3
         bgrp = list()
         # left boundary
-        i = np.abs(vxy_mid[:, 0] - (-1)) < tol
+        i = np.abs(vxy_mid[:, 0] - left) < tol
         bgrp.append(edge[i, :])
 
         # right boundary
-        i = np.abs((vxy_mid[:, 0] - 1)) < tol
+        i = np.abs((vxy_mid[:, 0] - right)) < tol
         bgrp.append(edge[i, :])
 
         # bottom boundary
-        i = np.abs(vxy_mid[:, 1] - (-1)) < tol
+        i = np.abs(vxy_mid[:, 1] - bottom) < tol
         bgrp.append(edge[i, :])
 
         # top boundary
-        i = np.abs(vxy_mid[:, 1] - 1) < tol
+        i = np.abs(vxy_mid[:, 1] - top) < tol
         bgrp.append(edge[i, :])
 
         return bgrp

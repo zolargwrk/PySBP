@@ -6,12 +6,14 @@ from src.ref_elem import Ref1D, Ref2D
 from src.csbp_type_operators import CSBPTypeOperators
 
 class Assembler:
-    def __init__(self, p, quad_type=None):
+    def __init__(self, p, quad_type=None, boundary_type=None):
         self.p = p
         self.quad_type = quad_type
+        self.boundary_type = boundary_type
 
-    def assembler_1d(self, xl, xr, nelem, n, b=1, app=1):
+    def assembler_1d(self, xl, xr, a, nelem, n, b=1, app=1):
         quad_type = self.quad_type
+        boundary_type = self.boundary_type
         nface = 2
 
         # b: is the variable coefficient for second derivative problems
@@ -130,7 +132,7 @@ class Assembler:
         etof = connect['etof']
 
         # build connectivity maps
-        maps = MeshTools1D.buildmaps_1d(n, x, etoe, etof, fmask)
+        maps = MeshTools1D.buildmaps_1d(n, x, a, etoe, etof, fmask, boundary_type)
         vmapM = maps['vmapM']
         vmapP = maps['vmapP']
         vmapB = maps['vmapB']
@@ -145,11 +147,12 @@ class Assembler:
 
         return {'d_mat': d_mat, 'lift': lift, 'rx': rx, 'fscale': fscale, 'vmapM': vmapM, 'vmapP': vmapP, 'xl': xl,
                 'vmapB': vmapB, 'mapB': mapB, 'mapI': mapI, 'mapO': mapO, 'vmapI': vmapI, 'vmapO': vmapO, 'xr': xr,
-                'jac': jac, 'x': x, 'tl': tl, 'tr': tr, 'n': n, 'nx': nx, 'nelem': nelem, 'x_ref': x_ref, 'fx': fx,}
+                'jac': jac, 'x': x, 'tl': tl, 'tr': tr, 'n': n, 'nx': nx, 'nelem': nelem, 'x_ref': x_ref, 'fx': fx}
 
     def assembler_2d(self, mesh):
         p = self.p
         quad_type = self.quad_type
+        boundary_type = self.boundary_type
 
         nfp = p+1
         n = int((p+1)*(p+2)/2)

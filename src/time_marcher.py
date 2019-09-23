@@ -6,7 +6,7 @@ from src.ref_elem import Ref2D
 
 class TimeMarcher:
 
-    def __init__(self, u, t0, tf, rhs_calculator, rhs_data, u_bndry_fun, flux_type='Central'):
+    def __init__(self, u, t0, tf, rhs_calculator, rhs_data, u_bndry_fun, flux_type='Central', boundary_type=None):
         self.u = u      # initial solution
         self.t0 = t0    # initial time
         self.tf = tf    # final time
@@ -14,6 +14,7 @@ class TimeMarcher:
         self.rhs_data = rhs_data
         self.u_bndry_fun = u_bndry_fun    # initial condition: input as a method (function of a and t)
         self.flux_type = flux_type  # flux type, either upwind or central, input as a string
+        self.boundary_type = boundary_type
 
     def low_storage_rk4_1d(self, cfl, x, a=1):
         """Low Storage Explicit RK4 method
@@ -26,12 +27,13 @@ class TimeMarcher:
         rhs_data = self.rhs_data
         u_bndry_fun = self.u_bndry_fun
         flux_type = self.flux_type
+        boundary_type = self.boundary_type
 
         n = u.shape[0]
         nelem = u.shape[1]
 
         xmin = np.min(np.abs(x[0, :] - x[1, :]))
-        dt = (cfl/a)*xmin
+        dt = (cfl/abs(a))*xmin
         nstep = int(np.ceil(tf/(0.5*dt)))
         dt = tf/nstep
 
@@ -47,9 +49,9 @@ class TimeMarcher:
         for i in range(0, nstep):
             for j in range(0, 5):
                 t_local = t + rk4c[j]*dt
-                rhs = rhs_calculator(u, t_local, a, rdata.d_mat, rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO,
-                                     rdata.vmapI, rdata.tl, rdata.tr, rdata.rx, rdata.lift, rdata.fscale, rdata.nx,
-                                     u_bndry_fun, flux_type)
+                rhs = rhs_calculator(u, rdata.x, t_local, a, rdata.xl, rdata.xr, rdata.d_mat, rdata.vmapM, rdata.vmapP,
+                                     rdata.mapI, rdata.mapO, rdata.vmapI, rdata.tl, rdata.tr, rdata.rx,
+                                     rdata.lift, rdata.fscale, rdata.nx, u_bndry_fun, flux_type, boundary_type)
                 res = rk4a[j]*res + dt*rhs
                 u = u + rk4b[j]*res
             t += dt
@@ -67,6 +69,7 @@ class TimeMarcher:
         rhs_data = self.rhs_data
         u_bndry_fun = self.u_bndry_fun
         flux_type = self.flux_type
+        boundary_type = self.boundary_type
 
         # unpack rhs_data
         rdata = SimpleNamespace(**rhs_data)
@@ -90,9 +93,9 @@ class TimeMarcher:
 
             for j in range(0, 5):
                 time_loc = t + rk4c[j] * dt
-                rhs = rhs_calculator(u, time_loc, x, y, ax, ay, rdata.Dr, rdata.Ds, rdata.vmapM, rdata.vmapP,
+                rhs = rhs_calculator(u, time_loc, x, y, rdata.fx, rdata.fy, ax, ay, rdata.Dr, rdata.Ds, rdata.vmapM, rdata.vmapP,
                                      rdata.bnodes, rdata.bnodesB, nelem, nfp, btype, rdata.lift, rdata.fscale, rdata.nx,
-                                     rdata.ny, u_bndry_fun, flux_type)
+                                     rdata.ny, u_bndry_fun, flux_type, boundary_type)
                 res = rk4a[j] * res + dt * rhs
                 u = u + rk4b[j] * res
             t += dt

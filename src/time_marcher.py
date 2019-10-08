@@ -6,7 +6,7 @@ from src.ref_elem import Ref2D
 
 class TimeMarcher:
 
-    def __init__(self, u, t0, tf, rhs_calculator, rhs_data, u_bndry_fun, flux_type='Central', boundary_type=None):
+    def __init__(self, u, t0, tf, rhs_calculator, rhs_data, u_bndry_fun=None, flux_type='Central', boundary_type=None):
         self.u = u      # initial solution
         self.t0 = t0    # initial time
         self.tf = tf    # final time
@@ -33,7 +33,7 @@ class TimeMarcher:
         nelem = u.shape[1]
 
         xmin = np.min(np.abs(x[0, :] - x[1, :]))
-        dt = (cfl/abs(a))*xmin
+        dt = (cfl/abs(a))*(xmin**2)
         nstep = int(np.ceil(tf/(0.5*dt)))
         dt = tf/nstep
 
@@ -49,9 +49,12 @@ class TimeMarcher:
         for i in range(0, nstep):
             for j in range(0, 5):
                 t_local = t + rk4c[j]*dt
-                rhs = rhs_calculator(u, rdata.x, t_local, a, rdata.xl, rdata.xr, rdata.d_mat, rdata.vmapM, rdata.vmapP,
-                                     rdata.mapI, rdata.mapO, rdata.vmapI, rdata.tl, rdata.tr, rdata.rx,
-                                     rdata.lift, rdata.fscale, rdata.nx, u_bndry_fun, flux_type, boundary_type)
+                # rhs = rhs_calculator(u, rdata.x, t_local, a, rdata.xl, rdata.xr, rdata.d_mat, rdata.vmapM, rdata.vmapP,
+                #                      rdata.mapI, rdata.mapO, rdata.vmapI, rdata.tl, rdata.tr, rdata.rx,
+                #                      rdata.lift, rdata.fscale, rdata.nx, u_bndry_fun, flux_type, boundary_type)
+                rhs = rhs_calculator(u, rdata.d_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx, rdata.rx, rdata.fscale,
+                                     rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO, rdata.vmapI, rdata.vmapO)
+
                 res = rk4a[j]*res + dt*rhs
                 u = u + rk4b[j]*res
             t += dt

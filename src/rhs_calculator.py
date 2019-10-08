@@ -1,6 +1,7 @@
 import numpy as np
 from src.ref_elem import Ref2D
 from mesh.mesh_tools import MeshTools2D
+from src.sat_types import SATs
 
 
 class RHSCalculator:
@@ -18,27 +19,28 @@ class RHSCalculator:
         n = u.shape[0]
         nelem = u.shape[1]
 
-        # project u to the boundaries to get the u-u* at the faces
+        # project u to the interfaces to get the u-u* at the faces
         u_proj = u.copy()
         u_projM = (u.T @ tl)[:, 0]
         u_projP = (u.T @ tr)[:, 0]
         u_proj[0, :] = u_projM
-        u_proj[n-1, :] = u_projP
+        u_proj[n - 1, :] = u_projP
 
         du = np.zeros((nface, nelem))
         du = du.reshape((nface * nelem, 1), order='F')
 
         # reshape some matrices and calculate du
-        u_projF = u_proj.reshape((n*nelem, 1), order='F')
-        nx_tempC = nx.reshape((nface*nelem, 1), order='C')
+        u_projF = u_proj.reshape((n * nelem, 1), order='F')
+        nx_tempC = nx.reshape((nface * nelem, 1), order='C')
 
-        du[0:] = (u_projF[vmapM][:, 0] - u_projF[vmapP][:, 0])*((a*nx_tempC - (1-alpha)*np.abs(a*nx_tempC))/2)
+        du[0:] = (u_projF[vmapM][:, 0] - u_projF[vmapP][:, 0]) * (
+                    (a * nx_tempC - (1 - alpha) * np.abs(a * nx_tempC)) / 2)
 
         if boundary_type != 'Periodic':
             # set dirichlet boundary condition
             u0 = u_bndry_fun(a, time, xl, xr)
             # set periodic boundary condition
-            du[mapI] = (u_projF[vmapI] - u0)*(a*nx_tempC[mapI] - (1 - alpha) * np.abs(a * nx_tempC[mapI])) / 2
+            du[mapI] = (u_projF[vmapI] - u0) * (a * nx_tempC[mapI] - (1 - alpha) * np.abs(a * nx_tempC[mapI])) / 2
             du[mapO] = 0
 
         du = du.reshape((nface, nelem), order='F')
@@ -95,5 +97,39 @@ class RHSCalculator:
         # evaluate RHS
         ux, uy = Ref2D.gradient_2d(x, y, Dr, Ds, u, u)
         rhs = -(ax*ux + ay*uy) + lift@(fscale*df)
+
+        return rhs
+
+
+    @staticmethod
+    def rhs_diffusion_1d(u, d_mat, lift, tl, tr, nx, rx, fscale, vmapM, vmapP, mapI, mapO, vmapI, vmapO):
+
+        n = u.shape[0]
+
+        # project u to the interfaces to get the u-u* at the faces
+        u_proj = u.copy()
+        u_projM = (u.T @ tl)[:, 0]
+        u_projP = (u.T @ tr)[:, 0]
+        u_proj[0, :] = u_projM
+        u_proj[n - 1, :] = u_projP
+
+        # boundary condition on solution u (Dirichlet)
+        u_proj = np.reshape(np.array([u_projM, u_projP]), (2*len(u_projM), 1), order='F')
+        uin = -u_proj[mapI]
+        uout = -u_proj[mapO]
+
+        # get solution differences at the interfaces and boundaries
+        du = SATs.diffusion_sat_1d(u, tl, tr, vmapM, vmapP, nx,  mapI, mapO, vmapI, vmapO, uin, uout, 'BR1')
+
+        # calculate the derivative of the solution q
+        q = rx*(d_mat @ u) - lift @ (fscale * (nx.T*du))
+
+        # boundary conditions on q (Neumann)
+        qin = q.flatten(order='F')[vmapI]
+        qout = q.flatten(order='F')[vmapO]
+        dq = SATs.diffusion_sat_1d(q, tl, tr, vmapM, vmapP, nx,  mapI, mapO, vmapI, vmapO, qin, qout, 'BR1')
+
+        # calculate rhs
+        rhs = rx*(d_mat @ q) - lift @ (fscale * (nx.T*dq))
 
         return rhs

@@ -102,9 +102,14 @@ class RHSCalculator:
 
 
     @staticmethod
-    def rhs_diffusion_1d(u, d_mat, lift, tl, tr, nx, rx, fscale, vmapM, vmapP, mapI, mapO, vmapI, vmapO):
+    def rhs_diffusion_1d(u, d_mat, h_mat, lift, tl, tr, nx, rx, fscale, vmapM, vmapP, mapI,
+                         mapO, vmapI, vmapO, flux_type, sat_type='dg_sat', boundary_type='Periodic',
+                         db_mat=None, d2_mat=None, b=1, app=1):
 
         n = u.shape[0]
+        # set variable coefficient
+        if b==1:
+            b = np.ones(n)
 
         # project u to the interfaces to get the u-u* at the faces
         u_proj = u.copy()
@@ -118,18 +123,26 @@ class RHSCalculator:
         uin = -u_proj[mapI]
         uout = -u_proj[mapO]
 
-        # get solution differences at the interfaces and boundaries
-        du = SATs.diffusion_sat_1d(u, tl, tr, vmapM, vmapP, nx,  mapI, mapO, vmapI, vmapO, uin, uout, 'BR1')
+        if sat_type == 'dg_sat':
+            # get solution differences at the interfaces and boundaries
+            du = SATs.diffusion_dg_sat_1d(u, 'u', tl, tr, vmapM, vmapP, nx,  mapI, mapO, uin, uout, flux_type)
 
-        # calculate the derivative of the solution q
-        q = rx*(d_mat @ u) - lift @ (fscale * (nx.T*du))
+            # calculate the derivative of the solution q
+            q = rx*(d_mat @ u) - lift @ (fscale * (nx.T*du))
 
-        # boundary conditions on q (Neumann)
-        qin = q.flatten(order='F')[vmapI]
-        qout = q.flatten(order='F')[vmapO]
-        dq = SATs.diffusion_sat_1d(q, tl, tr, vmapM, vmapP, nx,  mapI, mapO, vmapI, vmapO, qin, qout, 'BR1')
+            # boundary conditions on q (Neumann)
+            qin = q.flatten(order='F')[vmapI]
+            qout = q.flatten(order='F')[vmapO]
+            dq = SATs.diffusion_dg_sat_1d(q, 'q', tl, tr, vmapM, vmapP, nx,  mapI, mapO, qin, qout, flux_type, du)
 
-        # calculate rhs
-        rhs = rx*(d_mat @ q) - lift @ (fscale * (nx.T*dq))
+            # calculate rhs
+            rhs = rx*(d_mat @ q) - lift @ (fscale * (nx.T*dq))
+        elif sat_type=='sbp_sat':
+            sI = SATs.diffusion_sbp_sat_1d(u, d_mat, h_mat, tl, tr, vmapM, vmapP, nx, mapI, mapO, uin, uout,
+                                           rx, flux_type, boundary_type, db_mat, b, app)
+            if app==2:
+                rhs = rx*rx*(d2_mat @ u) - sI
+            else:
+                rhs = rx*rx*(d_mat @ (np.diag(b) @ d_mat @ u)) - sI
 
         return rhs

@@ -4,18 +4,17 @@ import warnings
 import meshzoo
 import meshio
 import dmsh
-import optimesh
-from mat4py import loadmat
-
+from src.csbp_type_operators import CSBPTypeOperators
 
 
 class MeshGenerator1D:
     """Contains methods that create meshes for 1D, 2D, and 3D implementations"""
 
     @staticmethod
-    def line_mesh(xl, xr, n, nelem, quad_type=0, x_ref=None):
+    def line_mesh(p, xl, xr, n, nelem, quad_type=0, b=1, app=1):
         """Creates equidistance nodes for a given interval
-        Inputs: xl - left end point
+        Inputs: p  - degree of operator
+                xl - left end point
                 xr - right end point
                 n  - number of nodes per element
                 nelem  - number of elements
@@ -35,6 +34,7 @@ class MeshGenerator1D:
                 coord_elem  - x coordinate of the nodes in each element
                 x_ref       - coordinates of nodes on the reference element
                 convty      - connectivity of elements (actual coordinate values)
+                b           - variable coefficient for 2nd derivative implmentation
         """
 
         # obtain the mesh distribution for the scheme of choice on reference element [-1, 1]
@@ -54,19 +54,22 @@ class MeshGenerator1D:
             scheme = quadpy.line_segment.gauss_radau(n)
             x_ref = scheme.points
         elif quad_type == 'Uniform' or quad_type == 'CSBP':
-            x_ref = np.linspace(-1, 1, n)
+            oper = CSBPTypeOperators.hqd_csbp(p, xl, xr, n, b, app)
+            x_ref = oper['x_ref']
         elif quad_type == 'HGTL':
-            x_ref = x_ref
+            oper = CSBPTypeOperators.hqd_hgtl(p, xl, xr, n, b, app)
+            x_ref = oper['x_ref']
             if x_ref == []:
                 raise Exception("Please provide reference element: x_ref is missing.")
             if x_ref[0] != -1:
-                warnings.warn("It looks like x_ref is not HGT type, it should include boundary nodes and should be "
+                warnings.warn("It looks like x_ref is not HGTL type, it should include boundary nodes and should be "
                               "defined on [-1, 1].")
         elif quad_type == 'HGT':
-            x_ref = x_ref
+            oper = CSBPTypeOperators.hqd_hgt(p, xl, xr, n, b, app)
+            x_ref = oper['x_ref']
             if x_ref == []:
                 raise Exception("Please provide reference element: x_ref is missing.")
-            if x_ref[0] == -1:
+            if x_ref[0] == -1 and p != 1:
                 warnings.warn("It looks like x_ref is not HGT type, it should not include boundary nodes and should"
                               "be defined on [-1, 1].")
         else:
@@ -108,7 +111,7 @@ class MeshGenerator1D:
         # element to vertex connectivity
         etov = convty_id
 
-        return {'x': x, 'etov': etov, 'x_ref': x_ref, 'bgrp': bgrp, 'coord_elem': coord_elem}
+        return {'x': x, 'etov': etov, 'x_ref': x_ref, 'bgrp': bgrp, 'coord_elem': coord_elem, 'nelem': nelem}
 
 
 class MeshGenerator2D:

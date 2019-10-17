@@ -5,6 +5,7 @@ from mesh.mesh_generator import MeshGenerator1D, MeshGenerator2D
 from src.ref_elem import Ref1D, Ref2D
 from src.csbp_type_operators import CSBPTypeOperators
 
+
 class Assembler:
     def __init__(self, p, quad_type=None, boundary_type=None):
         self.p = p
@@ -16,9 +17,9 @@ class Assembler:
         boundary_type = self.boundary_type
         nface = 2
 
-        # b: is the variable coefficient for second derivative problems
-        if b == 1:
-            b = np.eye(n)
+        # # b: is the variable coefficient for second derivative problems
+        # if b == 1:
+        #     b = np.eye(n)
         # app: is set to 1 for first derivative twice, 2 for order-matched and compatible operators
         v = 0       # vandermonde matrix
         h_mat = 0   # H norm (Mass) matrix
@@ -28,12 +29,14 @@ class Assembler:
         x_ref = 0   # reference element mesh
         d_mat = 0   # D1 - derivative matrix
         etov = 0    # element to vertex connectivity
+        db_mat = 0  # normal derivative at the boundary
+        d2_mat = 0  # order-matched and compatible 2nd derivative operator
 
         if quad_type == 'LG' or quad_type == 'LGL-Dense':
             # number of nodes and faces per element
             n = self.p + 1
             # obtain mesh information
-            mesh = MeshGenerator1D.line_mesh(xl, xr, n, nelem, quad_type)
+            mesh = MeshGenerator1D.line_mesh(self.p, xl, xr, n, nelem, quad_type)
             x = mesh['x']
             etov = mesh['etov']
             x_ref = mesh['x_ref']
@@ -47,12 +50,17 @@ class Assembler:
             v = Ref1D.vandermonde_1d(self.p, x_ref)
             # derivative operator on reference mesh
             d_mat = Ref1D.derivative_1d(self.p, x_ref)
+            # mass matrix (norm matrix)
+            h_mat = np.linalg.inv(v @ v.T)
 
-        if quad_type == 'LGL':
+            db_mat = d_mat
+            d2_mat = d_mat @ d_mat
+
+        elif quad_type == 'LGL':
             # number of nodes and faces per element
             n = self.p + 1
             # obtain mesh information
-            mesh = MeshGenerator1D.line_mesh(xl, xr, n, nelem, quad_type)
+            mesh = MeshGenerator1D.line_mesh(self.p, xl, xr, n, nelem, quad_type)
             x = mesh['x']
             etov = mesh['etov']
             x_ref = mesh['x_ref']
@@ -70,6 +78,9 @@ class Assembler:
             wq = scheme.weights
             h_mat = np.diag(wq)
 
+            db_mat = d_mat
+            d2_mat = d_mat @ d_mat
+
         elif quad_type == 'CSBP':
             opers = CSBPTypeOperators.hqd_csbp(self.p, -1, 1, n, b, app)
             d_mat = opers['d_mat_ref']
@@ -77,9 +88,11 @@ class Assembler:
             tl = opers['tl']
             tr = opers['tr']
             x_ref = opers['x_ref']
+            db_mat = opers['db_mat_ref']
+            d2_mat = opers['d2p_ref']
 
             # obtain mesh information
-            mesh = MeshGenerator1D.line_mesh(xl, xr, n, nelem, quad_type, x_ref)
+            mesh = MeshGenerator1D.line_mesh(self.p, xl, xr, n, nelem, quad_type, b, app)
             x = mesh['x']
             etov = mesh['etov']
 
@@ -90,9 +103,11 @@ class Assembler:
             tl = opers['tl']
             tr = opers['tr']
             x_ref = opers['x_ref']
+            db_mat = opers['db_mat_ref']
+            d2_mat = opers['d2p_ref']
 
             # obtain mesh information
-            mesh = MeshGenerator1D.line_mesh(xl, xr, n, nelem, quad_type, x_ref)
+            mesh = MeshGenerator1D.line_mesh(self.p, xl, xr, n, nelem, quad_type, b, app)
             x = mesh['x']
             etov = mesh['etov']
 
@@ -103,9 +118,11 @@ class Assembler:
             tl = opers['tl']
             tr = opers['tr']
             x_ref = opers['x_ref']
+            db_mat = opers['db_mat_ref']
+            d2_mat = opers['d2p_ref']
 
             # obtain mesh information
-            mesh = MeshGenerator1D.line_mesh(xl, xr, n, nelem, quad_type, x_ref)
+            mesh = MeshGenerator1D.line_mesh(self.p, xl, xr, n, nelem, quad_type, b, app)
             x = mesh['x']
             etov = mesh['etov']
 
@@ -147,7 +164,8 @@ class Assembler:
 
         return {'d_mat': d_mat, 'lift': lift, 'rx': rx, 'fscale': fscale, 'vmapM': vmapM, 'vmapP': vmapP, 'xl': xl,
                 'vmapB': vmapB, 'mapB': mapB, 'mapI': mapI, 'mapO': mapO, 'vmapI': vmapI, 'vmapO': vmapO, 'xr': xr,
-                'jac': jac, 'x': x, 'tl': tl, 'tr': tr, 'n': n, 'nx': nx, 'nelem': nelem, 'x_ref': x_ref, 'fx': fx}
+                'jac': jac, 'x': x, 'tl': tl, 'tr': tr, 'n': n, 'nx': nx, 'nelem': nelem, 'x_ref': x_ref, 'fx': fx,
+                'h_mat': h_mat, 'db_mat': db_mat, 'd2_mat': d2_mat}
 
     def assembler_2d(self, mesh):
         p = self.p

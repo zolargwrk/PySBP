@@ -6,7 +6,8 @@ from src.ref_elem import Ref2D
 
 class TimeMarcher:
 
-    def __init__(self, u, t0, tf, rhs_calculator, rhs_data, u_bndry_fun=None, flux_type='Central', boundary_type=None):
+    def __init__(self, u, t0, tf, rhs_calculator, rhs_data, u_bndry_fun=None, flux_type='Central',
+                 boundary_type=None, sat_type=None, app=1):
         self.u = u      # initial solution
         self.t0 = t0    # initial time
         self.tf = tf    # final time
@@ -15,8 +16,10 @@ class TimeMarcher:
         self.u_bndry_fun = u_bndry_fun    # initial condition: input as a method (function of a and t)
         self.flux_type = flux_type  # flux type, either upwind or central, input as a string
         self.boundary_type = boundary_type
+        self.sat_type = sat_type
+        self.app = app
 
-    def low_storage_rk4_1d(self, cfl, x, a=1):
+    def low_storage_rk4_1d(self, cfl, x, xl, a=1, b=1):
         """Low Storage Explicit RK4 method
             Inputs: cfl - CFL number
                     a - wave speed"""
@@ -32,8 +35,11 @@ class TimeMarcher:
         n = u.shape[0]
         nelem = u.shape[1]
 
-        xmin = np.min(np.abs(x[0, :] - x[1, :]))
-        dt = (cfl/abs(a))*(xmin**2)
+        x2 = np.array([np.abs(xl- x[0, :]), np.abs(x[1, :] - x[0, :])]).flatten()
+        x2[np.abs(x2) < 1e-12] = 0.0
+        xmin = np.min(x2[np.nonzero(x2)])
+        # dt = (cfl / abs(a)) * xmip.abs(xl n    # advection
+        dt = cfl*(xmin**2)     # diffusion
         nstep = int(np.ceil(tf/(0.5*dt)))
         dt = tf/nstep
 
@@ -52,8 +58,10 @@ class TimeMarcher:
                 # rhs = rhs_calculator(u, rdata.x, t_local, a, rdata.xl, rdata.xr, rdata.d_mat, rdata.vmapM, rdata.vmapP,
                 #                      rdata.mapI, rdata.mapO, rdata.vmapI, rdata.tl, rdata.tr, rdata.rx,
                 #                      rdata.lift, rdata.fscale, rdata.nx, u_bndry_fun, flux_type, boundary_type)
-                rhs = rhs_calculator(u, rdata.d_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx, rdata.rx, rdata.fscale,
-                                     rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO, rdata.vmapI, rdata.vmapO)
+                rhs = rhs_calculator(u, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx, rdata.rx,
+                                     rdata.fscale, rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO, rdata.vmapI,
+                                     rdata.vmapO, flux_type, self.sat_type, boundary_type, rdata.db_mat, rdata.d2_mat,
+                                     b, self.app)
 
                 res = rk4a[j]*res + dt*rhs
                 u = u + rk4b[j]*res

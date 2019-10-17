@@ -7,7 +7,7 @@ from src.accuracy_test_1d import operator_test_1d
 class CSBPTypeOperators:
 
     @staticmethod
-    def hqd_csbp(p, xl, xr, n, b, app):
+    def hqd_csbp(p, xl, xr, n, b=1, app=1):
         """Computes classical SBP operators on n equally spaced nodes up to degree p = 6 for first derivative twice
             and up to p = 4 for order-matched and compatible operators
                 Inputs: p   - degree of operator
@@ -39,6 +39,9 @@ class CSBPTypeOperators:
         #     bn = 19
         # elif p == 8:
         #     bn = 23
+
+        if b == 1:
+            b = np.ones(n)
 
         x = np.linspace(xl, xr, n)    # 1D mesh
         bn2 = bn + p                  # size of the block at boundaries including terms from center-difference
@@ -363,7 +366,7 @@ class CSBPTypeOperators:
                 'd2p_ref': d2p_ref, 'db_mat_ref': db_mat_ref}
 
     @staticmethod
-    def hqd_hgtl(p, xl, xr, n, b, app):
+    def hqd_hgtl(p, xl, xr, n, b=1, app=1):
         """Computes hybrid-Gauss-Trapezoidal-Lobatto (HGTL) operators up to degree p = 4 for first derivative twice
             and order-matched and compatible operators
                 Inputs: p   - degree of operator
@@ -388,6 +391,9 @@ class CSBPTypeOperators:
             bn = 2*p        # size of boundary block
         elif p >= 5:
             sys.exit('Only operators with degrees p <= 5 are supported')
+
+        if b == 1:
+            b = np.ones(n)
 
         x = np.linspace(0, n - 1, n)  # 1D mesh
         bn2 = bn + p                # size of the block at boundaries including terms from center-difference
@@ -554,7 +560,7 @@ class CSBPTypeOperators:
                 db_mat[n - 1, n - 5:n] = - np.flip(db_mat[0, 0:5])
 
             elif app == 1:
-                d2p = d_mat @ (np.diag(b) @d_mat)
+                d2p = d_mat @ (np.diag(b) @ d_mat)
                 db_mat = d_mat
 
         elif p == 3:
@@ -708,14 +714,14 @@ class CSBPTypeOperators:
         d2p_ref = (1 / dx_ref ** 2) * ((dx ** 2) * d2p)
         db_mat_ref = (1 / dx_ref) * (dx * db_mat)
 
-        # oper_test = operator_test_1d(p, x_ref, h_mat_ref, d_mat_ref)
+        # oper_test = operator_test_1d(p, x_ref, h_mat_ref, db_mat_ref)
         # oper_test = operator_test_1d(p, x_ref, h_mat_ref, d_mat_ref, der=d2p_ref)
         return {'h_mat': h_mat, 'q_mat': q_mat, 'd_mat': d_mat, 'd2p': d2p, 'db_mat': db_mat, 'tl': txL, 'tr': txR,
                 'e_mat': e_mat, 'x': x, 'x_ref': x_ref, 'd_mat_ref': d_mat_ref, 'h_mat_ref': h_mat_ref,
                 'd2p_ref': d2p_ref, 'db_mat_ref': db_mat_ref}
 
     @staticmethod
-    def hqd_hgt(p, xl, xr, n, b, app):
+    def hqd_hgt(p, xl, xr, n, b=1, app=1):
         """Computes hybrid-Gauss-Trapezoidal(HGT) operators up to degree p = 4 for first derivative twice
             and order-matched and compatible operators
                 Inputs: p   - degree of operator
@@ -740,6 +746,9 @@ class CSBPTypeOperators:
             bn = 2*p        # size of boundary block
         elif p >= 5:
             sys.exit('Only operators with degrees p <= 5 are supported')
+
+        if b == 1:
+            b = np.ones(n)
 
         x = np.linspace(0, n - 1, n)  # 1D mesh
         bn2 = bn + p                # size of the block at boundaries including terms from center-difference
@@ -1100,5 +1109,5 @@ class CSBPTypeOperators:
                 'd2p_ref': d2p_ref, 'db_mat_ref': db_mat_ref}
 
 
-# hqd = CSBPTypeOperators.hqd_csbp(4, 0, 2, 30, np.ones(50), 2)
+# hqd = CSBPTypeOperators.hqd_hgtl(2, 0, 1, 19, 1, 2)
 # (p, xl, xr, n, b, app)

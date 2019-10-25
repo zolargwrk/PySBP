@@ -51,7 +51,8 @@ class SATs:
 
     @staticmethod
     def diffusion_sbp_sat_1d(u, d_mat, h_mat, tl, tr, vmapM, vmapP, nx, mapI, mapO, uin, uout, rx,
-                             flux_type='BR1', boundary_type='Periodic', db_mat=None, b=1, app=1):
+                             flux_type='BR1', boundary_type='Periodic', db_mat=None, b=1, app=1,
+                             uD_left=None, uD_right=None, uN_left=None, uN_right=None):
         nface = 2
         n = np.shape(u)[0]
         nelem = np.shape(u)[1]
@@ -134,9 +135,6 @@ class SATs:
         u_projM.rotate(1)
         u_projM = np.asarray(u_projM)
 
-        if boundary_type != 'Periodic':
-            u_projM[0] = uin
-            u_projP[nelem-1] = uout
 
         # jump in solution
         Uk = u_projk - u_projP
@@ -163,6 +161,16 @@ class SATs:
         DnM.rotate(1)
         DnM = np.asarray(DnM)
 
+        # extended SAT terms
+        Uvv = Uv
+        Ukk = Uk
+        Ukkk = deque(Uk)
+        Ukkk.rotate(-1)
+        Ukkk = np.asarray(Ukkk)
+        Uvvv = deque(Uv)
+        Uvvv.rotate(1)
+        Uvvv = np.asarray(Uvvv)
+
         # jump in derivative
         Dk = (Dnk + DnP)
         Dv = (Dnv + DnM)
@@ -179,16 +187,6 @@ class SATs:
         sat_k = Wk @ Ck @ Vk
         sat_v = Wv @ Cv @ Vv
 
-        # extended SAT terms
-        Uvv = Uv
-        Ukk = Uk
-        Ukkk = deque(Uk)
-        Ukkk.rotate(-1)
-        Ukkk = np.asarray(Ukkk)
-        Uvvv = deque(Uv)
-        Uvvv.rotate(1)
-        Uvvv = np.asarray(Uvvv)
-
         # 1st neighbor extended SAT terms
         sat_M = tr @ (T5k * Uvv.reshape(1, nelem))
         sat_P = tl @ (T5v * Ukk.reshape(1, nelem))
@@ -197,7 +195,35 @@ class SATs:
         sat_PP = tr @ (T6k * Ukkk.reshape(1, nelem))
         sat_MM = tl @ (T6v * Uvvv.reshape(1, nelem))
 
-        # interface SATs
         sI = h_inv @ (sat_k + sat_v + sat_P + sat_M + sat_PP + sat_MM)
 
-        return sI
+        # boundary SATs for non-periodic boundary condition
+        sB = None
+        if boundary_type != 'Periodic':
+            TD_left = 1 / 2 * (tl.T @ h_inv @ tl)[0, 0]     # Dirichlet boundary flux coefficient at the left bc
+            TD_right = 1 / 2 * (tr.T @ h_inv @ tr)[0, 0]    # Dirichlet boundary flux coefficient at the right bc
+            CDk = np.array([[TD_right], [-1]])      # coefficient for dirichlet boundary at the right boundary
+            CDv = np.array([[TD_left], [-1]])       # coefficient for dirichlet boundary at the left boundary
+            DnNk = (Dgk @ u[:, -1]).flatten()       # derivative of u at right boundary (for Neumann bc implementation)
+            DnNv = (Dgv @ u[:, 0]).flatten()        # derivative of u at left boundary (for Neumann bc implementation)
+            WDk = np.block([[tr.reshape(n, 1), Dgk.reshape(n, 1)]])
+            WDv = np.block([[tl.reshape(n, 1), Dgv.reshape(n, 1)]])
+
+            sD_left = 0
+            sD_right = 0
+            sN_left = 0
+            sN_right = 0
+            if uD_left != None:
+                UDv = u_projv[0] - uD_left  # difference in u and Dirichlet bc at the left boundary
+                sD_left = (WDv @ CDv) * UDv
+            if uD_right != None:
+                UDk = u_projk[-1] - uD_right  # difference in u and Dirichlet bc at the right boundary
+                sD_right = (WDk @ CDk) * UDk
+            if uN_left != None:
+                sN_left = tl.T*(DnNv - uN_left)
+            if uN_right != None:
+                sN_right = tr.T*(DnNk - uN_right)
+
+            sB = sD_left + sD_right + sN_left + sN_right
+
+        return sI, sB

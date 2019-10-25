@@ -165,7 +165,7 @@ class Assembler:
         return {'d_mat': d_mat, 'lift': lift, 'rx': rx, 'fscale': fscale, 'vmapM': vmapM, 'vmapP': vmapP, 'xl': xl,
                 'vmapB': vmapB, 'mapB': mapB, 'mapI': mapI, 'mapO': mapO, 'vmapI': vmapI, 'vmapO': vmapO, 'xr': xr,
                 'jac': jac, 'x': x, 'tl': tl, 'tr': tr, 'n': n, 'nx': nx, 'nelem': nelem, 'x_ref': x_ref, 'fx': fx,
-                'h_mat': h_mat, 'db_mat': db_mat, 'd2_mat': d2_mat}
+                'h_mat': h_mat, 'db_mat': db_mat, 'd2_mat': d2_mat, 'vander': v}
 
     def assembler_2d(self, mesh):
         p = self.p

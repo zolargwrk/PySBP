@@ -124,26 +124,31 @@ class RHSCalculator:
 
         if sat_type == 'dg_sat':
             # get solution differences at the interfaces and boundaries
-            du = SATs.diffusion_dg_sat_1d(u, 'u', tl, tr, vmapM, vmapP, nx,  mapI, mapO, uin, uout, flux_type)
+            du = SATs.diffusion_dg_sat_1d(u, 'u', tl, tr, vmapM, vmapP, nx,  mapI, mapO, uin, uout, rx, flux_type)
 
             # calculate the derivative of the solution q
             q = rx*(d_mat @ u) - lift @ (fscale * (nx.T*du))
 
+            ux = rx * (d_mat @ u)
+
             # boundary conditions on q (Neumann)
             qin = q.flatten(order='F')[vmapI]
             qout = q.flatten(order='F')[vmapO]
-            dq = SATs.diffusion_dg_sat_1d(q, 'q', tl, tr, vmapM, vmapP, nx,  mapI, mapO, qin, qout, flux_type, du)
+            uxin = ux.flatten(order='F')[vmapI]
+            uxout = ux.flatten(order='F')[vmapO]
+            dq = SATs.diffusion_dg_sat_1d(q, 'q', tl, tr, vmapM, vmapP, nx,  mapI, mapO, qin, qout, rx, flux_type, du,
+                                          ux, uxin, uxout)
 
             # calculate rhs
-            rhs = 1/rx*(h_mat @(rx*(d_mat @ q) - lift @ (fscale * (nx.T*dq))))
-            # rhs = (rx * (d_mat @ q) - lift @ (fscale * (nx.T * dq)))
+            # rhs = 1/rx*(h_mat @(rx*(d_mat @ q) - lift @ (fscale * (nx.T*dq))))
+            rhs = (rx * (d_mat @ q) - lift @ (fscale * (nx.T * dq)))
         elif sat_type=='sbp_sat':
-            [sI, sB] = SATs.diffusion_sbp_sat_1d(u, d_mat, h_mat, tl, tr, vmapM, vmapP, nx, mapI, mapO, uin, uout,
+            sI = SATs.diffusion_sbp_sat_1d(u, d_mat, h_mat, tl, tr, vmapM, vmapP, nx, mapI, mapO, uin, uout,
                                            rx, flux_type, boundary_type, db_mat, b, app, uD_left, uD_right, uN_left,
                                            uN_right)
             if app==2:
-                rhs = rx*rx*(d2_mat @ u) - sI - sB
+                rhs = rx*rx*(d2_mat @ u) - sI
             else:
-                rhs = rx*rx*(d_mat @ (np.diag(b) @ d_mat @ u)) - sI - sB
+                rhs = rx*rx*(d_mat @ (np.diag(b) @ d_mat @ u)) - sI
 
         return rhs

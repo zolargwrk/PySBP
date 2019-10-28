@@ -7,6 +7,7 @@ from mesh.mesh_generator import MeshGenerator2D, MeshGenerator1D
 from solver.plot_figure import plot_figure_1d, plot_figure_2d, plot_conv_fig
 from src.error_conv import calc_err, calc_conv
 from types import SimpleNamespace
+import matplotlib.pyplot as plt
 
 
 def heat_1d(p, xl, xr, nelem, t0, tf, quad_type, flux_type='BR1', nrefine=1, boundary_type=None,
@@ -17,6 +18,12 @@ def heat_1d(p, xl, xr, nelem, t0, tf, quad_type, flux_type='BR1', nrefine=1, bou
     errs = list()
     dofs = list()
     nelems = list()
+
+    # boundary conditions
+    uD_left = 0  # Dirichlet boundary at the left boundary
+    uD_right = 0  # Dirichlet boundary at the right boundary
+    uN_left = None  # Neumann boundary at the left boundary
+    uN_right = None  # Neumann boundary at the right boundary
 
     # refine mesh uniformly
     # nrefine = 3  # number of uniform refinements
@@ -42,7 +49,7 @@ def heat_1d(p, xl, xr, nelem, t0, tf, quad_type, flux_type='BR1', nrefine=1, bou
         rhs_calculator = RHSCalculator.rhs_diffusion_1d
         self_time_marcher = TimeMarcher(u, t0, tf, rhs_calculator, rhs_data, None, flux_type, boundary_type,
                                         sat_type, app)
-        u = TimeMarcher.low_storage_rk4_1d(self_time_marcher, 0.25, x, xl, b)
+        u = TimeMarcher.low_storage_rk4_1d(self_time_marcher, 0.25, x, xl, a, b, uD_left, uD_right, uN_left, uN_right)
 
         u_exact = np.exp(-tf)*np.sin(x)
 
@@ -70,16 +77,16 @@ def heat_1d(p, xl, xr, nelem, t0, tf, quad_type, flux_type='BR1', nrefine=1, bou
 
 
 # heat_1d(p, xl, xr, nelem, t0, tf, quad_type, flux_type='BR1', nrefine, boundary_type=None, b=1, n=1):
-# u = heat_1d(2, 0, 2*np.pi, 5, 0, 0.1, 'LG', 'LDG', 3, 'Periodic', 'sbp_sat', a=0, b=1, n=13, app=1)
+# u = heat_1d(2, 0, 2*np.pi, 5, 0, 0.1, 'HGTL', 'BR2', 3, 'nPeriodic', 'sbp_sat', a=1, b=1, n=13, app=2)
 
 # For Order-Matched and compatible operators (app=2) the HGT works with BR2 scheme. HGTL and CSBP do not work, Next time
 #   -- check why for order-matched operator the HGTL and CSBP operators do not work
-#   -- check why HGT does not work for LDG/CDG
+#   -- check why HGT does not work for BR1
 # **--** implement the methods for the Poisson problem and see if the issues still exist
 
 
-def poisson_1d(p, xl, xr, nelem, t0, tf, quad_type, flux_type='BR1', nrefine=1, boundary_type=None,
-                        sat_type='dg_sat', a=1, b=1, n=1, app=1):
+def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, boundary_type=None, sat_type='dg_sat',
+               a=1, b=1, n=1, app=1):
 
     self_assembler = Assembler(p, quad_type, boundary_type)
     rhs_data = Assembler.assembler_1d(self_assembler, xl, xr, a, nelem, n, b, app)
@@ -138,7 +145,7 @@ def poisson_1d(p, xl, xr, nelem, t0, tf, quad_type, flux_type='BR1', nrefine=1, 
         err = calc_err(u, u_exact, rx, h_mat)
         errs.append(err)
 
-    plot_err = 0
+    plot_err = 1
     if plot_err == 1:
         conv_start = 1
         conv_end = nrefine
@@ -150,11 +157,16 @@ def poisson_1d(p, xl, xr, nelem, t0, tf, quad_type, flux_type='BR1', nrefine=1, 
 
         plot_conv_fig(hs, errs, conv_start, conv_end)
 
+    # print(np.count_nonzero(A))
+    # print(np.linalg.cond(A))
+    # plt.spy(A)
+    # plt.show()
+
     plot_figure_1d(x, u, u_exact)
 
     return u
 
 
-# diffusion_solver_1d(p, xl, xr, nelem, t0, tf, quad_type, flux_type='BR1', nrefine, boundary_type=None, b=1, n=1):
-u = poisson_1d(2, 0, 2*np.pi, 5, 0, 0.1, 'LGL', 'BR2', 1, 'nPeriodic', 'sbp_sat', a=0, b=1, n=5, app=1)
+# diffusion_solver_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine, boundary_type=None, b=1, n=1):
+u = poisson_1d(4, 0, 2*np.pi, 5, 'LGL-Dense', 'BRZ', 4, 'nPeriodic', 'sbp_sat', a=0, b=1, n=19, app=1)
 

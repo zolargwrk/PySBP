@@ -4,7 +4,8 @@ from collections import deque
 class SATs:
 
     @staticmethod
-    def diffusion_dg_sat_1d(var, var_type, tl, tr, vmapM, vmapP, nx, mapI, mapO, varin, varout, flux_type='BR1', du=None):
+    def diffusion_dg_sat_1d(var, var_type, tl, tr, vmapM, vmapP, nx, mapI, mapO, varin, varout, rx, flux_type='BR1',
+                            du=None, ux=None, uxin=None, uxout=None):
         # set var_type to 'u' or 'q' depending on which variable you want to apply penalty SATs
         # for BR2 you need to insert du
         nface = 2
@@ -31,20 +32,45 @@ class SATs:
             # set boundary sats
             dvar[mapI] = (var_proj[mapI] - varin) / 2
             dvar[mapO] = (var_proj[mapO] - varout) / 2
-        elif flux_type == 'BR2':
+        elif flux_type == 'BRZ':
             if var_type=='u':
                 dvar[0:] = (var_projF[vmapM][:, 0] - var_projF[vmapP][:, 0]) / 2
                 # set boundary sats
                 dvar[mapI] = (var_proj[mapI] - varin) / 2
                 dvar[mapO] = (var_proj[mapO] - varout) / 2
             elif var_type=='q':
-                dvar[0:] = var_projF[vmapM][:, 0] - var_projF[vmapP][:, 0]
+                dvar[0:] = (var_projF[vmapM][:, 0] - var_projF[vmapP][:, 0])/2
                 # set boundary sats
                 dvar[mapI] = var_proj[mapI] - varin
                 dvar[mapO] = var_proj[mapO] - varout
 
                 alpha_r = 1
-                dvar = dvar/2 + alpha_r*nx_tempC*(du.reshape((nface * nelem, 1), order='F'))
+                dvar = dvar + alpha_r*nx_tempC*(du.reshape((nface * nelem, 1), order='F'))
+
+        elif flux_type == 'IP':
+
+            if var_type == 'u':
+                dvar[0:] = (var_projF[vmapM][:, 0] - var_projF[vmapP][:, 0])/2
+                # set boundary sats
+                dvar[mapI] = (var_proj[mapI] - varin)/2
+                dvar[mapO] = (var_proj[mapO] - varout)/2
+            elif var_type == 'q':
+                ux_proj = ux.copy()
+                ux_projM = (ux.T @ tl)[:, 0]
+                ux_projP = (ux.T @ tr)[:, 0]
+                ux_proj[0, :] = ux_projM
+                ux_proj[n - 1, :] = ux_projP
+                ux_projF = ux_proj.reshape((n * nelem, 1), order='F')
+                ux_proj = np.reshape(np.array([ux_projM, ux_projP]), (2 * len(ux_projM), 1), order='F')
+
+                dvar[0:] = var_projF[vmapM][:, 0] - (ux_projF[vmapM][:, 0] + ux_projF[vmapP][:, 0]) / 2
+                # set boundary sats
+                dvar[mapI] = var_proj[mapI] - (ux_proj[mapI] + uxin)/2
+                dvar[mapO] = var_proj[mapO] - (ux_proj[mapO] + uxout)/2
+
+                hmin = 2 / (np.max(rx))
+                alpha_r = n ** 2 / hmin
+                dvar = dvar + alpha_r * nx_tempC * (2*du.reshape((nface * nelem, 1), order='F'))
 
         dvar = dvar.reshape((nface, nelem), order='F')
         return dvar
@@ -78,23 +104,44 @@ class SATs:
         T6v = 0
 
         if flux_type == 'BR1':
-            eta = 2
-            T1 = eta*(1/4*(tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+            eta = 1
+            T1 = (eta/4*(tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
             T2k = (-1/2)
             T3k = (1/2)
             T2v = (-1/2)
             T3v = (1/2)
-            T5k = (-1/4*(tl.T @ h_inv @ tl))[0, 0]
-            T5v = (-1/4*(tr.T @ h_inv @ tr))[0, 0]
-            T6k = (1/4*(tr.T @ h_inv @ tr))[0, 0]
-            T6v = (1/4*(tl.T @ h_inv @ tl))[0, 0]
-        elif flux_type == 'BR2':
+            T5k = (-1/4*(tr.T @ h_inv @ tl))[0, 0]
+            T5v = (-1/4*(tl.T @ h_inv @ tr))[0, 0]
+            T6k = (1/4*(tl.T @ h_inv @ tr))[0, 0]
+            T6v = (1/4*(tr.T @ h_inv @ tl))[0, 0]
+
+        elif flux_type == 'BRZ':
             eta = nface
+            T1 = ((1+eta)/4 * (tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+            T2k = (-1 / 2)
+            T3k = (1 / 2)
+            T2v = (-1 / 2)
+            T3v = (1 / 2)
+            T5k = (-1 / 4 * (tr.T @ h_inv @ tl))[0, 0]
+            T5v = (-1 / 4 * (tl.T @ h_inv @ tr))[0, 0]
+            T6k = (1 / 4 * (tl.T @ h_inv @ tr))[0, 0]
+            T6v = (1 / 4 * (tr.T @ h_inv @ tl))[0, 0]
+
+        elif flux_type == 'BR2':
+            eta = 2
             T1 = (eta/4 * (tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
             T2k = (-1/2)
             T3k = (1/2)
             T2v = (-1/2)
             T3v = (1/2)
+
+        elif flux_type == 'IP':
+            T1 = 1 / 2 * (np.linalg.norm((tr.T @ (h_inv ** (1 / 2))), 1)) ** 2 \
+                 + 1 / 2 * (np.linalg.norm((tl.T @ (h_inv ** (1 / 2))), 1)) ** 2
+            T2k = (-1 / 2)
+            T3k = (1 / 2)
+            T2v = (-1 / 2)
+            T3v = (1 / 2)
         elif flux_type == 'BO':
             T2k = (1/2)
             T3k = (1/2)
@@ -117,7 +164,8 @@ class SATs:
             T3k = 1/2
             T3v = 1/2
         elif flux_type == 'LDG' or flux_type == 'CDG':
-            T1 = (tr.T @ h_inv @ tr)[0, 0]
+            eta = nface
+            T1 = eta*(tr.T @ h_inv @ tr)[0, 0]
             T2k = -1
             T2v = 0
             T3k = 0
@@ -135,7 +183,6 @@ class SATs:
         u_projM.rotate(1)
         u_projM = np.asarray(u_projM)
 
-
         # jump in solution
         Uk = u_projk - u_projP
         Uv = u_projv - u_projM
@@ -147,8 +194,7 @@ class SATs:
         else:
             Dgk = nx[0, 1]*(tr.T @ np.diag(b) @ d_mat)   # D_{\gamma k}
             Dgv = nx[0, 0]*(tl.T @ np.diag(b) @ d_mat)   # D_{\gamma v}
-        # Dgk = nx[0, 1] * (tr.T @ np.diag(b) @ d_mat)  # D_{\gamma k}
-        # Dgv = nx[0, 0] * (tl.T @ np.diag(b) @ d_mat)
+
         # project derivative of solution on to interfaces
         Dnk = (Dgk @ u).flatten()
         Dnv = (Dgv @ u).flatten()
@@ -195,17 +241,14 @@ class SATs:
         sat_PP = tr @ (T6k * Ukkk.reshape(1, nelem))
         sat_MM = tl @ (T6v * Uvvv.reshape(1, nelem))
 
-        sI = h_inv @ (sat_k + sat_v + sat_P + sat_M + sat_PP + sat_MM)
-
         # boundary SATs for non-periodic boundary condition
-        sB = None
         if boundary_type != 'Periodic':
-            TD_left = 1 / 2 * (tl.T @ h_inv @ tl)[0, 0]     # Dirichlet boundary flux coefficient at the left bc
-            TD_right = 1 / 2 * (tr.T @ h_inv @ tr)[0, 0]    # Dirichlet boundary flux coefficient at the right bc
-            CDk = np.array([[TD_right], [-1]])      # coefficient for dirichlet boundary at the right boundary
-            CDv = np.array([[TD_left], [-1]])       # coefficient for dirichlet boundary at the left boundary
-            DnNk = (Dgk @ u[:, -1]).flatten()       # derivative of u at right boundary (for Neumann bc implementation)
-            DnNv = (Dgv @ u[:, 0]).flatten()        # derivative of u at left boundary (for Neumann bc implementation)
+            TD_left = 2 * (tl.T @ h_inv @ tl)[0, 0]  # Dirichlet boundary flux coefficient at the left bc
+            TD_right = 2 * (tr.T @ h_inv @ tr)[0, 0]  # Dirichlet boundary flux coefficient at the right bc
+            CDk = np.array([[TD_right], [1]])  # coefficient for dirichlet boundary at the right boundary
+            CDv = np.array([[TD_left], [1]])  # coefficient for dirichlet boundary at the left boundary
+            DnNk = (Dgk @ u[:, -1]).flatten()  # derivative of u at right boundary (for Neumann bc implementation)
+            DnNv = (Dgv @ u[:, 0]).flatten()  # derivative of u at left boundary (for Neumann bc implementation)
             WDk = np.block([[tr.reshape(n, 1), Dgk.reshape(n, 1)]])
             WDv = np.block([[tl.reshape(n, 1), Dgv.reshape(n, 1)]])
 
@@ -213,6 +256,7 @@ class SATs:
             sD_right = 0
             sN_left = 0
             sN_right = 0
+
             if uD_left != None:
                 UDv = u_projv[0] - uD_left  # difference in u and Dirichlet bc at the left boundary
                 sD_left = (WDv @ CDv) * UDv
@@ -220,10 +264,23 @@ class SATs:
                 UDk = u_projk[-1] - uD_right  # difference in u and Dirichlet bc at the right boundary
                 sD_right = (WDk @ CDk) * UDk
             if uN_left != None:
-                sN_left = tl.T*(DnNv - uN_left)
+                sN_left = tl.T * (DnNv - uN_left)
             if uN_right != None:
-                sN_right = tr.T*(DnNk - uN_right)
+                sN_right = tr.T * (DnNk - uN_right)
 
-            sB = sD_left + sD_right + sN_left + sN_right
+            sB_left = sD_left + sN_left
+            sB_right = sD_right + sN_right
 
-        return sI, sB
+            c = 0     # a constant to make the coefficient 1/4 instead of 2 for T5 and T6
+            sat_v[:, 0] = sB_left[:, 0]
+            sat_k[:, -1] = sB_right[:, 0]
+            sat_M[:, 0] = c*sB_left[:, 0]
+            sat_P[:, -1] = c*sB_right[:, 0]
+            sat_MM[:, 0] = c*sB_left[:, 0]
+            sat_PP[:, -1] = c*sB_right[:, 0]
+            sat_MM[:, 1] = c*sB_left[:, 0]
+            sat_PP[:, -2] = c*sB_right[:, 0]
+
+        sI = h_inv @ (sat_k + sat_v + sat_P + sat_M + sat_PP + sat_MM)
+
+        return sI

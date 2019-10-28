@@ -19,7 +19,7 @@ class TimeMarcher:
         self.sat_type = sat_type
         self.app = app
 
-    def low_storage_rk4_1d(self, cfl, x, xl, a=1, b=1):
+    def low_storage_rk4_1d(self, cfl, x, xl, a=1, b=1, uD_left=None, uD_right=None, uN_left=None, uN_right=None):
         """Low Storage Explicit RK4 method
             Inputs: cfl - CFL number
                     a - wave speed"""
@@ -61,7 +61,7 @@ class TimeMarcher:
                 rhs = rhs_calculator(u, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx, rdata.rx,
                                      rdata.fscale, rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO, rdata.vmapI,
                                      rdata.vmapO, flux_type, self.sat_type, boundary_type, rdata.db_mat, rdata.d2_mat,
-                                     b, self.app)
+                                     b, self.app, uD_left, uD_right, uN_left, uN_right)
 
                 res = rk4a[j]*res + dt*rhs
                 u = u + rk4b[j]*res

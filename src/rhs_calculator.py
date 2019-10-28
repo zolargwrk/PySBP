@@ -1,7 +1,7 @@
 import numpy as np
 from src.ref_elem import Ref2D
 from mesh.mesh_tools import MeshTools2D
-from src.sat_types import SATs
+from src.sats import SATs
 
 
 class RHSCalculator:

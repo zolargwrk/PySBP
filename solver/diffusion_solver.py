@@ -168,5 +168,5 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, boundary
 
 
 # diffusion_solver_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine, boundary_type=None, b=1, n=1):
-u = poisson_1d(4, 0, 2*np.pi, 5, 'LGL-Dense', 'BRZ', 4, 'nPeriodic', 'sbp_sat', a=0, b=1, n=19, app=1)
+u = poisson_1d(2, 0, 2*np.pi, 5, 'LGL', 'BR2', 4, 'nPeriodic', 'sbp_sat', a=0, b=1, n=19, app=1)
 

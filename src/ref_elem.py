@@ -236,12 +236,12 @@ class Ref2D:
 
     @staticmethod
     def vandermonde_2d(p, r, s):
-        nd = int((p+1)*(p+2)/2)
+        n = int((p+1)*(p+2)/2)
         ab = Ref2D.rstoab(r, s)
         a = ab['a']
         b = ab['b']
 
-        v = np.zeros((len(r), nd))
+        v = np.zeros((len(r), n))
         k = 0
         for i in range(0, p+1):
             for j in range(0, p+1-i):

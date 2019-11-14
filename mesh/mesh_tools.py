@@ -203,7 +203,7 @@ class MeshTools2D:
         # number of faces, elements, and vertices
         nface = 3
         nelem = etov.shape[0]
-        nvert = np.max(np.max(etov))
+        nvert = np.max(np.max(etov))+1
 
         # create list of faces 1, 2 and 3
         fnodes = np.array([etov[:, [0, 1]], etov[:, [1, 2]], etov[:, [2, 0]]])
@@ -211,14 +211,19 @@ class MeshTools2D:
         fnodes = np.sort(fnodes[:], 1)
 
         # default element to element and element to face connectivity
-        etoe = np.arange(0, nelem).reshape((nelem, 1)) @ np.ones((1, nface), dtype=int)
-        etof = np.ones((nelem, 1), dtype=int) @ np.arange(0, nface).reshape((1, nface))
+        etoe = np.arange(0, nelem).reshape((nelem, 1)) @ np.ones((1, nface))
+        etoe = etoe.astype(int)
+        etof = np.ones((nelem, 1)) @ np.arange(0, nface).reshape((1, nface))
+        etof = etof.astype(int)
 
         # give unique id number for faces using their node number
         id = fnodes[:, 0]*nvert + fnodes[:, 1] + 1
         vtov = np.asarray([id.reshape(nelem*nface, 1), np.array((np.arange(0, nelem*nface)).reshape((nelem*nface, 1), order='F')),
                                 np.array(etoe.reshape((nelem*nface, 1), order='F')), np.array(etof.reshape((nface*nelem, 1), order='F'))])
         vtov = (vtov.reshape((nelem*nface*4, 1))).reshape((nelem*nface, 4), order='F')
+
+        # # give unique id number for faces using their node number
+        # id = fnodes[:, 0] * nvert + fnodes[:, 1] + 1
 
         # sort by global face number (first column)
         sorted = vtov[vtov[:, 0].argsort(), ]
@@ -289,8 +294,7 @@ class MeshTools2D:
                 distance = (x1 - x2.T)**2 + (y1 - y2.T)**2
 
                 # find nodes sharing a coordinate (distance = 0)
-                (idP, idM) = np.where(np.sqrt(distance) < 1e-10)
-
+                (idP, idM) = np.where(np.sqrt(distance) < 1e-12)
                 # find the vertex numbers on the right element (vmapP)
                 vmapP[elem, face, idM] = vidP[idP]
 
@@ -433,18 +437,33 @@ class MeshTools2D:
 
     @ staticmethod
     def bndry_list(btype, bnodes, bnodesB):
-        vmapD = list()
-        mapD = list()
+        vmapDs = list()
+        mapDs = list()
+        vmapNs = list()
+        mapNs = list()
         for i in range(0, len(btype)):
             bndry = btype[i]
-            if bndry == 'd':
-                vmapD.append(bnodes[i])
-                mapD.append(bnodesB[i])
+            if bndry == 'd' or bndry == 'D':
+                vmapDs.append(bnodes[i])
+                mapDs.append(bnodesB[i])
+            elif bndry == 'n' or bndry == 'N':
+                vmapNs.append(bnodes[i])
+                mapNs.append(bnodesB[i])
 
-        vmapB = np.hstack(vmapD)
-        mapB = np.hstack(mapD)
+        if vmapDs != []:
+            vmapD = np.hstack(vmapDs)
+            mapD = np.hstack(mapDs)
+        else:
+            vmapD = vmapDs
+            mapD = mapDs
+        if vmapNs !=[]:
+            vmapN = np.hstack(vmapNs)
+            mapN = np.hstack(mapNs)
+        else:
+            vmapN = vmapNs
+            mapN = mapNs
 
-        return mapB, vmapB
+        return {'mapD': mapD, 'vmapD': vmapD, 'mapN': mapN, 'vmapN': vmapN}
 
     @staticmethod
     def hrefine_uniform_2d(rhs_data):

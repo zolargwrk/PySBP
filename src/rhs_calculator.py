@@ -1,7 +1,9 @@
 import numpy as np
+from scipy import sparse
 from src.ref_elem import Ref2D
 from mesh.mesh_tools import MeshTools2D
 from src.sats import SATs
+import matplotlib.pyplot as plt
 
 
 class RHSCalculator:
@@ -79,10 +81,12 @@ class RHSCalculator:
             u0 = MeshTools2D.set_bndry(u, x, y, ax, ay, time_loc, btype, bnodes, u_bndry_fun)
 
             # get boundary types into list
-            mapB, vmapB = MeshTools2D.bndry_list(btype, bnodes, bnodesB)
+            bndry = MeshTools2D.bndry_list(btype, bnodes, bnodesB)
+            mapD = bndry['mapD']
+            vmapD = bndry['vmapD']
 
             # get solution difference at the boundary and calculate flux
-            du[mapB] = u[vmapB] - (k[mapB]*u[vmapB] + (1-k[mapB])*u0[vmapB])
+            du[mapD] = u[vmapD] - (k[mapD]*u[vmapD] + (1-k[mapD])*u0[vmapD])
 
         # calculate flux
         df = an*du
@@ -152,3 +156,120 @@ class RHSCalculator:
                 rhs = rx*rx*(d_mat @ (np.diag(b) @ d_mat @ u)) - sI
 
         return rhs
+
+    @staticmethod
+    def rhs_poisson_1d(n, nelem, d_mat, h_mat, lift, tl, tr, nx, rx, fscale, vmapM, vmapP, mapI, mapO, vmapI, vmapO,
+                         flux_type, sat_type='dg_sat', boundary_type='Periodic', db_mat=None, d2_mat=None, b=1, app=1,
+                         uD_left=None, uD_right=None, uN_left=None, uN_right=None):
+        """Computes the system matrix for the Poisson equation
+        flux_type: specify the SAT type of interest, e.g., BR1
+        sat_type: specify whether to implement SAT as in 'dg_sat' or 'sbp_sat' ways"""
+        g = np.zeros((nelem * n, 1))
+        A = np.zeros((nelem * n, nelem * n))
+        for i in range(0, nelem * n):
+            g[i] = 1
+            gmat = g.reshape((n, nelem), order='F')
+            Avec = RHSCalculator.rhs_diffusion_1d(gmat, d_mat, h_mat, lift, tl, tr, nx, rx, fscale, vmapM, vmapP, mapI,
+                                                  mapO, vmapI, vmapO, flux_type, sat_type, boundary_type, db_mat, d2_mat,
+                                                  b, app, uD_left, uD_right, uN_left, uN_right)
+            # eliminate very small numbers from the A matrix
+            sm = np.abs(Avec.reshape((n * nelem, 1), order='F')) >= 1e-12
+            sm = (sm.reshape((n, nelem), order='F')) * 1
+            Avec = (sm * Avec).reshape((nelem * n, 1), order='F').flatten()
+            A[:, i] = Avec
+            g[i] = 0
+
+        return A
+
+
+    @staticmethod
+    def rhs_diffusion_2d(p, u, x, y, r, s, Dr, Ds, lift, nx, ny, rx, fscale, vmapM, vmapP, mapM, mapP, mapD, vmapD, mapN,
+                         vmapN, nelem, nfp, surf_jac, jac, flux_type='BR1'):
+
+        n = u.shape[0]  # total number of nodes, n = (p+1)*(p+2)/2
+        nface = 3
+
+        # convert matrix form of arrays into array form
+        u0 = u.copy()
+        u = u.flatten(order='F')
+        nx = nx.flatten(order='F')
+        ny = ny.flatten(order='F')
+        vmapM = vmapM.flatten(order='F')
+        vmapP = vmapP.flatten(order='F')
+
+        # compute difference in u at interfaces
+        du = u[vmapM] - u[vmapP]
+        du[mapD] = 2*u[vmapD]
+
+        # compute qx and qy
+        dudx, dudy = Ref2D.gradient_2d(x, y, Dr, Ds, u0)
+
+        # compute flux in u
+        fluxxu = (nx*du/2).reshape(nfp*nface, nelem,order='F')
+        fluxyu = (ny*du/2).reshape(nfp*nface, nelem,order='F')
+        qx = dudx - lift @ (fscale*fluxxu)
+        qy = dudy - lift @ (fscale*fluxyu)
+
+        qx = qx.flatten(order='F')
+        qy = qy.flatten(order='F')
+
+        # compute minimum height of abutting elements
+        hmin = np.min([2*(jac.flatten(order='F'))[vmapP]/((surf_jac.flatten(order='F'))[mapP]).T,
+                      2*(jac.flatten(order='F'))[vmapM]/((surf_jac.flatten(order='F'))[mapM]).T], axis=0)
+        tau = (n/hmin).flatten()
+
+        # compute difference in q at interfaces
+        dqx = qx[vmapM] - qx[vmapP]
+        dqx[mapN] = 2*qx[vmapN]
+        dqy = qy[vmapM] - qy[vmapP]
+        dqy[mapN] = 2*qy[vmapN]
+        dqx.reshape(nfp*nface, nelem)
+        dqy.reshape(nfp*nface, nelem)
+
+        # compute flux in q
+        fluxq = 0.5*(nx*dqx + ny*dqy) + (tau*du)/2
+        fluxq = fluxq.reshape(nfp * nface, nelem,order='F')
+
+        # compute divergence
+        divq = Ref2D.divergence_2d(x, y, Dr, Ds, qx.reshape((Dr.shape[1], nelem), order='F'), qy.reshape((Ds.shape[1], nelem), order='F'))
+
+        # compute rhs
+        rhs = divq - lift @ (fscale*fluxq)
+
+        # compute mass matrix times solution
+        v = Ref2D.vandermonde_2d(p, r, s)
+        Mu = jac*(((np.linalg.inv(v)).T @ np.linalg.inv(v)) @ u0)
+
+        return rhs, Mu
+
+    @staticmethod
+    def rhs_poisson_2d(p, u, x, y, r, s, Dr, Ds, lift, nx, ny, rx, fscale, vmapM, vmapP, mapM, mapP, mapD, vmapD, mapN,
+                       vmapN, nelem, nfp, surf_jac, jac, flux_type='BR1'):
+        n = u.shape[0]
+        g = np.zeros((nelem * n, 1))
+        # A = np.zeros((nelem * n, nelem * n))
+        A = sparse.lil_matrix((nelem * n, nelem * n))
+        M = sparse.lil_matrix((nelem * n, nelem * n))
+        for i in range(0, nelem * n):
+            g[i] = 1
+            gmat = g.reshape((n, nelem), order='F')
+            Avec, Mvec = RHSCalculator.rhs_diffusion_2d(p, gmat, x, y, r, s, Dr, Ds, lift, nx, ny, rx, fscale, vmapM,
+                                                        vmapP, mapM, mapP, mapD, vmapD, mapN, vmapN, nelem, nfp,
+                                                        surf_jac, jac, flux_type)
+            # eliminate very small numbers from the A and M matrices
+            sm = np.abs(Avec.reshape((n * nelem, 1), order='F')) >= 1e-12
+            sm = (sm.reshape((n, nelem), order='F')) * 1
+            Avec = (sm * Avec).reshape((nelem * n, 1), order='F')
+
+            sm = np.abs(Mvec.reshape((n * nelem, 1), order='F')) >= 1e-12
+            sm = (sm.reshape((n, nelem), order='F')) * 1
+            Mvec = (sm * Mvec).reshape((nelem * n, 1), order='F')
+
+            A[:, i] = sparse.lil_matrix(Avec)
+            M[:, i] = sparse.lil_matrix(Mvec)
+            g[i] = 0
+
+        A = sparse.spmatrix.tocsc(A)
+        M = sparse.spmatrix.tocsc(M)
+        return A, M
+

@@ -110,7 +110,7 @@ def advection_solver_2d(p, h, t0, tf, cfl=1, flux_type='Upwind', boundary_type=N
 
 
 # advection_solver_1d(p, xl, xr, nelem, t0, tf, a, quad_type, flux_type = 'Central')
-u = advection_solver_1d(4, 0, 1, 2, 0, 2, 1, 'HGTL', 'Upwind', 'nPeriodic', n=17)
+# u = advection_solver_1d(4, 0, 1, 2, 0, 2, 1, 'HGTL', 'Upwind', 'nPeriodic', n=17)
 
 #advection_solver_2d(p, h, t0, tf, cfl=1, flux_type='Central', boundary_type=None)
-# u = advection_solver_2d(2, 0.5, 0, 1, cfl=1, flux_type='Upwind', boundary_type='nPeriodic')
+u = advection_solver_2d(2, 0.5, 0, 1, cfl=1, flux_type='Upwind', boundary_type='nPeriodic')

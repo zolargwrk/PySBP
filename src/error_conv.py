@@ -18,6 +18,6 @@ def calc_conv(dofs, errs, n1, n2=None):
     errs = np.asarray(errs)
     dofs_conv = dofs[n1:n2]
     errs_conv = errs[n1:n2]
-    conv = np.polyfit(np.log10(dofs_conv), np.log10(errs_conv), 1)[0]
+    conv = np.abs(np.polyfit(np.log10(dofs_conv), np.log10(errs_conv), 1)[0])
 
     return conv

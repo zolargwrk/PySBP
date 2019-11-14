@@ -90,8 +90,8 @@ class TimeMarcher:
         nfp = p+1
 
         # set time step
-        # dt, _ = set_dt_2D(p, rdata.r, rdata.s, x, y, cfl)
-        dt = 1e-2
+        dt, _ = set_dt_2D(p, rdata.r, rdata.s, x, y, cfl)
+        # dt = 1e-2
         # low storage rk4 coefficients
         rk4a, rk4b, rk4c = coeff_low_storage_rk4()
 

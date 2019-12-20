@@ -1,5 +1,8 @@
 import numpy as np
 from collections import deque
+from scipy import sparse
+import scipy as sp
+import matplotlib.pyplot as plt
 
 class SATs:
 
@@ -76,7 +79,7 @@ class SATs:
         return dvar
 
     @staticmethod
-    def diffusion_sbp_sat_1d(u, d_mat, h_mat, tl, tr, vmapM, vmapP, nx, mapI, mapO, uin, uout, rx,
+    def diffusion_sbp_sat_1d(u, d_mat, d2_mat, h_mat, tl, tr, vmapM, vmapP, nx, mapI, mapO, uin, uout, rx,
                              flux_type='BR1', boundary_type='Periodic', db_mat=None, b=1, app=1,
                              uD_left=None, uD_right=None, uN_left=None, uN_right=None):
         nface = 2
@@ -89,7 +92,20 @@ class SATs:
         h_mat = 1/rx[0, 0]*h_mat
         d_mat = rx[0, 0]*d_mat
         db_mat = rx[0, 0]*db_mat
+        d2_mat = rx[0,0] *rx[0, 0] * d2_mat
         h_inv = np.linalg.inv(h_mat)
+
+        if app ==2:
+            db_inv = np.linalg.inv(db_mat)
+            # A = db_inv.T @ d_mat.T @ h_mat @ d_mat @ db_inv
+
+            # construct the A matrix for CSBP_Mattsson2004 operators
+            e_mat = np.zeros((n,n))
+            e_mat[0, 0] = -1
+            e_mat[n-1,n-1] = 1
+            A = db_inv.T @(e_mat @ db_mat - h_mat @ d2_mat)@ db_inv
+
+            M = np.linalg.pinv(A)
 
         # SAT coefficients for different methods
         T1 = 0
@@ -97,15 +113,20 @@ class SATs:
         T2v = 0
         T3k = 0
         T3v = 0
-        T4 = 0
+        T4k = 0
+        T4v = 0
         T5k = 0
         T5v = 0
         T6k = 0
         T6v = 0
 
         if flux_type == 'BR1':
-            eta = 1
-            T1 = (eta/4*(tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+            if app == 2:
+                eta = 2
+                T1 = (eta / 4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
+            else:
+                eta = 1
+                T1 = (eta/4*(tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
             T2k = (-1/2)
             T3k = (1/2)
             T2v = (-1/2)
@@ -117,7 +138,10 @@ class SATs:
 
         elif flux_type == 'BRZ':
             eta = nface
-            T1 = ((1+eta)/4 * (tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+            if app == 2:
+                T1 = (eta/ 4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
+            else:
+                T1 = ((1+eta)/4 * (tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
             T2k = (-1 / 2)
             T3k = (1 / 2)
             T2v = (-1 / 2)
@@ -129,11 +153,23 @@ class SATs:
 
         elif flux_type == 'BR2':
             eta = 2
-            T1 = (eta/4 * (tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+            if app == 2:
+                T1 = (eta/4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
+            else:
+                T1 = (eta/4 * (tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+
             T2k = (-1/2)
             T3k = (1/2)
             T2v = (-1/2)
             T3v = (1/2)
+
+        elif flux_type == 'BR22':
+            eta = 2
+            T1 = (eta / 4 * (tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+            T2k = (-1 / 4)
+            T3k = (-1 / 2)
+            T2v = (-3 / 4)
+            T3v = (3 / 2)
 
         elif flux_type == 'IP':
             T1 = 1 / 2 * (np.linalg.norm((tr.T @ (h_inv ** (1 / 2))), 1)) ** 2 \
@@ -165,7 +201,11 @@ class SATs:
             T3v = 1/2
         elif flux_type == 'LDG' or flux_type == 'CDG':
             eta = nface
-            T1 = eta*(tr.T @ h_inv @ tr)[0, 0]
+            if app == 2:
+                T1 = (eta * (tr.T @ M @ tr ))[0, 0]
+            else:
+                T1 = eta*(tr.T @ h_inv @ tr)[0, 0]
+            # T1 = eta * (tr.T @ M @ tr )[0, 0]  #-2134 # unstable for p=4 HGT operator
             T2k = -1
             T2v = 0
             T3k = 0
@@ -189,11 +229,11 @@ class SATs:
 
         # calculate normal derivative at the interfaces
         if app==2:
-            Dgk = nx[0, 1] * (tr.T @ db_mat)  # D_{\gamma k}
-            Dgv = nx[0, 0] * (tl.T @ db_mat)  # D_{\gamma v}
+            Dgk = nx[0, 1] * (tr.T @ np.diag(b.flatten()) @ db_mat)  # D_{\gamma k}
+            Dgv = nx[0, 0] * (tl.T @ np.diag(b.flatten()) @ db_mat)  # D_{\gamma v}
         else:
-            Dgk = nx[0, 1]*(tr.T @ np.diag(b) @ d_mat)   # D_{\gamma k}
-            Dgv = nx[0, 0]*(tl.T @ np.diag(b) @ d_mat)   # D_{\gamma v}
+            Dgk = nx[0, 1]*(tr.T @ np.diag(b.flatten()) @ d_mat)   # D_{\gamma k}
+            Dgv = nx[0, 0]*(tl.T @ np.diag(b.flatten()) @ d_mat)   # D_{\gamma v}
 
         # project derivative of solution on to interfaces
         Dnk = (Dgk @ u).flatten()
@@ -222,8 +262,8 @@ class SATs:
         Dv = (Dnv + DnM)
 
         # coefficient matrix C and left and right multipliers matrices in equation for the interface SATs
-        Ck = np.array([[T1, T3k], [T2k, T4]])
-        Cv = np.array([[T1, T3v], [T2v, T4]])
+        Ck = np.array([[T1, T3k], [T2k, T4k]])
+        Cv = np.array([[T1, T3v], [T2v, T4v]])
         Vk = np.block([[Uk], [Dk]])
         Vv = np.block([[Uv], [Dv]])
         Wk = np.block([[tr.reshape(n, 1), Dgk.reshape(n, 1)]])
@@ -243,10 +283,14 @@ class SATs:
 
         # boundary SATs for non-periodic boundary condition
         if boundary_type != 'Periodic':
-            TD_left = 2 * (tl.T @ h_inv @ tl)[0, 0]  # Dirichlet boundary flux coefficient at the left bc
-            TD_right = 2 * (tr.T @ h_inv @ tr)[0, 0]  # Dirichlet boundary flux coefficient at the right bc
-            CDk = np.array([[TD_right], [1]])  # coefficient for dirichlet boundary at the right boundary
-            CDv = np.array([[TD_left], [1]])  # coefficient for dirichlet boundary at the left boundary
+            if app == 2:
+                TD_left = 2 * (tl.T @ M @ tl)[0, 0]
+                TD_right = 2 * (tr.T @ M @ tr)[0, 0]
+            else:
+                TD_left = 2 * (tl.T @ h_inv @ tl)[0, 0]  # Dirichlet boundary flux coefficient at the left bc
+                TD_right = 2 * (tr.T @ h_inv @ tr)[0, 0]  # Dirichlet boundary flux coefficient at the right bc
+            CDk = np.array([[TD_right], [-1]])  # coefficient for dirichlet boundary at the right boundary
+            CDv = np.array([[TD_left], [-1]])  # coefficient for dirichlet boundary at the left boundary
             DnNk = (Dgk @ u[:, -1]).flatten()  # derivative of u at right boundary (for Neumann bc implementation)
             DnNv = (Dgv @ u[:, 0]).flatten()  # derivative of u at left boundary (for Neumann bc implementation)
             WDk = np.block([[tr.reshape(n, 1), Dgk.reshape(n, 1)]])
@@ -256,31 +300,364 @@ class SATs:
             sD_right = 0
             sN_left = 0
             sN_right = 0
+            fD_left = 0
+            fD_right = 0
+            fN_left = 0
+            fN_right = 0
 
             if uD_left != None:
-                UDv = u_projv[0] - uD_left  # difference in u and Dirichlet bc at the left boundary
+                UDv = u_projv[0]   # difference in u and Dirichlet bc at the left boundary
                 sD_left = (WDv @ CDv) * UDv
+                fD_left =  -(WDv @ CDv) *uD_left
             if uD_right != None:
-                UDk = u_projk[-1] - uD_right  # difference in u and Dirichlet bc at the right boundary
+                UDk = u_projk[-1]  # difference in u and Dirichlet bc at the right boundary
                 sD_right = (WDk @ CDk) * UDk
+                fD_right = -(WDk @ CDk)* uD_right
             if uN_left != None:
-                sN_left = tl.T * (DnNv - uN_left)
+                sN_left = tl.T * DnNv
+                fN_left = -tl.T *uN_left
             if uN_right != None:
-                sN_right = tr.T * (DnNk - uN_right)
+                sN_right = tr.T * DnNk
+                fN_right = -tr.T *uN_right
 
             sB_left = sD_left + sN_left
             sB_right = sD_right + sN_right
 
+            fB_left = h_inv@(fD_left + fN_left)
+            fB_right = h_inv@(fD_right + fN_right)
+
+
             c = 0     # a constant to make the coefficient 1/4 instead of 2 for T5 and T6
             sat_v[:, 0] = sB_left[:, 0]
             sat_k[:, -1] = sB_right[:, 0]
-            sat_M[:, 0] = c*sB_left[:, 0]
-            sat_P[:, -1] = c*sB_right[:, 0]
-            sat_MM[:, 0] = c*sB_left[:, 0]
-            sat_PP[:, -1] = c*sB_right[:, 0]
-            sat_MM[:, 1] = c*sB_left[:, 0]
-            sat_PP[:, -2] = c*sB_right[:, 0]
+
+            sat_M[:, 0] = c * sB_left[:, 0]
+            sat_P[:, -1] = c * sB_right[:, 0]
+
+            if flux_type == 'BR1' or flux_type == 'BRZ':
+                sat_MM[:, 0] = c*sB_left[:, 0]
+                sat_PP[:, -1] = c*sB_right[:, 0]
+                sat_MM[:, 1] = c*sB_left[:, 0]
+                sat_PP[:, -2] = c*sB_right[:, 0]
 
         sI = h_inv @ (sat_k + sat_v + sat_P + sat_M + sat_PP + sat_MM)
+        fB = np.zeros(u.shape)
+        fB[:,0] = fB[:,0]+fB_left.flatten()
+        fB[:,nelem-1] = fB[:,nelem-1]+fB_right.flatten()
+        # sI = h_inv @ (sat_k + sat_v + sat_P + sat_M )
 
-        return sI
+
+        # # -------- delete  when done testing --------
+        # d_inv = np.linalg.pinv(d_mat)
+        # Dd = d_mat @ db_inv
+        # vv = Dd.T @ h_mat @ Dd
+        # vv_inv = np.linalg.pinv((Dd.T @ h_mat @ Dd))
+        # aa = vv @ vv_inv
+        # kk = np.zeros((db_mat.shape[0], 1))
+        # kk[0] = 0
+        # kk[-1] = 1
+        # I = np.eye((aa.shape[0]))
+        # aaa = (I - aa) @ kk
+        uu, ss, vh = np.linalg.svd(A)
+        vv2 = uu @ np.diag(ss) @ vh
+        # Ir = (np.diag(ss) @ np.linalg.pinv(np.diag(ss)))
+        # jj = uu @ Ir @ uu.T
+        # N = np.ones((30, 1))
+        # N2 = np.ones((30, 1))
+        # N2[0, 0] = 0
+        # N2[-1, -1] = 0
+        # f, tt, fh = np.linalg.svd(vv)
+        # dhd = d_mat.T @ h_mat @ d_mat
+        #
+        # IV = np.block([[vv, 0 * vv], [0 * vv, vv]])
+        # ZZ = np.linalg.pinv(IV) - np.block([[np.linalg.pinv(vv), 0 * vv], [0 * vv, np.linalg.pinv(vv)]])
+        #
+        #
+        # zz = np.zeros((n,n))
+        # T1 = T1
+        # T2 = T2k
+        # T3 = T3k
+        # TD = TD_left
+        #
+        # N4 = np.block([[T1, -T1, (T3-1)*tr.T, T3*(-tl.T) ], [-T1, T1, T3*tr.T, (T3-1)*(-tl.T)],
+        #               [tr*T2, -tr*T2, 1/2*A, zz ], [-(-tl)*T2, (-tl)*T2, zz, 1/2*A]])
+        #
+        # N2 = np.block([[TD, -tl.T], [-tl, 1/2*A]])
+        #
+        # eigN4 = np.sort(np.linalg.eigvals(N4)).reshape(N4.shape[0], 1)
+        # eigN2 = np.sort(np.linalg.eigvals(N2)).reshape(N2.shape[0], 1)
+        #
+        uu, ss, vh = np.linalg.svd(db_inv.T @ e_mat-db_inv.T@ h_mat @ d2_mat @ db_inv)
+        a = (1 + db_mat[0, 0]) / db_mat[0, 0] - 1
+        Acorner = a * (-1 * db_mat[0, 0] - h_mat[0, 0] * d2_mat[0, 0]) * a
+        Mcorner = (1 / Acorner)*np.sqrt(nelem)*n - M[0, 0]
+        h = 2  / (n-1)
+        M0 = M[0, 0]*h - 1267.2456728069847
+        q = h*T1
+        # # print(q)
+        #----------end delete-----------
+
+        return sI, fB
+
+
+
+    @staticmethod
+    def diffusion_sbp_sat_1d_method2(n, nelem, d_mat, d2_mat, h_mat, tl, tr, nx, rx,
+                             flux_type='BR1', boundary_type='Periodic', db_mat=None, b=1, app=1,
+                             uD_left=None, uD_right=None, uN_left=None, uN_right=None):
+        nface = 2
+        tr = tr.reshape((n, 1))
+        tl = tl.reshape((n, 1))
+
+        # scale the matrices (the ones given are for the reference element)
+        h_mat = 1/rx[0, 0]*h_mat
+        d_mat = rx[0, 0]*d_mat
+        db_mat = rx[0, 0]*db_mat
+        d2_mat = rx[0,0] *rx[0, 0] * d2_mat
+        h_inv = np.linalg.inv(h_mat)
+
+        if app ==2:
+            db_inv = np.linalg.inv(db_mat)
+            # A = db_inv.T @ d_mat.T @ h_mat @ d_mat @ db_inv
+
+            # construct the A matrix for CSBP_Mattsson2004 operators
+            e_mat = np.zeros((n,n))
+            e_mat[0, 0] = -1
+            e_mat[n-1,n-1] = 1
+            A = db_inv.T @(e_mat @ db_mat - h_mat @ d2_mat)@ db_inv
+
+            M = np.linalg.pinv(A)
+
+        # SAT coefficients for different methods
+        T1 = 0
+        T2k = 0
+        T2v = 0
+        T3k = 0
+        T3v = 0
+        T4k = 0
+        T4v = 0
+        T5k = 0
+        T5v = 0
+        T6k = 0
+        T6v = 0
+
+        if flux_type == 'BR1':
+            if app == 2:
+                eta = 2
+                T1 = (eta / 4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
+            else:
+                eta = 1
+                T1 = (eta/4*(tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+            T2k = (-1/2)
+            T3k = (1/2)
+            T2v = (-1/2)
+            T3v = (1/2)
+            T5k = (-1/4*(tr.T @ h_inv @ tl))[0, 0]
+            T5v = (-1/4*(tl.T @ h_inv @ tr))[0, 0]
+            T6k = (1/4*(tr.T @ h_inv @ tr))[0, 0]
+            T6v = (1/4*(tl.T @ h_inv @ tl))[0, 0]
+
+        elif flux_type == 'BRZ':
+            eta = nface
+            if app == 2:
+                T1 = (eta/ 4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
+            else:
+                T1 = ((1+eta)/4 * (tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+            T2k = (-1 / 2)
+            T3k = (1 / 2)
+            T2v = (-1 / 2)
+            T3v = (1 / 2)
+            T5k = (-1 / 4 * (tr.T @ h_inv @ tl))[0, 0]
+            T5v = (-1 / 4 * (tl.T @ h_inv @ tr))[0, 0]
+            T6k = (1 / 4 * (tr.T @ h_inv @ tr))[0, 0]
+            T6v = (1 / 4 * (tl.T @ h_inv @ tl))[0, 0]
+
+        elif flux_type == 'BR2':
+            eta = 2.1
+            if app == 2:
+                T1 = (eta/4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
+            else:
+                T1 = (eta/4 * (tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+
+            T2k = (-1/2)
+            T3k = (1/2)
+            T2v = (-1/2)
+            T3v = (1/2)
+
+        elif flux_type == 'BR22':
+            eta = 2
+            T1 = (eta / 4 * (tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+            T2k = (-1 / 4)
+            T3k = (-1 / 2)
+            T2v = (-3 / 4)
+            T3v = (3 / 2)
+
+        elif flux_type == 'IP':
+            T1 = 1 / 2 * (np.linalg.norm((tr.T @ (h_inv ** (1 / 2))), 1)) ** 2 \
+                 + 1 / 2 * (np.linalg.norm((tl.T @ (h_inv ** (1 / 2))), 1)) ** 2
+            T2k = (-1 / 2)
+            T3k = (1 / 2)
+            T2v = (-1 / 2)
+            T3v = (1 / 2)
+        elif flux_type == 'BO':
+            T2k = (1/2)
+            T3k = (1/2)
+            T2v = (1/2)
+            T3v = (1/2)
+        elif flux_type == 'NIPG':
+            eta = nface
+            he = rx[0, 0]
+            mu = eta / he
+            T1 = mu
+            T2k = (1 / 2)
+            T3k = (1 / 2)
+            T2v = (1 / 2)
+            T3v = (1 / 2)
+        elif flux_type == 'CNG':
+            eta = nface
+            he = rx[0, 0]
+            mu = eta/he
+            T1 = mu
+            T3k = 1/2
+            T3v = 1/2
+        elif flux_type == 'LDG' or flux_type == 'CDG':
+            eta = nface
+            if app == 2:
+                T1 = (eta * (tr.T @ M @ tr ))[0, 0]
+            else:
+                T1 = eta*(tr.T @ h_inv @ tr)[0, 0]
+            # T1 = eta * (tr.T @ M @ tr )[0, 0]  #-2134 # unstable for p=4 HGT operator
+            T2k = -1
+            T2v = 0
+            T3k = 0
+            T3v = 1
+
+        # boundary SATs for boundary condition
+        sD_left = 0
+        sD_right = 0
+        sN_left = 0
+        sN_right = 0
+
+        if uD_left != None:
+            sD_left = 1
+        if uD_right != None:
+            sD_right = 1
+        if uN_left != None:
+            sN_left = 1
+        if uN_right != None:
+            sN_right = 1
+
+        if app == 2:
+            TD_left = sD_left * 2 * (tl.T @ M @ tl)[0, 0]
+            TD_right = sD_right * 2 * (tr.T @ M @ tr)[0, 0]
+        else:
+            TD_left = sD_left *2 * (tl.T @ h_inv @ tl)[0, 0]  # Dirichlet boundary flux coefficient at the left bc
+            TD_right = sD_right * 2 * (tr.T @ h_inv @ tr)[0, 0]  # Dirichlet boundary flux coefficient at the right bc
+
+        # calculate normal derivative at the interfaces
+        if app==2:
+            Dgk = nx[0, 1] * (tr.T @ np.diag(b.flatten()) @ db_mat)  # D_{\gamma k}
+            Dgv = nx[0, 0] * (tl.T @ np.diag(b.flatten()) @ db_mat)  # D_{\gamma v}
+        else:
+            Dgk = nx[0, 1]*(tr.T @ np.diag(b.flatten()) @ d_mat)   # D_{\gamma k}
+            Dgv = nx[0, 0]*(tl.T @ np.diag(b.flatten()) @ d_mat)   # D_{\gamma v}
+
+        sat_0 = np.zeros((nelem * n, nelem * n))
+        sat_p1 = np.zeros((nelem * n, nelem * n))
+        sat_p2 = np.zeros((nelem * n, nelem * n))
+        sat_m1 = np.zeros((nelem * n, nelem * n))
+        sat_m2 = np.zeros((nelem * n, nelem * n))
+        sat_p2 = np.zeros((nelem * n, nelem * n))
+        sat_m2 = np.zeros((nelem * n, nelem * n))
+
+        # construct diagonals of the SAT matrix
+        if nelem >= 2:
+            sat_diag = h_inv @ (T1 * (tr @ tr.T) + T3k * (tr @ Dgk) + T2k * (Dgk.T  @ tr.T))\
+                       + h_inv @ (T1 * (tl @ tl.T) + T3v * (tl @ Dgv) + T2v * (Dgv.T @ tl.T))\
+                       + h_inv @ (T5k * (tr @ tl.T) + T5v * (tl @ tr.T))
+            sat_diag_p1 = h_inv @ (-T1 * (tr @ tl.T) + T3k * (tr @ Dgv) - T2k * (Dgk.T @ tl.T)
+                                   - T5v * (tl @ tl.T) + T6k * (tr @ tr.T))
+            sat_diag_m1 = h_inv @ (-T1 * (tl @ tr.T) + T3v * (tl @ Dgk) - T2v * (Dgv.T @ tr.T)
+                          - T5k * (tr @ tr.T) + T6v * (tl @ tl.T))
+            sat_diag_p2 = - h_inv @ (T6k * (tr @ tl.T))
+            sat_diag_m2 = - h_inv @ (T6v * (tl @ tr.T))
+
+            sat_diags = sat_diag.copy().repeat(nelem).reshape(nelem,n,n, order='F').transpose(0,2,1)
+            sat_diags_p1 = sat_diag_p1.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
+            sat_diags_p2 = sat_diag_p2.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
+            sat_diags_m1 = sat_diag_m1.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
+            sat_diags_m2 = sat_diag_m2.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
+            sat_diags_p1[nelem - 1, :, :] = sat_diags_p1[nelem - 1, :, :] - h_inv @ (T6k * (tr @ tr.T))
+            sat_diags_m1[0, :, :] = sat_diags_m1[0, :, :] - (T6v * h_inv @ (tl @ tl.T))
+
+            # set boundary conditions
+            sat_diags[0,:,:] = h_inv @ (TD_left * (tl @ tl.T)  - sD_left * Dgv.T  @ tl.T +sN_left* tl @ Dgv
+                                        + T1 * (tr @ tr.T) + T5k * (tl @ tr.T)
+                                        + T3k * (tr @ Dgk) + T2k * (Dgk.T  @ tr.T))
+            sat_diags[nelem-1, :, :] = h_inv @ (TD_right * (tr @ tr.T) - sD_right * Dgk.T @ tr.T + sN_right * tr @ Dgk
+                                                + T1 * (tl @ tl.T) + T5v * (tr @ tl.T)
+                                                + T3v * (tl @ Dgv) + T2v * (Dgv.T @ tl.T))
+
+            # build SAT matrix
+            offset = n
+            aux = np.empty((0, offset), int)
+            aux2 = np.empty((0, offset * 2), int)
+
+            sat_0 = sp.linalg.block_diag(*sat_diags)
+            sat_p1 = sp.linalg.block_diag(aux, *sat_diags_p1[1:nelem, :, :], aux.T)
+            sat_m1 = sp.linalg.block_diag(aux.T, *sat_diags_m1[0:nelem - 1, :, :], aux)
+            sat_p2 = sp.linalg.block_diag(aux2, *sat_diags_p2[2:nelem, :, :], aux2.T)
+            sat_m2 = sp.linalg.block_diag(aux2.T, *sat_diags_m2[0:nelem - 2, :, :], aux2)
+
+            if nelem < 3:
+                if nelem < 2:
+                    sat_p1 = np.zeros((nelem * n, nelem * n))
+                    sat_p2 = np.zeros((nelem * n, nelem * n))
+                    sat_m1 = np.zeros((nelem * n, nelem * n))
+                    sat_m2 = np.zeros((nelem * n, nelem * n))
+                else:
+                    sat_p2 = np.zeros((nelem * n, nelem * n))
+                    sat_m2 = np.zeros((nelem * n, nelem * n))
+
+        else:
+            sat_diags = np.zeros((1, n, n))
+            sat_diags[0, :, :] = h_inv @ (sD_left*TD_left * (tl @ tl.T) - sD_left * Dgv.T @ tl.T
+                                          + sN_left * tl @ Dgv)
+            sat_diags[0, :, :] = sat_diags[0, :, :] + h_inv @ (sD_right* TD_right * (tr @ tr.T) - sD_right * Dgk.T @ tr.T
+                                                               + sN_right * tr @ Dgk)
+            sat_0 = sat_diags[0, :, :]
+
+        sat = sat_m2 + sat_m1 + sat_0 + sat_p1 + sat_p2
+        sI = sparse.csr_matrix(sat)
+
+        # construct component of the right hand side that comes from the SATs
+        fD_left = 0*tl
+        fD_right = 0*tr
+        fN_left = 0*tl
+        fN_right =0*tr
+
+        if uD_left != None:
+            fD_left = h_inv @ (-TD_left *tl* uD_left + sD_left* Dgv.T *uD_left)
+        if uD_right != None:
+            fD_right = h_inv @ (-TD_right*tr*uD_right  + sD_right*Dgk.T *uD_right)
+        if uN_left!=None:
+            fN_left = h_inv @ (-sN_left * tl * uN_left)
+        if uN_right != None:
+            fN_right = h_inv @(-sN_right * tr * uN_right)
+
+        fB = np.zeros((n, nelem))
+        if nelem >=2:
+            fB[:,0] =  fD_left.flatten() + fN_left.flatten()
+            fB[:,nelem-1] = fD_right.flatten() + fN_right.flatten()
+        else:
+            fB[:, 0] = fD_left.flatten() + fN_left.flatten()
+            fB[:, 0] = fB[:, 0] + fD_right.flatten() + fN_right.flatten()
+
+        return sI, fB
+
+
+
+
+
+
+

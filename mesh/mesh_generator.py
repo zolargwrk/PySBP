@@ -57,6 +57,9 @@ class MeshGenerator1D:
         elif quad_type == 'Uniform' or quad_type == 'CSBP':
             oper = CSBPTypeOperators.hqd_csbp(p, xl, xr, n, b, app)
             x_ref = oper['x_ref']
+        elif quad_type == 'CSBP_Mattsson2004':
+            oper = CSBPTypeOperators.hqd_csbp_mattsson2004(p, xl, xr, n, b, app)
+            x_ref = oper['x_ref']
         elif quad_type == 'HGTL':
             oper = CSBPTypeOperators.hqd_hgtl(p, xl, xr, n, b, app)
             x_ref = oper['x_ref']
@@ -126,25 +129,25 @@ class MeshGenerator2D:
 
     @staticmethod
     def rectangle_mesh(h):
-        geo = dmsh.Rectangle(-1.0, 1.0, -1.0, 1.0)
+        # geo = dmsh.Rectangle(-1.0, 1.0, -1.0, 1.0)
         # left = -1 * np.pi
         # right = 1 * np.pi
         # bottom = -1 * np.pi
         # top = 1 * np.pi
         # geo = dmsh.Rectangle(left, right, bottom, top)
 
-        # mat = scipy.io.loadmat('C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\THOM\\mesh\\square_mesh_data.mat')
-        # etov = (np.asarray(mat['etov'])-1).astype(int)
-        # vxy = np.asarray(mat['vxy'])
-        # bgrp_mat = (np.asarray(mat['bgrp']))
-        # bgrp = list()
-        # bgrp.append(((np.asarray(bgrp_mat[0][0]) - 1)).astype(int))
-        # bgrp.append(((np.asarray(bgrp_mat[0][1]) - 1)).astype(int))
-        # bgrp.append(((np.asarray(bgrp_mat[0][2]) - 1)).astype(int))
-        # bgrp.append(((np.asarray(bgrp_mat[0][3]) - 1)).astype(int))
+        mat = scipy.io.loadmat('C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\THOM\\mesh\\square_mesh_data.mat')
+        etov = (np.asarray(mat['etov'])-1).astype(int)
+        vxy = np.asarray(mat['vxy'])
+        bgrp_mat = (np.asarray(mat['bgrp']))
+        bgrp = list()
+        bgrp.append(((np.asarray(bgrp_mat[0][0]) - 1)).astype(int))
+        bgrp.append(((np.asarray(bgrp_mat[0][1]) - 1)).astype(int))
+        bgrp.append(((np.asarray(bgrp_mat[0][2]) - 1)).astype(int))
+        bgrp.append(((np.asarray(bgrp_mat[0][3]) - 1)).astype(int))
 
         # vertex coordiante and element to vertex connectivity
-        vxy, etov = dmsh.generate(geo, h)
+        # vxy, etov = dmsh.generate(geo, h)
 
         # vxy, etov = optimesh.cvt.quasi_newton_uniform_full(vxy, etov, 1.0e-10, 100)
         # NOTE: optimesh gives rise to error when solving with h=0.4 (this is very weired, took me a whole day to figure

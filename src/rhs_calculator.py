@@ -106,13 +106,13 @@ class RHSCalculator:
 
     @staticmethod
     def rhs_diffusion_1d(u, d_mat, h_mat, lift, tl, tr, nx, rx, fscale, vmapM, vmapP, mapI, mapO, vmapI, vmapO,
-                         flux_type, sat_type='dg_sat', boundary_type='Periodic', db_mat=None, d2_mat=None, b=1, app=1,
+                         flux_type, sat_type='dg_sat', boundary_type='nPeriodic', db_mat=None, d2_mat=None, b=None, app=1,
                          uD_left=None, uD_right=None, uN_left=None, uN_right=None):
 
         n = u.shape[0]
         # set variable coefficient
-        if b==1:
-            b = np.ones(n)
+        if type(b)==int or type(b)==float:
+            b = b*np.ones(n)
 
         # project u to the interfaces to get the u-u* at the faces
         u_proj = u.copy()
@@ -147,7 +147,7 @@ class RHSCalculator:
             # rhs = 1/rx*(h_mat @(rx*(d_mat @ q) - lift @ (fscale * (nx.T*dq))))
             rhs = (rx * (d_mat @ q) - lift @ (fscale * (nx.T * dq)))
         elif sat_type=='sbp_sat':
-            sI = SATs.diffusion_sbp_sat_1d(u, d_mat, h_mat, tl, tr, vmapM, vmapP, nx, mapI, mapO, uin, uout,
+            sI, fB= SATs.diffusion_sbp_sat_1d(u, d_mat, d2_mat, h_mat, tl, tr, vmapM, vmapP, nx, mapI, mapO, uin, uout,
                                            rx, flux_type, boundary_type, db_mat, b, app, uD_left, uD_right, uN_left,
                                            uN_right)
             if app==2:
@@ -155,7 +155,7 @@ class RHSCalculator:
             else:
                 rhs = rx*rx*(d_mat @ (np.diag(b) @ d_mat @ u)) - sI
 
-        return rhs
+        return rhs, fB
 
     @staticmethod
     def rhs_poisson_1d(n, nelem, d_mat, h_mat, lift, tl, tr, nx, rx, fscale, vmapM, vmapP, mapI, mapO, vmapI, vmapO,
@@ -169,7 +169,7 @@ class RHSCalculator:
         for i in range(0, nelem * n):
             g[i] = 1
             gmat = g.reshape((n, nelem), order='F')
-            Avec = RHSCalculator.rhs_diffusion_1d(gmat, d_mat, h_mat, lift, tl, tr, nx, rx, fscale, vmapM, vmapP, mapI,
+            Avec, fB = RHSCalculator.rhs_diffusion_1d(gmat, d_mat, h_mat, lift, tl, tr, nx, rx, fscale, vmapM, vmapP, mapI,
                                                   mapO, vmapI, vmapO, flux_type, sat_type, boundary_type, db_mat, d2_mat,
                                                   b, app, uD_left, uD_right, uN_left, uN_right)
             # eliminate very small numbers from the A matrix
@@ -179,8 +179,33 @@ class RHSCalculator:
             A[:, i] = Avec
             g[i] = 0
 
-        return A
+        return A, fB
 
+    @staticmethod
+    def rhs_poisson_1d_method2(n, nelem, d_mat, h_mat, lift, tl, tr, nx, rx, fscale, vmapM, vmapP, mapI, mapO, vmapI, vmapO,
+                       flux_type, sat_type='dg_sat', boundary_type='Periodic', db_mat=None, d2_mat=None, b=1, app=1,
+                       uD_left=None, uD_right=None, uN_left=None, uN_right=None):
+        """Computes the system matrix for the Poisson equation
+        flux_type: specify the SAT type of interest, e.g., BR1
+        sat_type: specify whether to implement SAT as in 'dg_sat' or 'sbp_sat' ways"""
+
+        # set variable coefficient
+        if type(b) == int or type(b) == float:
+            b = b * np.ones(n)
+
+        # scale the matrices (the ones given are for the reference element)
+        d2_mat = rx[0, 0] * rx[0, 0] * d2_mat
+        Ablock = [d2_mat]*nelem
+
+        # get SBP SAT terms
+        sI, fB = SATs.diffusion_sbp_sat_1d_method2(n, nelem, d_mat, d2_mat, h_mat, tl, tr, nx, rx,
+                                                    flux_type, boundary_type, db_mat, b, app,
+                                                    uD_left, uD_right, uN_left, uN_right)
+
+        A1 = sparse.block_diag(Ablock)
+        A = A1 - sI
+
+        return A, fB
 
     @staticmethod
     def rhs_diffusion_2d(p, u, x, y, r, s, Dr, Ds, lift, nx, ny, rx, fscale, vmapM, vmapP, mapM, mapP, mapD, vmapD, mapN,

@@ -9,9 +9,7 @@ def calc_err(u, u_exact, rx, h_mat):
     e = (u-u_exact).reshape((u.shape[0]*u.shape[1], 1), order = 'F')
     err = np.sqrt((e.T @ (rh @ e))[0, 0])
     # err= np.sqrt(np.sum(((u-u_exact)**2).flatten(order='F')))
-
     return err
-
 
 def calc_conv(dofs, errs, n1, n2=None):
     dofs = np.asarray(dofs)

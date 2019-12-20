@@ -96,6 +96,21 @@ class Assembler:
             x = mesh['x']
             etov = mesh['etov']
 
+        elif quad_type == 'CSBP_Mattsson2004':
+            opers = CSBPTypeOperators.hqd_csbp_mattsson2004(self.p, -1, 1, n, b, app)
+            d_mat = opers['d_mat_ref']
+            h_mat = opers['h_mat_ref']
+            tl = opers['tl']
+            tr = opers['tr']
+            x_ref = opers['x_ref']
+            db_mat = opers['db_mat_ref']
+            d2_mat = opers['d2p_ref']
+
+            # obtain mesh information
+            mesh = MeshGenerator1D.line_mesh(self.p, xl, xr, n, nelem, quad_type, b, app)
+            x = mesh['x']
+            etov = mesh['etov']
+
         elif quad_type == 'HGTL':
             opers = CSBPTypeOperators.hqd_hgtl(self.p, -1, 1, n, b, app)
             d_mat = opers['d_mat_ref']

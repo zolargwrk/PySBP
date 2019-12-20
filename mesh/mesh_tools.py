@@ -1,6 +1,6 @@
 import numpy as np
 from types import SimpleNamespace
-from mesh.mesh_generator import MeshGenerator2D
+from mesh.mesh_generator import MeshGenerator1D, MeshGenerator2D
 from src.ref_elem import Ref2D
 
 
@@ -179,6 +179,22 @@ class MeshTools1D:
         bgrp[1] = nelem*n - 1
 
         return {'x': x, 'etov': etov, 'x_ref': x_ref, 'bgrp': bgrp, 'coord_elem': coord_elem, 'nelem': nelem}
+
+    @staticmethod
+    def trad_refine_uniform_1d(rhs_data, p, quad_type, var_coef, app):
+        rdata = SimpleNamespace(**rhs_data)
+        x = rdata.x     # physical coordinate
+        n = 2*rdata.n     # number of degrees of freedom on the reference element
+        xl = x[0,0]
+        xr = x[-1,0]
+        nelem = rdata.nelem
+        b = var_coef(n)
+
+        mesh_info = MeshGenerator1D.line_mesh(p, xl, xr, n, nelem, quad_type, b, app)
+        mesh = SimpleNamespace(**mesh_info)
+
+        return {'x': mesh.x, 'etov': mesh.etov, 'x_ref': mesh.x_ref, 'bgrp': mesh.bgrp,
+                'coord_elem': mesh.coord_elem, 'nelem': mesh.nelem}
 
 
 class MeshTools2D:

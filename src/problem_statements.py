@@ -56,11 +56,14 @@ def poisson1D_problem_input (x=None, xl=None, xr=None, n=None):
                 adjoint: output results of adjoint problem
                 functional: output results of functional convergence
                 all: outputs all three of the above"""
-        outs = 'primal'
-        # outs = 'adjoint'
-        # outs = 'functional'
-        # outs = 'all'
-        return outs
+        prob = 'primal'
+        # prob = 'adjoint'
+        # prob = 'all'
+        func_conv = 1
+        plot_sol = 0
+        plot_err = 0
+        show_eig = 0
+        return {'prob': prob, 'func_conv': func_conv, 'plot_sol': plot_sol, 'plot_err': plot_err, 'show_eig': show_eig}
 
     return {'var_coef': var_coef, 'exact_solution': exact_solution, 'boundary_conditions': boundary_conditions,
             'source_term': source_term, 'adjoint_source_term':adjoint_source_term, 'adjoint_bndry':adjoint_bndry,

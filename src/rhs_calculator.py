@@ -35,8 +35,8 @@ class RHSCalculator:
         u_projF = u_proj.reshape((n * nelem, 1), order='F')
         nx_tempC = nx.reshape((nface * nelem, 1), order='C')
 
-        du[0:] = (u_projF[vmapM][:, 0] - u_projF[vmapP][:, 0]) * (
-                    (a * nx_tempC - (1 - alpha) * np.abs(a * nx_tempC)) / 2)
+        du[0:] = (u_projF[vmapM][:, 0] - u_projF[vmapP][:, 0]) * \
+                 ((a * nx_tempC - (1 - alpha) * np.abs(a * nx_tempC)) / 2)
 
         if boundary_type != 'Periodic':
             # set dirichlet boundary condition
@@ -182,9 +182,9 @@ class RHSCalculator:
         return A, fB
 
     @staticmethod
-    def rhs_poisson_1d_method2(n, nelem, d_mat, h_mat, lift, tl, tr, nx, rx, fscale, vmapM, vmapP, mapI, mapO, vmapI, vmapO,
-                       flux_type, sat_type='dg_sat', boundary_type='Periodic', db_mat=None, d2_mat=None, b=1, app=1,
-                       uD_left=None, uD_right=None, uN_left=None, uN_right=None):
+    def rhs_poisson_1d_steady(n, nelem, d_mat, h_mat, lift, tl, tr, nx, rx, fscale, vmapM, vmapP, mapI, mapO, vmapI, vmapO,
+                              flux_type, sat_type='dg_sat', boundary_type='Periodic', db_mat=None, d2_mat=None, b=1, app=1,
+                              uD_left=None, uD_right=None, uN_left=None, uN_right=None):
         """Computes the system matrix for the Poisson equation
         flux_type: specify the SAT type of interest, e.g., BR1
         sat_type: specify whether to implement SAT as in 'dg_sat' or 'sbp_sat' ways"""
@@ -198,12 +198,31 @@ class RHSCalculator:
         Ablock = [d2_mat]*nelem
 
         # get SBP SAT terms
-        sI, fB = SATs.diffusion_sbp_sat_1d_method2(n, nelem, d_mat, d2_mat, h_mat, tl, tr, nx, rx,
-                                                    flux_type, boundary_type, db_mat, b, app,
-                                                    uD_left, uD_right, uN_left, uN_right)
+        sI, fB = SATs.diffusion_sbp_sat_1d_steady(n, nelem, d_mat, d2_mat, h_mat, tl, tr, nx, rx,
+                                                  flux_type, boundary_type, db_mat, b, app,
+                                                  uD_left, uD_right, uN_left, uN_right)
 
         A1 = sparse.block_diag(Ablock)
         A = A1 - sI
+
+        return A, fB
+
+    @ staticmethod
+    def rhs_advection_1d_steady(n, nelem, d_mat, h_mat, tl, tr, rx, a=1, uD_left=None, uD_right=None, flux_type='upwind'):
+
+        # set variable coefficient
+        if type(a) == int or type(a) == float:
+            a = a * np.ones(n)
+        a_mat = np.diag(a.flatten())
+        # scale the matrices (the ones given are for the reference element)
+        d_mat = rx[0, 0] * d_mat @ a_mat
+        Ablock = [d_mat]*nelem
+
+        # get SBP SAT terms
+        sI, fB = SATs.advection_sbp_sats_1d_steady(n, nelem, h_mat, tl, tr, rx, a, uD_left, uD_right, flux_type)
+
+        A1 = sparse.block_diag(Ablock)
+        A = A1 + sI
 
         return A, fB
 

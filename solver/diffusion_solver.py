@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.sparse.linalg import spsolve
-import scipy.io
 from src.assembler import Assembler
 from src.time_marcher import TimeMarcher
 from src.rhs_calculator import RHSCalculator
@@ -9,10 +8,9 @@ from mesh.mesh_generator import MeshGenerator2D, MeshGenerator1D
 from solver.plot_figure import plot_figure_1d, plot_figure_2d, plot_conv_fig
 from src.error_conv import calc_err, calc_conv
 from types import SimpleNamespace
-import matplotlib.pyplot as plt
 from scipy import sparse
-from src.problem_statements import poisson1D_problem_input
-import profile
+from solver.problem_statements import poisson1D_problem_input
+
 
 def heat_1d(p, xl, xr, nelem, t0, tf, quad_type, flux_type='BR1', nrefine=1, boundary_type=None,
                         sat_type='dg_sat', a=1, b=1, n=1, app=1):
@@ -98,7 +96,8 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
     outputs = ps.choose_output()
     choose_outs = SimpleNamespace(**outputs)
 
-    b = ps.var_coef(n)
+    mesh = MeshGenerator1D.line_mesh(p, xl, xr, n, nelem, quad_type, 1, app)
+    b = ps.var_coef(mesh['x'])
     self_assembler = Assembler(p, quad_type, boundary_type)
     rhs_data = Assembler.assembler_1d(self_assembler, xl, xr, a, nelem, n, b, app)
     errs = list()
@@ -114,10 +113,11 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
         else:
             if refine_type=='trad':
                 mesh = MeshTools1D.trad_refine_uniform_1d(rhs_data, p, quad_type, ps.var_coef, app)
-                n = (mesh['x']).shape[0]
-                b = ps.var_coef(n)
+                b = ps.var_coef(mesh['x'])
+                n = mesh['n']
             else:
                 mesh = MeshTools1D.hrefine_uniform_1d(rhs_data)
+                b = (ps.var_coef(mesh['x']))
 
         nelem = mesh['nelem']  # update the number of elements
         rhs_data = Assembler.assembler_1d(self_assembler, xl, xr, a, nelem, n, b, app)
@@ -129,7 +129,7 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
         n = rdata.n
         x = (rdata.x).reshape((n, nelem), order='F')
 
-        dofs.append(n * nelem)
+        dofs.append(n*nelem)
         nelems.append(nelem)
 
         # solve primal problem
@@ -138,10 +138,10 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
             bndry_conds = ps.boundary_conditions(xl, xr)
             bc = SimpleNamespace(**bndry_conds)
 
-            A, fB = RHSCalculator.rhs_poisson_1d_method2(n, nelem, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx,
-                                                         rdata.rx, rdata.fscale, rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO,
-                                                         rdata.vmapI, rdata.vmapO, flux_type, sat_type, boundary_type, rdata.db_mat,
-                                                         rdata.d2_mat, b, app, bc.uD_left, bc.uD_right, bc.uN_left, bc.uN_right)
+            A, fB = RHSCalculator.rhs_poisson_1d_steady(n, nelem, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx,
+                                                        rdata.rx, rdata.fscale, rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO,
+                                                        rdata.vmapI, rdata.vmapO, flux_type, sat_type, boundary_type, rdata.db_mat,
+                                                        rdata.d2_mat, b, app, bc.uD_left, bc.uD_right, bc.uN_left, bc.uN_right)
 
             # specify source term and add terms from the SATs to the source term (fB)
             f = - ps.source_term(x) + fB
@@ -170,10 +170,10 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
         if choose_outs.prob == 'adjoint' or choose_outs.prob == 'all':
             adj_bcs = ps.adjoint_bndry(xl, xr)
             adj_bc = SimpleNamespace(**adj_bcs)
-            A, gB = RHSCalculator.rhs_poisson_1d_method2(n, nelem, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx,
-                                         rdata.rx, rdata.fscale, rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO,
-                                         rdata.vmapI, rdata.vmapO, flux_type, sat_type, boundary_type, rdata.db_mat,
-                                         rdata.d2_mat, b, app, adj_bc.psiD_left, adj_bc.psiD_right, adj_bc.psiN_left, adj_bc.psiN_right)
+            A, gB = RHSCalculator.rhs_poisson_1d_steady(n, nelem, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx,
+                                                        rdata.rx, rdata.fscale, rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO,
+                                                        rdata.vmapI, rdata.vmapO, flux_type, sat_type, boundary_type, rdata.db_mat,
+                                                        rdata.d2_mat, b, app, adj_bc.psiD_left, adj_bc.psiD_right, adj_bc.psiN_left, adj_bc.psiN_right)
 
             # adjoint source term plus terms from SAT at boundary
             g = - ps.adjoint_source_term(x) + gB
@@ -191,19 +191,22 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
     # plot error
     if choose_outs.prob == 'primal':
         if choose_outs.plot_err == 1 or choose_outs.func_conv == 1:
-            conv_start = 2
-            conv_end = nrefine - 0
             if refine_type == 'trad':
                 hs = (xr - xl) / (np.asarray(dofs))
             else:
                 hs = (xr - xl) / (np.asarray(nelems))
-            conv = calc_conv(hs, errs, conv_start, conv_end)
-            conv_func = calc_conv(hs, errs_func, conv_start, conv_end)
+
             if choose_outs.plot_err == 1:
+                conv_start = 3
+                conv_end = nrefine - 0
+                conv = calc_conv(hs, errs, conv_start, conv_end)
                 print(np.asarray(conv))
                 print(np.asarray(errs))
                 plot_conv_fig(hs, errs, conv_start, conv_end)
             if choose_outs.func_conv == 1:
+                conv_start = 1
+                conv_end = nrefine - 4
+                conv_func = calc_conv(hs, errs_func, conv_start, conv_end)
                 print(np.asarray(conv_func))
                 print(np.asarray(errs_func))
                 plot_conv_fig(hs, errs_func, conv_start, conv_end)
@@ -220,57 +223,18 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
             print(np.asarray(errs_adj))
             plot_conv_fig(hs, errs_adj, conv_start, conv_end)
 
-    #             # plot solutions
-    #     # plot_figure_1d(x, u, u_exact)
-    #     # plot_figure_1d(x, psi, psi_exact)
-    #
-    #     # calculate functional output and exact functional
-    #     J = ps.calc_functional(u, h_mat, rx)
-    #     J_exact = ps.exact_functional(xl, xr)
-    #     err_func = np.abs(J-J_exact)
-    #     errs_func.append(err_func)
-    #
-    #     # error calculation
-    #     err = calc_err(u, u_exact, rx, h_mat)
-    #     errs.append(err)
-    #     err_adj = calc_err(psi, psi_exact, rx, h_mat)
-    #     errs_adj.append(err_adj)
-    #
-    # plot_err = 1
-    # if plot_err == 1:
-    #     conv_start = 2
-    #     conv_end = nrefine-0
-    #     if refine_type=='trad':
-    #         hs = (xr - xl)/(np.asarray(dofs))
-    #     else:
-    #         hs = (xr - xl) / (np.asarray(nelems))
-    #     conv = calc_conv(hs, errs, conv_start, conv_end)
-    #     conv_adj = calc_conv(hs, errs_adj, conv_start, conv_end)
-    #     conv_func = calc_conv(hs, errs_func, conv_start, conv_end)
-    #     np.set_printoptions(precision=3, suppress=False)
-    #     # print(np.asarray(conv))
-    #     # print(np.asarray(errs))
-    #     # print(np.asarray(conv_adj))
-    #     # print(np.asarray(errs_adj))
-    #     print(np.asarray(conv_func))
-    #     print(np.asarray(errs_func))
-    #
-    #     # plot_conv_fig(hs, errs, conv_start, conv_end)
-    #     # plot_conv_fig(hs, errs_adj, conv_start, conv_end)
-    #     plot_conv_fig(hs, errs_func, conv_start, conv_end)
-
-
-    showeig = 0
-    if showeig==1:
+    if choose_outs.show_eig==1:
         cond_A = sparse.linalg.norm(A) * sparse.linalg.norm(sparse.linalg.inv(A.tocsc()))
         print("{:.2e}".format(cond_A))
-        LR_eig = sparse.linalg.eigs(A, 1, which='LR', return_eigenvectors=False)
-        print(LR_eig)
+        # LR_eig = sparse.linalg.eigs(A, 1, which='LR', return_eigenvectors=False)
+        # print(LR_eig)
 
-        # eigA,V = np.linalg.eig(A)
+        # eigA,_ = np.linalg.eig(A.todense())
+        # cond_A = np.linalg.cond(A.todense())
         # max_eigA = np.round(np.max(eigA), 2)
+        # print("{:.2e}".format(cond_A))
         # print(max_eigA)
-        # min_eigA = np.round(np.min(np.abs(eigA)), 2)
+
         # xeig = [x.real for x in eigA]
         # yeig = [x.imag for x in eigA]
         # plt.scatter(xeig, yeig, color='red')
@@ -282,7 +246,9 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
     return
 
 # diffusion_solver_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine, refine_type, boundary_type=None, b=1, n=1):
-u = poisson_1d(1, 0, 1, 1, 'CSBP_Mattsson2004', 'BR2', 7, 'trad', 'nPeriodic', 'sbp_sat', poisson1D_problem_input, a=0, n=25, app=2)
+u = poisson_1d(3, 0, 1, 2, 'CSBP_Mattsson2004', 'BR2', 9, 'ntrad', 'nPeriodic', 'sbp_sat', poisson1D_problem_input, a=0, n=16, app=2)
+
+
 #
 # def check_time():
 #     poisson_1d(5, 0, 2 * np.pi, 5, 'LGL', 'IP', 4, 'nPeriodic', 'sbp_sat', a=0, b=1, n=19, app=2)

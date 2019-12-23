@@ -1164,6 +1164,8 @@ class CSBPTypeOperators:
                     d2_mat[i, i - 1:i + 2] = [1, -2, 1]
                     d_mat[i, i - 1:i + 2] = [-1 / 2, 0, 1 / 2]
 
+                d2_mat = np.diag(b.flatten()) @ d2_mat
+
             elif app == 1:
                 d2_mat = d_mat @ np.diag(b) @ d_mat
                 db_mat = d_mat
@@ -1194,6 +1196,8 @@ class CSBPTypeOperators:
                 # lower portion of db_mat
                 d2_mat[n - 4:n, n - 6:n] = np.fliplr(np.flipud(d2_mat[0:4, 0:6]))
                 db_mat[n - 1, n - 4: n] = -np.flip(db_mat[0, 0:4])
+
+                d2_mat = np.diag(b.flatten()) @ d2_mat
 
             elif app == 1:
                 d2_mat = d_mat @ np.diag(b) @ d_mat
@@ -1236,6 +1240,8 @@ class CSBPTypeOperators:
                 # lower portion of db_mat
                 d2_mat[n - 6:n, n - 9:n] = np.fliplr(np.flipud(d2_mat[0:6, 0:9]))
                 db_mat[n - 1, n - 5: n] = -np.flip(db_mat[0, 0:5])
+
+                d2_mat = np.diag(b.flatten()) @ d2_mat
 
             elif app == 1:
                 d2_mat = d_mat @ np.diag(b) @ d_mat
@@ -1309,6 +1315,8 @@ class CSBPTypeOperators:
                 # lower portion of db_mat
                 d2_mat[n - 8:n, n - 12:n] = np.fliplr(np.flipud(d2_mat[0:8, 0:12]))
                 db_mat[n-1, n-7: n] = -np.flip(db_mat[0, 0:7])
+
+                d2_mat = np.diag(b.flatten()) @ d2_mat
 
             elif app == 1:
                 d2_mat = d_mat @ np.diag(b) @ d_mat

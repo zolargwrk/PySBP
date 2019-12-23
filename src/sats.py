@@ -94,6 +94,7 @@ class SATs:
         db_mat = rx[0, 0]*db_mat
         d2_mat = rx[0,0] *rx[0, 0] * d2_mat
         h_inv = np.linalg.inv(h_mat)
+        b_mat = np.diag(b.flatten())
 
         if app ==2:
             db_inv = np.linalg.inv(db_mat)
@@ -103,7 +104,7 @@ class SATs:
             e_mat = np.zeros((n,n))
             e_mat[0, 0] = -1
             e_mat[n-1,n-1] = 1
-            A = db_inv.T @(e_mat @ db_mat - h_mat @ d2_mat)@ db_inv
+            A = db_inv.T @(e_mat @ b_mat @ db_mat - h_mat @ d2_mat)@ db_inv
 
             M = np.linalg.pinv(A)
 
@@ -126,37 +127,37 @@ class SATs:
                 T1 = (eta / 4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
             else:
                 eta = 1
-                T1 = (eta/4*(tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+                T1 = (eta/4*(tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
             T2k = (-1/2)
             T3k = (1/2)
             T2v = (-1/2)
             T3v = (1/2)
-            T5k = (-1/4*(tr.T @ h_inv @ tl))[0, 0]
-            T5v = (-1/4*(tl.T @ h_inv @ tr))[0, 0]
-            T6k = (1/4*(tl.T @ h_inv @ tr))[0, 0]
-            T6v = (1/4*(tr.T @ h_inv @ tl))[0, 0]
+            T5k = (-1/4*(tr.T @ b_mat @ h_inv @ tl))[0, 0]
+            T5v = (-1/4*(tl.T @ b_mat @ h_inv @ tr))[0, 0]
+            T6k = (1/4*(tl.T @ b_mat @ h_inv @ tr))[0, 0]
+            T6v = (1/4*(tr.T @ b_mat @ h_inv @ tl))[0, 0]
 
         elif flux_type == 'BRZ':
             eta = nface
             if app == 2:
                 T1 = (eta/ 4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
             else:
-                T1 = ((1+eta)/4 * (tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+                T1 = ((1+eta)/4 * (tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
             T2k = (-1 / 2)
             T3k = (1 / 2)
             T2v = (-1 / 2)
             T3v = (1 / 2)
-            T5k = (-1 / 4 * (tr.T @ h_inv @ tl))[0, 0]
-            T5v = (-1 / 4 * (tl.T @ h_inv @ tr))[0, 0]
-            T6k = (1 / 4 * (tl.T @ h_inv @ tr))[0, 0]
-            T6v = (1 / 4 * (tr.T @ h_inv @ tl))[0, 0]
+            T5k = (-1 / 4 * (tr.T @ b_mat @ h_inv @ tl))[0, 0]
+            T5v = (-1 / 4 * (tl.T @ b_mat @ h_inv @ tr))[0, 0]
+            T6k = (1 / 4 * (tl.T @ b_mat @ h_inv @ tr))[0, 0]
+            T6v = (1 / 4 * (tr.T @ b_mat @ h_inv @ tl))[0, 0]
 
         elif flux_type == 'BR2':
-            eta = 2
+            eta = 2.1
             if app == 2:
                 T1 = (eta/4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
             else:
-                T1 = (eta/4 * (tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+                T1 = (eta/4 * (tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
 
             T2k = (-1/2)
             T3k = (1/2)
@@ -165,15 +166,15 @@ class SATs:
 
         elif flux_type == 'BR22':
             eta = 2
-            T1 = (eta / 4 * (tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+            T1 = (eta / 4 * (tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
             T2k = (-1 / 4)
             T3k = (-1 / 2)
             T2v = (-3 / 4)
             T3v = (3 / 2)
 
         elif flux_type == 'IP':
-            T1 = 1 / 2 * (np.linalg.norm((tr.T @ (h_inv ** (1 / 2))), 1)) ** 2 \
-                 + 1 / 2 * (np.linalg.norm((tl.T @ (h_inv ** (1 / 2))), 1)) ** 2
+            T1 = 1 / 2 * (np.linalg.norm((tr.T @ b_mat @ (h_inv ** (1 / 2))), 1)) ** 2 \
+                 + 1 / 2 * (np.linalg.norm((tl.T @ b_mat @ (h_inv ** (1 / 2))), 1)) ** 2
             T2k = (-1 / 2)
             T3k = (1 / 2)
             T2v = (-1 / 2)
@@ -204,7 +205,7 @@ class SATs:
             if app == 2:
                 T1 = (eta * (tr.T @ M @ tr ))[0, 0]
             else:
-                T1 = eta*(tr.T @ h_inv @ tr)[0, 0]
+                T1 = eta*(tr.T @ b_mat @ h_inv @ tr)[0, 0]
             # T1 = eta * (tr.T @ M @ tr )[0, 0]  #-2134 # unstable for p=4 HGT operator
             T2k = -1
             T2v = 0
@@ -229,11 +230,11 @@ class SATs:
 
         # calculate normal derivative at the interfaces
         if app==2:
-            Dgk = nx[0, 1] * (tr.T @ np.diag(b.flatten()) @ db_mat)  # D_{\gamma k}
-            Dgv = nx[0, 0] * (tl.T @ np.diag(b.flatten()) @ db_mat)  # D_{\gamma v}
+            Dgk = nx[0, 1] * (tr.T @ b_mat @ db_mat)  # D_{\gamma k}
+            Dgv = nx[0, 0] * (tl.T @ b_mat @ db_mat)  # D_{\gamma v}
         else:
-            Dgk = nx[0, 1]*(tr.T @ np.diag(b.flatten()) @ d_mat)   # D_{\gamma k}
-            Dgv = nx[0, 0]*(tl.T @ np.diag(b.flatten()) @ d_mat)   # D_{\gamma v}
+            Dgk = nx[0, 1]*(tr.T @ b_mat @ d_mat)   # D_{\gamma k}
+            Dgv = nx[0, 0]*(tl.T @ b_mat @ d_mat)   # D_{\gamma v}
 
         # project derivative of solution on to interfaces
         Dnk = (Dgk @ u).flatten()
@@ -287,8 +288,8 @@ class SATs:
                 TD_left = 2 * (tl.T @ M @ tl)[0, 0]
                 TD_right = 2 * (tr.T @ M @ tr)[0, 0]
             else:
-                TD_left = 2 * (tl.T @ h_inv @ tl)[0, 0]  # Dirichlet boundary flux coefficient at the left bc
-                TD_right = 2 * (tr.T @ h_inv @ tr)[0, 0]  # Dirichlet boundary flux coefficient at the right bc
+                TD_left = 2 * (tl.T @ b_mat @ h_inv @ tl)[0, 0]  # Dirichlet boundary flux coefficient at the left bc
+                TD_right = 2 * (tr.T @ b_mat @ h_inv @ tr)[0, 0]  # Dirichlet boundary flux coefficient at the right bc
             CDk = np.array([[TD_right], [-1]])  # coefficient for dirichlet boundary at the right boundary
             CDv = np.array([[TD_left], [-1]])  # coefficient for dirichlet boundary at the left boundary
             DnNk = (Dgk @ u[:, -1]).flatten()  # derivative of u at right boundary (for Neumann bc implementation)
@@ -399,12 +400,10 @@ class SATs:
 
         return sI, fB
 
-
-
     @staticmethod
-    def diffusion_sbp_sat_1d_method2(n, nelem, d_mat, d2_mat, h_mat, tl, tr, nx, rx,
-                             flux_type='BR1', boundary_type='Periodic', db_mat=None, b=1, app=1,
-                             uD_left=None, uD_right=None, uN_left=None, uN_right=None):
+    def diffusion_sbp_sat_1d_steady(n, nelem, d_mat, d2_mat, h_mat, tl, tr, nx, rx,
+                                    flux_type='BR1', boundary_type='Periodic', db_mat=None, b=1, app=1,
+                                    uD_left=None, uD_right=None, uN_left=None, uN_right=None):
         nface = 2
         tr = tr.reshape((n, 1))
         tl = tl.reshape((n, 1))
@@ -415,6 +414,7 @@ class SATs:
         db_mat = rx[0, 0]*db_mat
         d2_mat = rx[0,0] *rx[0, 0] * d2_mat
         h_inv = np.linalg.inv(h_mat)
+        b_mat = np.diag(b.flatten())
 
         if app ==2:
             db_inv = np.linalg.inv(db_mat)
@@ -424,7 +424,7 @@ class SATs:
             e_mat = np.zeros((n,n))
             e_mat[0, 0] = -1
             e_mat[n-1,n-1] = 1
-            A = db_inv.T @(e_mat @ db_mat - h_mat @ d2_mat)@ db_inv
+            A = db_inv.T @(e_mat @ b_mat @ db_mat - h_mat @ d2_mat)@ db_inv
 
             M = np.linalg.pinv(A)
 
@@ -447,37 +447,38 @@ class SATs:
                 T1 = (eta / 4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
             else:
                 eta = 1
-                T1 = (eta/4*(tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+                T1 = (eta/4*(tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
             T2k = (-1/2)
             T3k = (1/2)
             T2v = (-1/2)
             T3v = (1/2)
-            T5k = (-1/4*(tr.T @ h_inv @ tl))[0, 0]
-            T5v = (-1/4*(tl.T @ h_inv @ tr))[0, 0]
-            T6k = (1/4*(tr.T @ h_inv @ tr))[0, 0]
-            T6v = (1/4*(tl.T @ h_inv @ tl))[0, 0]
+            T5k = (-1/4*(tr.T @ b_mat @ h_inv @ tl))[0, 0]
+            T5v = (-1/4*(tl.T @ b_mat @ h_inv @ tr))[0, 0]
+            T6k = (1/4*(tr.T @ b_mat @ h_inv @ tr))[0, 0]
+            T6v = (1/4*(tl.T @ b_mat @ h_inv @ tl))[0, 0]
 
         elif flux_type == 'BRZ':
             eta = nface
             if app == 2:
                 T1 = (eta/ 4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
             else:
-                T1 = ((1+eta)/4 * (tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+                T1 = ((1+eta)/4 * (tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
             T2k = (-1 / 2)
             T3k = (1 / 2)
             T2v = (-1 / 2)
             T3v = (1 / 2)
-            T5k = (-1 / 4 * (tr.T @ h_inv @ tl))[0, 0]
-            T5v = (-1 / 4 * (tl.T @ h_inv @ tr))[0, 0]
-            T6k = (1 / 4 * (tr.T @ h_inv @ tr))[0, 0]
-            T6v = (1 / 4 * (tl.T @ h_inv @ tl))[0, 0]
+            T5k = (-1 / 4 * (tr.T @ b_mat @ h_inv @ tl))[0, 0]
+            T5v = (-1 / 4 * (tl.T @ b_mat @ h_inv @ tr))[0, 0]
+            T6k = (1 / 4 * (tr.T @ b_mat @ h_inv @ tr))[0, 0]
+            T6v = (1 / 4 * (tl.T @ b_mat @ h_inv @ tl))[0, 0]
 
         elif flux_type == 'BR2':
-            eta = 2.1
             if app == 2:
+                eta = 2.2
                 T1 = (eta/4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
             else:
-                T1 = (eta/4 * (tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+                eta = 2
+                T1 = (eta/4 * (tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
 
             T2k = (-1/2)
             T3k = (1/2)
@@ -486,15 +487,15 @@ class SATs:
 
         elif flux_type == 'BR22':
             eta = 2
-            T1 = (eta / 4 * (tr.T @ h_inv @ tr + tl.T @ h_inv @ tl))[0, 0]
+            T1 = (eta / 4 * (tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
             T2k = (-1 / 4)
             T3k = (-1 / 2)
             T2v = (-3 / 4)
             T3v = (3 / 2)
 
         elif flux_type == 'IP':
-            T1 = 1 / 2 * (np.linalg.norm((tr.T @ (h_inv ** (1 / 2))), 1)) ** 2 \
-                 + 1 / 2 * (np.linalg.norm((tl.T @ (h_inv ** (1 / 2))), 1)) ** 2
+            T1 = 1 / 2 * (np.linalg.norm((tr.T @ (b_mat @ h_inv ** (1 / 2))), 1)) ** 2 \
+                 + 1 / 2 * (np.linalg.norm((tl.T @ (b_mat @ h_inv ** (1 / 2))), 1)) ** 2
             T2k = (-1 / 2)
             T3k = (1 / 2)
             T2v = (-1 / 2)
@@ -525,7 +526,7 @@ class SATs:
             if app == 2:
                 T1 = (eta * (tr.T @ M @ tr ))[0, 0]
             else:
-                T1 = eta*(tr.T @ h_inv @ tr)[0, 0]
+                T1 = eta*(tr.T @ b_mat @ h_inv @ tr)[0, 0]
             # T1 = eta * (tr.T @ M @ tr )[0, 0]  #-2134 # unstable for p=4 HGT operator
             T2k = -1
             T2v = 0
@@ -551,16 +552,16 @@ class SATs:
             TD_left = sD_left * 2 * (tl.T @ M @ tl)[0, 0]
             TD_right = sD_right * 2 * (tr.T @ M @ tr)[0, 0]
         else:
-            TD_left = sD_left *2 * (tl.T @ h_inv @ tl)[0, 0]  # Dirichlet boundary flux coefficient at the left bc
-            TD_right = sD_right * 2 * (tr.T @ h_inv @ tr)[0, 0]  # Dirichlet boundary flux coefficient at the right bc
+            TD_left = sD_left *2 * (tl.T @ b_mat @ h_inv @ tl)[0, 0]  # Dirichlet boundary flux coefficient at the left bc
+            TD_right = sD_right * 2 * (tr.T @ b_mat @ h_inv @ tr)[0, 0]  # Dirichlet boundary flux coefficient at the right bc
 
         # calculate normal derivative at the interfaces
         if app==2:
-            Dgk = nx[0, 1] * (tr.T @ np.diag(b.flatten()) @ db_mat)  # D_{\gamma k}
-            Dgv = nx[0, 0] * (tl.T @ np.diag(b.flatten()) @ db_mat)  # D_{\gamma v}
+            Dgk = nx[0, 1] * (tr.T @ b_mat  @ db_mat)  # D_{\gamma k}
+            Dgv = nx[0, 0] * (tl.T @ b_mat @  db_mat)  # D_{\gamma v}
         else:
-            Dgk = nx[0, 1]*(tr.T @ np.diag(b.flatten()) @ d_mat)   # D_{\gamma k}
-            Dgv = nx[0, 0]*(tl.T @ np.diag(b.flatten()) @ d_mat)   # D_{\gamma v}
+            Dgk = nx[0, 1]*(tr.T @ b_mat @ d_mat)   # D_{\gamma k}
+            Dgv = nx[0, 0]*(tl.T @ b_mat @  d_mat)   # D_{\gamma v}
 
         sat_0 = np.zeros((nelem * n, nelem * n))
         sat_p1 = np.zeros((nelem * n, nelem * n))
@@ -655,9 +656,70 @@ class SATs:
 
         return sI, fB
 
+    @staticmethod
+    def advection_sbp_sats_1d_steady(n, nelem, h_mat, tl, tr, rx, a=1, uD_left=None, uD_right=None, flux_type='upwind'):
 
+        if flux_type == 'upwind':
+            sigma = 1
+        elif flux_type == 'centered':
+            sigma = 0
+        else:
+            raise ("The flux type (SAT type) should be either 'upwind' or 'centered'. ")
 
+        tr = tr.reshape((n, 1))
+        tl = tl.reshape((n, 1))
 
+        # scale the matrices (the ones given are for the reference element)
+        h_mat = 1 / rx[0, 0] * h_mat
+        h_inv = np.linalg.inv(h_mat)
+        a_mat = np.diag(a.flatten())
 
+        sat_0 = np.zeros((nelem * n, nelem * n))
+        sat_p1 = np.zeros((nelem * n, nelem * n))
+        sat_m1 = np.zeros((nelem * n, nelem * n))
 
+        # construct diagonals of the SAT matrix
+        sat_diag = h_inv @ tr @ tr.T @ (-a_mat/2 + sigma*np.abs(a_mat)/2) \
+                   - h_inv @ tl @ tl.T @ (-a_mat/2 - sigma*np.abs(a_mat)/2)
+        sat_diag_p1 = h_inv @ tr @ tl.T @ (a_mat/2 - sigma*np.abs(a_mat)/2)
+        sat_diag_m1 = -h_inv @ tl @ tr.T @ (a_mat/2 + sigma*np.abs(a_mat)/2)
 
+        sat_diags = sat_diag.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
+        sat_diags_p1 = sat_diag_p1.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
+        sat_diags_m1 = sat_diag_m1.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
+
+        # set boundary conditions
+        if a[0] > 0 and sigma == 0:
+            sat_diags[nelem - 1, :, :] = - h_inv @ tl @ tl.T @ (-a_mat/2 - sigma*np.abs(a_mat)/2)
+        elif a[0] < 0 and sigma == 0:
+            sat_diags[0, :, :] = h_inv @ tr @ tr.T @ (-a_mat/2 + sigma*np.abs(a_mat)/2)
+
+        # build SAT matrix
+        offset = n
+        aux = np.empty((0, offset), int)
+
+        sat_0 = sp.linalg.block_diag(*sat_diags)
+        sat_p1 = sp.linalg.block_diag(aux, *sat_diags_p1[1:nelem, :, :], aux.T)
+        sat_m1 = sp.linalg.block_diag(aux.T, *sat_diags_m1[0:nelem - 1, :, :], aux)
+
+        sat = sat_m1 + sat_0 + sat_p1
+        sI = sparse.csr_matrix(sat)
+
+        # construct component of the right hand side that comes from the SATs
+        fD_left = 0 * tl
+        fD_right = 0 * tr
+
+        if uD_left != None:
+            fD_left = h_inv @ tl *(a_mat[0,0]/2 + sigma*np.abs(a_mat[0,0])/2)* uD_left
+        if uD_right != None:
+            fD_right = -h_inv @ tr *(a_mat[-1,-1]/2 - sigma*np.abs(a_mat[-1,-1])/2)* uD_right
+
+        fB = np.zeros((n, nelem))
+        if nelem >= 2:
+            fB[:, 0] = fD_left.flatten()
+            fB[:, nelem - 1] = fD_right.flatten()
+        else:
+            fB[:, 0] = fD_left.flatten()
+            fB[:, 0] = fB[:, 0] + fD_right.flatten()
+
+        return sI, fB

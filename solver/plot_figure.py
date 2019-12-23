@@ -33,7 +33,7 @@ def plot_conv_fig(dofs, errs, n1, n2=None):
     # plt.loglog(dofs[-2:], yfit(dofs[-2:]), 'k')
     plt.loglog(dofs_conv, yfit(dofs_conv), 'k')
     plt.loglog(dofs, errs, 'ro')
-    plt.xlabel('h')
+    plt.xlabel('1/dof')
     plt.ylabel('error')
     # plt.ion()
     plt.show()

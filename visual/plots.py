@@ -4,8 +4,6 @@ import vtk
 from vtk.util.numpy_support import vtk_to_numpy
 from mesh.mesh_generator import MeshGenerator2D
 
-
-
 class MeshPlot:
 
     @staticmethod

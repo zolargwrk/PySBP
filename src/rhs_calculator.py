@@ -203,7 +203,7 @@ class RHSCalculator:
                                                   uD_left, uD_right, uN_left, uN_right)
 
         A1 = sparse.block_diag(Ablock)
-        A = A1 - sI
+        A = -A1 + sI
 
         return A, fB
 

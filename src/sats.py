@@ -424,9 +424,12 @@ class SATs:
             e_mat = np.zeros((n,n))
             e_mat[0, 0] = -1
             e_mat[n-1,n-1] = 1
-            A = db_inv.T @(e_mat @ b_mat @ db_mat - h_mat @ d2_mat)@ db_inv
 
-            M = np.linalg.pinv(A)
+            if b_mat[0,0] !=0:
+                A = db_inv.T @ (e_mat @ db_mat - h_mat @ (1/b_mat[0,0] * d2_mat)) @ db_inv
+                M = b_mat[0, 0] * np.linalg.pinv(A)
+            else:
+                M = 0*db_mat
 
         # SAT coefficients for different methods
         T1 = 0
@@ -443,7 +446,7 @@ class SATs:
 
         if flux_type == 'BR1':
             if app == 2:
-                eta = 2
+                eta = 2.5
                 T1 = (eta / 4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
             else:
                 eta = 1
@@ -454,8 +457,8 @@ class SATs:
             T3v = (1/2)
             T5k = (-1/4*(tr.T @ b_mat @ h_inv @ tl))[0, 0]
             T5v = (-1/4*(tl.T @ b_mat @ h_inv @ tr))[0, 0]
-            T6k = (1/4*(tr.T @ b_mat @ h_inv @ tr))[0, 0]
-            T6v = (1/4*(tl.T @ b_mat @ h_inv @ tl))[0, 0]
+            T6k = (1/4*(tl.T @ b_mat @ h_inv @ tr))[0, 0]
+            T6v = (1/4*(tr.T @ b_mat @ h_inv @ tl))[0, 0]
 
         elif flux_type == 'BRZ':
             eta = nface
@@ -469,12 +472,12 @@ class SATs:
             T3v = (1 / 2)
             T5k = (-1 / 4 * (tr.T @ b_mat @ h_inv @ tl))[0, 0]
             T5v = (-1 / 4 * (tl.T @ b_mat @ h_inv @ tr))[0, 0]
-            T6k = (1 / 4 * (tr.T @ b_mat @ h_inv @ tr))[0, 0]
-            T6v = (1 / 4 * (tl.T @ b_mat @ h_inv @ tl))[0, 0]
+            T6k = (1 / 4 * (tl.T @ b_mat @ h_inv @ tr))[0, 0]
+            T6v = (1 / 4 * (tr.T @ b_mat @ h_inv @ tl))[0, 0]
 
         elif flux_type == 'BR2':
             if app == 2:
-                eta = 2.2
+                eta = 2.5
                 T1 = (eta/4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
             else:
                 eta = 2
@@ -550,7 +553,7 @@ class SATs:
 
         if app == 2:
             TD_left = sD_left * 2 * (tl.T @ M @ tl)[0, 0]
-            TD_right = sD_right * 2 * (tr.T @ M @ tr)[0, 0]
+            TD_right =sD_right * 2 * (tr.T @ M @ tr)[0, 0]
         else:
             TD_left = sD_left *2 * (tl.T @ b_mat @ h_inv @ tl)[0, 0]  # Dirichlet boundary flux coefficient at the left bc
             TD_right = sD_right * 2 * (tr.T @ b_mat @ h_inv @ tr)[0, 0]  # Dirichlet boundary flux coefficient at the right bc
@@ -563,13 +566,12 @@ class SATs:
             Dgk = nx[0, 1]*(tr.T @ b_mat @ d_mat)   # D_{\gamma k}
             Dgv = nx[0, 0]*(tl.T @ b_mat @  d_mat)   # D_{\gamma v}
 
-        sat_0 = np.zeros((nelem * n, nelem * n))
-        sat_p1 = np.zeros((nelem * n, nelem * n))
-        sat_p2 = np.zeros((nelem * n, nelem * n))
-        sat_m1 = np.zeros((nelem * n, nelem * n))
-        sat_m2 = np.zeros((nelem * n, nelem * n))
-        sat_p2 = np.zeros((nelem * n, nelem * n))
-        sat_m2 = np.zeros((nelem * n, nelem * n))
+        sat_p1 = 0
+        sat_p2 = 0
+        sat_m1 = 0
+        sat_m2 = 0
+        sat_p2 = 0
+        sat_m2 = 0
 
         # construct diagonals of the SAT matrix
         if nelem >= 2:
@@ -612,13 +614,13 @@ class SATs:
 
             if nelem < 3:
                 if nelem < 2:
-                    sat_p1 = np.zeros((nelem * n, nelem * n))
-                    sat_p2 = np.zeros((nelem * n, nelem * n))
-                    sat_m1 = np.zeros((nelem * n, nelem * n))
-                    sat_m2 = np.zeros((nelem * n, nelem * n))
+                    sat_p1 = 0
+                    sat_p2 = 0
+                    sat_m1 = 0
+                    sat_m2 = 0
                 else:
-                    sat_p2 = np.zeros((nelem * n, nelem * n))
-                    sat_m2 = np.zeros((nelem * n, nelem * n))
+                    sat_p2 = 0
+                    sat_m2 = 0
 
         else:
             sat_diags = np.zeros((1, n, n))
@@ -709,9 +711,9 @@ class SATs:
         fD_left = 0 * tl
         fD_right = 0 * tr
 
-        if uD_left != None:
+        if a[0] > 0:
             fD_left = h_inv @ tl *(a_mat[0,0]/2 + sigma*np.abs(a_mat[0,0])/2)* uD_left
-        if uD_right != None:
+        if a[0] < 0:
             fD_right = -h_inv @ tr *(a_mat[-1,-1]/2 - sigma*np.abs(a_mat[-1,-1])/2)* uD_right
 
         fB = np.zeros((n, nelem))

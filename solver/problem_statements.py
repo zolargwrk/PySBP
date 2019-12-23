@@ -12,10 +12,10 @@ def poisson1D_problem_input (x=None, xl=None, xr=None, n=None):
         prob = 'primal'
         # prob = 'adjoint'
         # prob = 'all'
-        func_conv = 1
+        func_conv = 0
         plot_sol = 0
-        plot_err = 1
-        show_eig = 0
+        plot_err = 0
+        show_eig = 1
         return {'prob': prob, 'func_conv': func_conv, 'plot_sol': plot_sol, 'plot_err': plot_err, 'show_eig': show_eig}
 
     def var_coef (x):
@@ -136,6 +136,82 @@ def advection1D_problem_input (x=None, xl=None, xr=None, n=None):
         return J
 
     return {'var_coef': var_coef, 'exact_solution': exact_solution, 'boundary_conditions': boundary_conditions,
+            'source_term': source_term, 'adjoint_source_term':adjoint_source_term, 'adjoint_bndry':adjoint_bndry,
+            'exact_adjoint':exact_adjoint, 'exact_functional': exact_functional, 'calc_functional':calc_functional,
+            'choose_output': choose_output}
+
+def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
+    def choose_output():
+        """Choose which output to see
+        Input:  primal: output results of primal problem
+                adjoint: output results of adjoint problem
+                functional: output results of functional convergence
+                all: outputs all three of the above"""
+        prob = 'primal'
+        # prob = 'adjoint'
+        # prob = 'all'
+        func_conv = 1
+        plot_sol = 0
+        plot_err = 1
+        show_eig = 0
+        return {'prob': prob, 'func_conv': func_conv, 'plot_sol': plot_sol, 'plot_err': plot_err, 'show_eig': show_eig}
+
+    def var_coef_vis (x=1):
+        """variable coefficient evaluated at the nodal location of the scheme of interest.
+        Need to get the value of the nodal location x"""
+        b = 1e-4 # x**0
+        return b
+
+    def var_coef_inv (x=1):
+        """variable coefficient evaluated at the nodal location of the scheme of interest.
+        Need to get the value of the nodal location x"""
+        a = 1 # x**0
+        return a
+
+    def exact_solution(x):
+        u_exact = np.cos(60*x)
+        return u_exact
+
+    def boundary_conditions(xl, xr):
+        uD_left = np.cos(60 * xl)  # None      # Dirichlet boundary at the left boundary
+        uD_right = np.cos(60 * xr)  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
+        uN_left = None  # -60*np.sin(60*xl) #None     # Neumann boundary at the left boundary
+        uN_right = None  # -60*np.sin(60*xr)  # None    # Neumann boundary at the right boundary
+        return {'uD_left': uD_left, 'uD_right': uD_right, 'uN_left': uN_left, 'uN_right': uN_right}
+
+    def source_term(x):
+        a = var_coef_inv()
+        b = var_coef_vis()
+        f = -a*60*np.sin(60*x) + b*3600 * np.cos(60 * x)
+        return f
+
+    def adjoint_source_term(x):
+        g = np.cos(60*x)
+        return g
+
+    def adjoint_bndry (xl, xr):
+        psiD_left = np.cos(60 * xl)  # None      # Dirichlet boundary at the left boundary
+        psiD_right = np.cos(60 * xr)  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
+        psiN_left = None  # -60*np.sin(60*xr) #None     # Neumann boundary at the left boundary
+        psiN_right = None  # -60*np.sin(60*xl)  # None    # Neumann boundary at the right boundary
+        return {'psiD_left': psiD_left, 'psiD_right': psiD_right, 'psiN_left': psiN_left, 'psiN_right': psiN_right}
+
+    def exact_adjoint(x):
+        psi = 1/3600*np.cos(60*x) + (1-1/1600)*(np.cos(60)-1)*x + (1-1/1600)
+        return psi
+
+    def exact_functional(xl, xr):
+        J_exact = (xr/2 + 1/240 * np.sin(120*xr)) - (xl/2 + 1/240 * np.sin(120*xl))
+        return J_exact
+
+    def calc_functional(u, g, h_mat, rx):
+        rx_global = np.diag(1 / rx[0, :], 0)  # geometric factor rx = 1/jac
+        h_mat_global = sparse.block_diag([h_mat])  # concatenate norm matrix to form global
+        rh = sparse.kron(rx_global, h_mat_global)
+        J = (np.ones((1, rh.shape[0])) @ rh @ (g * u))[0][0]
+        return J
+
+    return {'var_coef_vis': var_coef_vis, 'var_coef_inv': var_coef_inv,'exact_solution': exact_solution, 'boundary_conditions': boundary_conditions,
             'source_term': source_term, 'adjoint_source_term':adjoint_source_term, 'adjoint_bndry':adjoint_bndry,
             'exact_adjoint':exact_adjoint, 'exact_functional': exact_functional, 'calc_functional':calc_functional,
             'choose_output': choose_output}

@@ -459,4 +459,4 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
         # we look for eigenvalues of -A instead of A because we multiplied A by -1 in rhs_calculator: rhs_poisson_1d_steady
     return
 
-u = advec_diff_1d(4, 0, 1, 1, 'CSBP_Mattsson2004', 'upwind', 'BR2', 7, 'trad', 'nPeriodic', 'sbp_sat', advec_diff1D_problem_input, n=16, app=2)
+u = advec_diff_1d(3, 0, 1, 1, 'CSBP_Mattsson2004', 'upwind', 'BR2', 7, 'trad', 'nPeriodic', 'sbp_sat', advec_diff1D_problem_input, n=16, app=2)

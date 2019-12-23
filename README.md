@@ -1,2 +1,2 @@
-# THOM
-Toolbox for High-Order Methods
+# PySBP
+Summation-By-Parts

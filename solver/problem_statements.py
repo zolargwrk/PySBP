@@ -13,12 +13,12 @@ def poisson1D_problem_input (x=None, xl=None, xr=None, n=None):
         # prob = 'adjoint'
         # prob = 'all'
         func_conv = 0
-        plot_sol = 0
+        plot_sol = 1
         plot_err = 0
         show_eig = 1
         return {'prob': prob, 'func_conv': func_conv, 'plot_sol': plot_sol, 'plot_err': plot_err, 'show_eig': show_eig}
 
-    def var_coef (x):
+    def var_coef (x=1):
         """variable coefficient evaluated at the nodal location of the scheme of interest.
         Need to get the value of the nodal location x"""
         b = 1  # x**0
@@ -45,14 +45,17 @@ def poisson1D_problem_input (x=None, xl=None, xr=None, n=None):
         return g
 
     def adjoint_bndry (xl, xr):
-        psiD_left = np.cos(30 * xl)  # None      # Dirichlet boundary at the left boundary
-        psiD_right = np.cos(30 * xr)  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
-        psiN_left = None  # -30*np.sin(30*xr) #None     # Neumann boundary at the left boundary
-        psiN_right = None  # -30*np.sin(30*xl)  # None    # Neumann boundary at the right boundary
+        b = var_coef()
+        psiD_left = 0       #1/b*np.cos(30 * xl)  # None      # Dirichlet boundary at the left boundary
+        psiD_right = 0      #1/b*np.cos(30 * xr)  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
+        psiN_left = None    #-30*np.sin(30*xl) #None     # Neumann boundary at the left boundary
+        psiN_right = None   #-30*np.sin(30*xr)  # None    # Neumann boundary at the right boundary
         return {'psiD_left': psiD_left, 'psiD_right': psiD_right, 'psiN_left': psiN_left, 'psiN_right': psiN_right}
 
     def exact_adjoint(x):
-        psi = 1/900*np.cos(30*x) + (1-1/900)*(np.cos(30)-1)*x + (1-1/900)
+        b = var_coef()
+        # psi = 1/900*np.cos(30*x) + (1-1/900)*(np.cos(30)-1)*x + (1-1/900)
+        psi = 1 / (900*b) * np.cos(30 * x) + x/(900*b) *(1 - np.cos(30)) - 1 / (900*b)
         return psi
 
     def exact_functional(xl, xr):
@@ -150,22 +153,22 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
         prob = 'primal'
         # prob = 'adjoint'
         # prob = 'all'
-        func_conv = 1
-        plot_sol = 0
-        plot_err = 1
-        show_eig = 0
+        func_conv = 0
+        plot_sol = 1
+        plot_err = 0
+        show_eig = 1
         return {'prob': prob, 'func_conv': func_conv, 'plot_sol': plot_sol, 'plot_err': plot_err, 'show_eig': show_eig}
 
     def var_coef_vis (x=1):
         """variable coefficient evaluated at the nodal location of the scheme of interest.
         Need to get the value of the nodal location x"""
-        b = 1e-4 # x**0
+        b = 1 # x**0
         return b
 
     def var_coef_inv (x=1):
         """variable coefficient evaluated at the nodal location of the scheme of interest.
         Need to get the value of the nodal location x"""
-        a = 1 # x**0
+        a = 0 # x**0
         return a
 
     def exact_solution(x):
@@ -190,14 +193,18 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
         return g
 
     def adjoint_bndry (xl, xr):
-        psiD_left = np.cos(60 * xl)  # None      # Dirichlet boundary at the left boundary
-        psiD_right = np.cos(60 * xr)  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
+        psiD_left = 0  # np.cos(60 * xl)  # None      # Dirichlet boundary at the left boundary
+        psiD_right = 0  # np.cos(60 * xr)  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
         psiN_left = None  # -60*np.sin(60*xr) #None     # Neumann boundary at the left boundary
         psiN_right = None  # -60*np.sin(60*xl)  # None    # Neumann boundary at the right boundary
         return {'psiD_left': psiD_left, 'psiD_right': psiD_right, 'psiN_left': psiN_left, 'psiN_right': psiN_right}
 
     def exact_adjoint(x):
-        psi = 1/3600*np.cos(60*x) + (1-1/1600)*(np.cos(60)-1)*x + (1-1/1600)
+        a = var_coef_inv()
+        b = var_coef_vis()
+        w = 60
+        psi = 1/(w*(b**2 * w**2 + a**2)*(np.exp(-a/b)-1)) * ((-b*w*np.cos(w) + a*np.sin(w) + b*w)*np.exp(-a*x/b)\
+            + (b*w*np.cos(w*x) - a*np.sin(w*x) - w*b)*np.exp(-a/b) + b*w*np.cos(w) - b*w*np.cos(w*x) - a*np.sin(w) + a*np.sin(w*x))
         return psi
 
     def exact_functional(xl, xr):

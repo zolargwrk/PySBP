@@ -477,7 +477,7 @@ class SATs:
 
         elif flux_type == 'BR2':
             if app == 2:
-                eta = 2.5
+                eta = 20000
                 T1 = (eta/4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
             else:
                 eta = 2
@@ -518,12 +518,14 @@ class SATs:
             T2v = (1 / 2)
             T3v = (1 / 2)
         elif flux_type == 'CNG':
-            eta = nface
-            he = rx[0, 0]
-            mu = eta/he
-            T1 = mu
+            if app == 2:
+                T1 = (1/ 8 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
+            else:
+                T1 = (1 / 8 * (tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
+
             T3k = 1/2
             T3v = 1/2
+
         elif flux_type == 'LDG' or flux_type == 'CDG':
             eta = nface
             if app == 2:

@@ -9,12 +9,12 @@ def poisson1D_problem_input (x=None, xl=None, xr=None, n=None):
                 adjoint: output results of adjoint problem
                 functional: output results of functional convergence
                 all: outputs all three of the above"""
-        prob = 'primal'
-        # prob = 'adjoint'
+        # prob = 'primal'
+        prob = 'adjoint'
         # prob = 'all'
         func_conv = 0
         plot_sol = 1
-        plot_err = 0
+        plot_err = 1
         show_eig = 1
         return {'prob': prob, 'func_conv': func_conv, 'plot_sol': plot_sol, 'plot_err': plot_err, 'show_eig': show_eig}
 
@@ -81,13 +81,13 @@ def advection1D_problem_input (x=None, xl=None, xr=None, n=None):
                 adjoint: output results of adjoint problem
                 functional: output results of functional convergence
                 all: outputs all three of the above"""
-        prob = 'primal'
-        # prob = 'adjoint'
+        # prob = 'primal'
+        prob = 'adjoint'
         # prob = 'all'
-        func_conv = 1
-        plot_sol = 0
+        func_conv = 0
+        plot_sol = 1
         plot_err = 1
-        show_eig = 0
+        show_eig = 1
         return {'prob': prob, 'func_conv': func_conv, 'plot_sol': plot_sol, 'plot_err': plot_err, 'show_eig': show_eig}
 
     def var_coef (x=1):
@@ -102,7 +102,7 @@ def advection1D_problem_input (x=None, xl=None, xr=None, n=None):
 
     def boundary_conditions(xl, xr):
         uD_left = np.cos(30 * xl)  # None      # Dirichlet boundary at the left boundary
-        uD_right = None  #np.cos(30 * xr)  # None     # Dirichlet boundary at the right boundary
+        uD_right = np.cos(30 * xr)  # None     # Dirichlet boundary at the right boundary
 
         return {'uD_left': uD_left, 'uD_right': uD_right}
 
@@ -117,14 +117,17 @@ def advection1D_problem_input (x=None, xl=None, xr=None, n=None):
 
     def adjoint_bndry (xl, xr):
         a = var_coef()
-        psiD_left = None    # np.cos(30 * xl)/a  # None      # Dirichlet boundary at the left boundary
+        psiD_left = -np.cos(30 * xl)/a  # None      # Dirichlet boundary at the left boundary
         psiD_right = np.cos(30 * xr)/a  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
 
         return {'psiD_left': psiD_left, 'psiD_right': psiD_right}
 
-    def exact_adjoint(x):
+    def exact_adjoint(x, xl, xr):
         a = var_coef()
-        psi = 1/a * 1/30*np.sin(30*x) + np.cos(30) - 1/30*np.sin(30)
+        if a > 0:
+            psi = - 1/a * 1/30*np.sin(30*x) + 1/a*1/30*np.sin(30*xr) + 1/a *np.cos(30*xr)
+        else:
+            psi = - 1/a * 1/30*np.sin(30*x) + 1/a*1/30*np.sin(30*xl) - 1/a *np.cos(30*xl)
         return psi
 
     def exact_functional(xl, xr):
@@ -153,22 +156,22 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
         prob = 'primal'
         # prob = 'adjoint'
         # prob = 'all'
-        func_conv = 0
+        func_conv = 1
         plot_sol = 1
-        plot_err = 0
+        plot_err = 1
         show_eig = 1
         return {'prob': prob, 'func_conv': func_conv, 'plot_sol': plot_sol, 'plot_err': plot_err, 'show_eig': show_eig}
 
     def var_coef_vis (x=1):
         """variable coefficient evaluated at the nodal location of the scheme of interest.
         Need to get the value of the nodal location x"""
-        b = 1 # x**0
+        b = 1   # x**0
         return b
 
     def var_coef_inv (x=1):
         """variable coefficient evaluated at the nodal location of the scheme of interest.
         Need to get the value of the nodal location x"""
-        a = 0 # x**0
+        a = 0   # x**0
         return a
 
     def exact_solution(x):
@@ -193,18 +196,36 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
         return g
 
     def adjoint_bndry (xl, xr):
-        psiD_left = 0  # np.cos(60 * xl)  # None      # Dirichlet boundary at the left boundary
-        psiD_right = 0  # np.cos(60 * xr)  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
-        psiN_left = None  # -60*np.sin(60*xr) #None     # Neumann boundary at the left boundary
-        psiN_right = None  # -60*np.sin(60*xl)  # None    # Neumann boundary at the right boundary
+        a = var_coef_inv()
+        b = var_coef_vis()
+        if b!= 0:
+            psiD_left = 0  # np.cos(60 * xl)  # None      # Dirichlet boundary at the left boundary
+            psiD_right = 0  # np.cos(60 * xr)  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
+            psiN_left = None  # -60*np.sin(60*xr) #None     # Neumann boundary at the left boundary
+            psiN_right = None  # -60*np.sin(60*xl)  # None    # Neumann boundary at the right boundary
+        else:
+            psiD_left = -np.cos(60 * xl) / a  # None      # Dirichlet boundary at the left boundary
+            psiD_right = np.cos(60 * xr) / a  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
+            psiN_left = None  # -60*np.sin(60*xr) #None     # Neumann boundary at the left boundary
+            psiN_right = None  # -60*np.sin(60*xl)  # None    # Neumann boundary at the right boundary
+
         return {'psiD_left': psiD_left, 'psiD_right': psiD_right, 'psiN_left': psiN_left, 'psiN_right': psiN_right}
 
-    def exact_adjoint(x):
+    def exact_adjoint(x, xl, xr):
         a = var_coef_inv()
         b = var_coef_vis()
         w = 60
-        psi = 1/(w*(b**2 * w**2 + a**2)*(np.exp(-a/b)-1)) * ((-b*w*np.cos(w) + a*np.sin(w) + b*w)*np.exp(-a*x/b)\
-            + (b*w*np.cos(w*x) - a*np.sin(w*x) - w*b)*np.exp(-a/b) + b*w*np.cos(w) - b*w*np.cos(w*x) - a*np.sin(w) + a*np.sin(w*x))
+        psi = 0
+        if a!=0 and b!=0:
+            psi = 1/(w*(b**2 * w**2 + a**2)*(np.exp(-a/b)-1)) * ((-b*w*np.cos(w) + a*np.sin(w) + b*w)*np.exp(-a*x/b)\
+                + (b*w*np.cos(w*x) - a*np.sin(w*x) - w*b)*np.exp(-a/b) + b*w*np.cos(w) - b*w*np.cos(w*x) - a*np.sin(w) + a*np.sin(w*x))
+        elif a==0 and b!=0:
+            psi = 1 / (w**2 * b) * np.cos(w * x) + x / (w**2 * b) * (np.cos(w*xl) - np.cos(w*xr)) - np.cos(w*xl) / (w**2 * b)
+        elif a!=0 and b==0:
+            if a > 0:
+                psi = - 1 / a * 1 / w * np.sin(w * x) + 1 / a * 1 / w * np.sin(w * xr) + 1 / a * np.cos(w * xr)
+            else:
+                psi = - 1 / a * 1 / w * np.sin(w * x) + 1 / a * 1 / w * np.sin(w * xl) - 1 / a * np.cos(w * xl)
         return psi
 
     def exact_functional(xl, xr):

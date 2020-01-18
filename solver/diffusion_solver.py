@@ -144,7 +144,7 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
                                                         rdata.d2_mat, b, app, bc.uD_left, bc.uD_right, bc.uN_left, bc.uN_right)
 
             # specify source term and add terms from the SATs to the source term (fB)
-            f = - ps.source_term(x) + fB
+            f = ps.source_term(x) - fB
             f = f.reshape((n * nelem, 1), order='F')
 
             # solve the linear system and get exact solution
@@ -161,7 +161,8 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
             errs.append(err)
 
             # calculate functional output and exact functional
-            J = ps.calc_functional(u, h_mat, rx)
+            g = (ps.adjoint_source_term(x)).reshape((n * nelem, 1), order='F')
+            J = ps.calc_functional(u, g, h_mat, rx)
             J_exact = ps.exact_functional(xl, xr)
             err_func = np.abs(J - J_exact)
             errs_func.append(err_func)
@@ -176,9 +177,10 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
                                                         rdata.d2_mat, b, app, adj_bc.psiD_left, adj_bc.psiD_right, adj_bc.psiN_left, adj_bc.psiN_right)
 
             # adjoint source term plus terms from SAT at boundary
-            g = - ps.adjoint_source_term(x) + gB
-            psi_exact = ps.exact_adjoint(x)
+            g = ps.adjoint_source_term(x) - gB
+            g = g.reshape((n * nelem, 1), order='F')
             psi = (spsolve(A, g)).reshape((n * nelem, 1))
+            psi_exact = (ps.exact_adjoint(x)).reshape((n * nelem, 1), order='F')
 
             # plot solution
             if choose_outs.plot_sol == 1:
@@ -246,7 +248,7 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
     return
 
 # diffusion_solver_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine, refine_type, boundary_type=None, b=1, n=1):
-u = poisson_1d(3, 0, 1, 2, 'CSBP_Mattsson2004', 'BR2', 9, 'ntrad', 'nPeriodic', 'sbp_sat', poisson1D_problem_input, a=0, n=16, app=2)
+# u = poisson_1d(3, 0, 1, 2, 'CSBP_Mattsson2004', 'BR2', 7, 'ntrad', 'nPeriodic', 'sbp_sat', poisson1D_problem_input, a=0, n=16, app=2)
 
 
 #

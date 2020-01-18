@@ -53,3 +53,5 @@ def plot_figure_2d(x, y, u_exact):
     ax.set_zlabel('u')
     plt.show()
     return
+
+

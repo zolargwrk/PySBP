@@ -92,7 +92,7 @@ class SATs:
         h_mat = 1/rx[0, 0]*h_mat
         d_mat = rx[0, 0]*d_mat
         db_mat = rx[0, 0]*db_mat
-        d2_mat = rx[0,0] *rx[0, 0] * d2_mat
+        d2_mat = d2_mat
         h_inv = np.linalg.inv(h_mat)
         b_mat = np.diag(b.flatten())
 
@@ -134,8 +134,8 @@ class SATs:
             T3v = (1/2)
             T5k = (-1/4*(tr.T @ b_mat @ h_inv @ tl))[0, 0]
             T5v = (-1/4*(tl.T @ b_mat @ h_inv @ tr))[0, 0]
-            T6k = (1/4*(tl.T @ b_mat @ h_inv @ tr))[0, 0]
-            T6v = (1/4*(tr.T @ b_mat @ h_inv @ tl))[0, 0]
+            T6k = (1/4*(tr.T @ b_mat @ h_inv @ tr))[0, 0]
+            T6v = (1/4*(tl.T @ b_mat @ h_inv @ tl))[0, 0]
 
         elif flux_type == 'BRZ':
             eta = nface
@@ -149,8 +149,8 @@ class SATs:
             T3v = (1 / 2)
             T5k = (-1 / 4 * (tr.T @ b_mat @ h_inv @ tl))[0, 0]
             T5v = (-1 / 4 * (tl.T @ b_mat @ h_inv @ tr))[0, 0]
-            T6k = (1 / 4 * (tl.T @ b_mat @ h_inv @ tr))[0, 0]
-            T6v = (1 / 4 * (tr.T @ b_mat @ h_inv @ tl))[0, 0]
+            T6k = (1 / 4 * (tr.T @ b_mat @ h_inv @ tr))[0, 0]
+            T6v = (1 / 4 * (tl.T @ b_mat @ h_inv @ tl))[0, 0]
 
         elif flux_type == 'BR2':
             eta = 2.1
@@ -412,7 +412,7 @@ class SATs:
         h_mat = 1/rx[0, 0]*h_mat
         d_mat = rx[0, 0]*d_mat
         db_mat = rx[0, 0]*db_mat
-        d2_mat = rx[0,0] *rx[0, 0] * d2_mat
+        d2_mat = d2_mat     # it's already scaled (it's called here after it is multiplied by rx)
         h_inv = np.linalg.inv(h_mat)
         b_mat = np.diag(b.flatten())
 
@@ -421,9 +421,7 @@ class SATs:
             # A = db_inv.T @ d_mat.T @ h_mat @ d_mat @ db_inv
 
             # construct the A matrix for CSBP_Mattsson2004 operators
-            e_mat = np.zeros((n,n))
-            e_mat[0, 0] = -1
-            e_mat[n-1,n-1] = 1
+            e_mat = tr @ tr.T - tl @ tl.T
 
             if b_mat[0,0] !=0:
                 A = db_inv.T @ (e_mat @ db_mat - h_mat @ (1/b_mat[0,0] * d2_mat)) @ db_inv
@@ -446,10 +444,10 @@ class SATs:
 
         if flux_type == 'BR1':
             if app == 2:
-                eta = 2.5
+                eta = 2
                 T1 = (eta / 4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
             else:
-                eta = 1
+                eta = 2
                 T1 = (eta/4*(tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
             T2k = (-1/2)
             T3k = (1/2)
@@ -457,8 +455,8 @@ class SATs:
             T3v = (1/2)
             T5k = (-1/4*(tr.T @ b_mat @ h_inv @ tl))[0, 0]
             T5v = (-1/4*(tl.T @ b_mat @ h_inv @ tr))[0, 0]
-            T6k = (1/4*(tl.T @ b_mat @ h_inv @ tr))[0, 0]
-            T6v = (1/4*(tr.T @ b_mat @ h_inv @ tl))[0, 0]
+            T6k = (1/4*(tr.T @ b_mat @ h_inv @ tr))[0, 0]
+            T6v = (1/4*(tl.T @ b_mat @ h_inv @ tl))[0, 0]
 
         elif flux_type == 'BRZ':
             eta = nface
@@ -472,12 +470,12 @@ class SATs:
             T3v = (1 / 2)
             T5k = (-1 / 4 * (tr.T @ b_mat @ h_inv @ tl))[0, 0]
             T5v = (-1 / 4 * (tl.T @ b_mat @ h_inv @ tr))[0, 0]
-            T6k = (1 / 4 * (tl.T @ b_mat @ h_inv @ tr))[0, 0]
-            T6v = (1 / 4 * (tr.T @ b_mat @ h_inv @ tl))[0, 0]
+            T6k = (1 / 4 * (tr.T @ b_mat @ h_inv @ tr))[0, 0]
+            T6v = (1 / 4 * (tl.T @ b_mat @ h_inv @ tl))[0, 0]
 
         elif flux_type == 'BR2':
             if app == 2:
-                eta = 20000
+                eta = 2
                 T1 = (eta/4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
             else:
                 eta = 2
@@ -527,9 +525,9 @@ class SATs:
             T3v = 1/2
 
         elif flux_type == 'LDG' or flux_type == 'CDG':
-            eta = nface
+            eta = 2
             if app == 2:
-                T1 = (eta * (tr.T @ M @ tr ))[0, 0]
+                T1 = (eta * (tr.T @ M @ tr))[0, 0]
             else:
                 T1 = eta*(tr.T @ b_mat @ h_inv @ tr)[0, 0]
             # T1 = eta * (tr.T @ M @ tr )[0, 0]  #-2134 # unstable for p=4 HGT operator
@@ -625,12 +623,11 @@ class SATs:
                     sat_m2 = 0
 
         else:
-            sat_diags = np.zeros((1, n, n))
-            sat_diags[0, :, :] = h_inv @ (sD_left*TD_left * (tl @ tl.T) - sD_left * Dgv.T @ tl.T
+            sat_diags = h_inv @ (sD_left*TD_left * (tl @ tl.T) - sD_left * Dgv.T @ tl.T
                                           + sN_left * tl @ Dgv)
-            sat_diags[0, :, :] = sat_diags[0, :, :] + h_inv @ (sD_right* TD_right * (tr @ tr.T) - sD_right * Dgk.T @ tr.T
+            sat_diags = sat_diags+ h_inv @ (sD_right* TD_right * (tr @ tr.T) - sD_right * Dgk.T @ tr.T
                                                                + sN_right * tr @ Dgk)
-            sat_0 = sat_diags[0, :, :]
+            sat_0 = sat_diags
 
         sat = sat_m2 + sat_m1 + sat_0 + sat_p1 + sat_p2
         sI = sparse.csr_matrix(sat)
@@ -658,6 +655,12 @@ class SATs:
             fB[:, 0] = fD_left.flatten() + fN_left.flatten()
             fB[:, 0] = fB[:, 0] + fD_right.flatten() + fN_right.flatten()
 
+        # path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\pysbp_results\\advec_diff_results\\figures\\'
+        # # print(np.count_nonzero(sat))
+        # plt.spy(sat, marker='o', markeredgewidth=0, markeredgecolor='y', markersize=5, markerfacecolor='r')
+        # plt.savefig(path + 'sparsity_{}.pdf'.format(flux_type), format='pdf')
+        # plt.close()
+        # # plt.show()
         return sI, fB
 
     @staticmethod
@@ -677,10 +680,6 @@ class SATs:
         h_mat = 1 / rx[0, 0] * h_mat
         h_inv = np.linalg.inv(h_mat)
         a_mat = np.diag(a.flatten())
-
-        sat_0 = np.zeros((nelem * n, nelem * n))
-        sat_p1 = np.zeros((nelem * n, nelem * n))
-        sat_m1 = np.zeros((nelem * n, nelem * n))
 
         # construct diagonals of the SAT matrix
         sat_diag = h_inv @ tr @ tr.T @ (-a_mat/2 + sigma*np.abs(a_mat)/2) \

@@ -10,6 +10,7 @@ from src.error_conv import calc_err, calc_conv
 from types import SimpleNamespace
 from scipy import sparse
 from solver.problem_statements import advection1D_problem_input, poisson1D_problem_input, advec_diff1D_problem_input
+from matplotlib import pyplot as plt
 
 
 def advection_1d_steady(p, xl, xr, nelem, quad_type, nrefine=1, refine_type=None, advection1D_problem_input=None,
@@ -96,9 +97,9 @@ def advection_1d_steady(p, xl, xr, nelem, quad_type, nrefine=1, refine_type=None
                                                         rdata.rx, a_adj, adj_bc.psiD_left, adj_bc.psiD_right, flux_type)
 
             # adjoint source term plus terms from SAT at boundary
-            g = - ps.adjoint_source_term(x) + gB
+            g = ps.adjoint_source_term(x) + gB
             g = g.reshape((n * nelem, 1), order='F')
-            psi_exact = (ps.exact_adjoint(x)).reshape((n * nelem, 1), order='F')
+            psi_exact = (ps.exact_adjoint(x, xl, xr)).reshape((n * nelem, 1), order='F')
             psi = (spsolve(A, g)).reshape((n * nelem, 1))
 
             # plot solution
@@ -149,11 +150,14 @@ def advection_1d_steady(p, xl, xr, nelem, quad_type, nrefine=1, refine_type=None
         print("{:.2e}".format(cond_A))
         # LR_eig = sparse.linalg.eigs(A, 1, which='LR', return_eigenvectors=False)
         # print(LR_eig)
+        eigA, _ = np.linalg.eig(-A.toarray())
+        max_eigA = np.round(np.max(eigA), 2)
+        print(max_eigA)
 
     return
 
 # advection_1d_steady(p, xl, xr, nelem, quad_type, nrefine=1, refine_type=None, advection1D_problem_input=None,  a=1, n=1)
-# advection_1d_steady(2, 0, 1, 1, 'CSBP', 7, 'trad', advection1D_problem_input, flux_type='upwind', n=25)
+# advection_1d_steady(2, 0, 1, 1, 'CSBP', 5, 'trad', advection1D_problem_input, flux_type='upwind', n=25)
 
 
 def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_type=None, boundary_type=None, sat_type='sbp_sat',
@@ -241,9 +245,9 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
             # print("{:.2e}".format(cond_A))
             # LR_eig = sparse.linalg.eigs(-A, 1, which='LR', return_eigenvectors=False)
             # print(LR_eig)
-            eigA, _ = np.linalg.eig(-A.toarray())
-            max_eigA = np.round(np.max(eigA), 2)
-            print(max_eigA)
+            # eigA, _ = np.linalg.eig(-A.toarray())
+            # max_eigA = np.round(np.max(eigA), 2)
+            # print(max_eigA)
 
         # solve adjoint problem
         if choose_outs.prob == 'adjoint' or choose_outs.prob == 'all':
@@ -398,34 +402,52 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
 
             if choose_outs.show_eig == 1:
                 cond_A = sparse.linalg.norm(A) * sparse.linalg.norm(sparse.linalg.inv(A.tocsc()))
-                # cond_num.append(cond_A)
+                cond_num.append(cond_A)
                 # print("{:.2e}".format(cond_A))
+                # nnzA = np.count_nonzero(A.toarray())
+                # print(nnzA)
                 # LR_eig = sparse.linalg.eigs(-A, 1, which='LR', return_eigenvectors=False)
                 # print(LR_eig)
                 eigA,_ = np.linalg.eig(-A.toarray())
-                max_eigA = np.round(np.max(eigA), 2)
-                print(max_eigA)
+                max_eigA = np.abs(np.round(np.max(np.real(eigA)), 2))
+                min_eigA = np.abs(np.round((np.min(np.real(eigA))), 2))
+                # nlast = n*nelem-(nelem-1)
+                # eig_exact = (nlast)**2*(-2+2*np.cos(nlast*np.pi/(nlast + 1)))
+                # print("{:.2e}".format(min_eigA))
+                # print("{:.2e}".format(max_eigA))
+                # print(min_eigA)
+                # print(max_eigA)
+
+                # xeig = [x.real for x in eigA]
+                # yeig = [x.imag for x in eigA]
+                # plt.scatter(xeig, yeig, color='red')
+                # plt.xlabel('Real')
+                # plt.ylabel('Imaginary')
+                # plt.title('Oper: {}, SAT: {}, |min.eig| = {}, max.eig = {}'.format(quad_type, flux_type_vis, min_eigA, max_eigA))
+                # plt.show()
                 # we look for eigenvalues of -A instead of A because we multiplied A by -1 in rhs_calculator: rhs_poisson_1d_steady
 
         # solve adjoint problem
         if choose_outs.prob == 'adjoint' or choose_outs.prob == 'all':
             adj_bcs = ps.adjoint_bndry(xl, xr)
             adj_bc = SimpleNamespace(**adj_bcs)
+            a_adj = -a  # advection coefficient changed to -a for the adjoint problem
+
             A_vis, gB_vis = RHSCalculator.rhs_poisson_1d_steady(n, nelem, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx,
                                                         rdata.rx, rdata.fscale, rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO,
                                                         rdata.vmapI, rdata.vmapO, flux_type_vis, sat_type, boundary_type, rdata.db_mat,
                                                         rdata.d2_mat, b, app, adj_bc.psiD_left, adj_bc.psiD_right, adj_bc.psiN_left, adj_bc.psiN_right)
 
             A_inv, gB_inv = RHSCalculator.rhs_advection_1d_steady(n, nelem, rdata.d_mat, rdata.h_mat, rdata.tl,
-                                                                  rdata.tr, rdata.rx, a, adj_bc.psiD_left, adj_bc.psiD_right, flux_type_inv)
+                                                                  rdata.tr, rdata.rx, a_adj, adj_bc.psiD_left, adj_bc.psiD_right, flux_type_inv)
 
-            A = A_vis - A_inv
+            A = A_vis + A_inv
 
             # adjoint source term plus terms from SAT at boundary
             g = ps.adjoint_source_term(x) - gB_vis + gB_inv
             g = g.reshape((n*nelem, 1), order='F')
             psi = (spsolve(A, g)).reshape((n * nelem, 1))
-            psi_exact = (ps.exact_adjoint(x)).reshape((n * nelem, 1), order='F')
+            psi_exact = (ps.exact_adjoint(x, xl, xr)).reshape((n * nelem, 1), order='F')
 
             # plot solution
             if choose_outs.plot_sol == 1:
@@ -444,20 +466,21 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
                 hs = (xr - xl) / (np.asarray(nelems))
 
             if choose_outs.plot_err == 1:
-                conv_start = 2
-                conv_end = nrefine - 0
+                conv_start = 3
+                conv_end = nrefine - 2
                 conv = calc_conv(hs, errs, conv_start, conv_end)
                 print(np.asarray(conv))
                 print(np.asarray(errs))
                 plot_conv_fig(hs, errs, conv_start, conv_end)
             if choose_outs.func_conv == 1:
-                conv_start = 3
-                conv_end = nrefine - 0
+                conv_start = 1
+                conv_end = nrefine - 3
                 conv_func = calc_conv(hs, errs_func, conv_start, conv_end)
                 print(np.asarray(conv_func))
                 print(np.asarray(errs_func))
                 plot_conv_fig(hs, errs_func, conv_start, conv_end)
-    elif choose_outs.prob == 'adjoint' or choose_outs.prob == 'all':
+
+    if choose_outs.prob == 'adjoint' or choose_outs.prob == 'all':
         if choose_outs.plot_err == 1:
             conv_start = 2
             conv_end = nrefine - 0
@@ -470,7 +493,8 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
             print(np.asarray(errs_adj))
             plot_conv_fig(hs, errs_adj, conv_start, conv_end)
 
+
     return {'p': p, 'b': b, 'a': a, 'nelems': nelems, 'ns': ns, 'quad_type': quad_type, 'flux_type_vis': flux_type_vis,
             'errs': errs, 'errs_func': errs_func, 'errs_adj': errs_adj, 'cond_num': cond_num}
 
-u = advec_diff_1d(1, 0, 1, 2, 'CSBP_Mattsson2004', 'upwind', 'BR2', 2, 'ntrad', 'nPeriodic', 'sbp_sat', advec_diff1D_problem_input, n=16, app=2)
+# u = advec_diff_1d(2, 0, 1, 4, 'HGT', 'upwind', 'LDG', 4, 'ntrad', 'nPeriodic', 'sbp_sat', advec_diff1D_problem_input, n=25, app=2)

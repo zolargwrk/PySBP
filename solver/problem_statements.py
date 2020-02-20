@@ -156,7 +156,7 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
         prob = 'primal'
         # prob = 'adjoint'
         # prob = 'all'
-        func_conv = 1
+        func_conv = 0
         plot_sol = 1
         plot_err = 1
         show_eig = 1

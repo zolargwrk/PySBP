@@ -1,7 +1,7 @@
 import numpy as np
 from types import SimpleNamespace
 from mesh.mesh_generator import MeshGenerator1D, MeshGenerator2D
-from src.ref_elem import Ref2D
+from src.ref_elem import Ref2D_DG
 
 
 class MeshTools1D:
@@ -598,11 +598,11 @@ class MeshTools2D:
 #
 # p = 3
 # n = int((p+1)*(p+2)/2)
-# x_ref, y_ref = Ref2D.nodes_2d(p)
+# x_ref, y_ref = Ref2D_DG.nodes_2d(p)
 #
-# r, s = Ref2D.xytors(x_ref, y_ref)
+# r, s = Ref2D_DG.xytors(x_ref, y_ref)
 #
-# edge_nodes = Ref2D.fmask_2d(r, s, x_ref, y_ref)
+# edge_nodes = Ref2D_DG.fmask_2d(r, s, x_ref, y_ref)
 # fmask = edge_nodes['fmask']
 #
 # connect2d = MeshTools2D.connectivity_2d(etov)
@@ -624,9 +624,9 @@ class MeshTools2D:
 #
 
 #
-# v = Ref2D.vandermonde_2d(p, r, s)
+# v = Ref2D_DG.vandermonde_2d(p, r, s)
 #
-# drvtv = Ref2D.derivative_2d(p, r, s, v)
+# drvtv = Ref2D_DG.derivative_2d(p, r, s, v)
 # Dr = drvtv['Dr']
 # Ds = drvtv['Ds']
 #

@@ -1,7 +1,7 @@
 import numpy as np
 import quadpy
 from types import SimpleNamespace
-from src.ref_elem import Ref2D
+from src.ref_elem import Ref2D_DG
 
 
 class TimeMarcher:
@@ -127,7 +127,7 @@ def coeff_low_storage_rk4():
 
 def set_dt_2D(p, r, s, x, y, cfl):
 
-    mask = Ref2D.fmask_2d(r, s, x, y)
+    mask = Ref2D_DG.fmask_2d(r, s, x, y)
     # get distance between vertices (length of edges)
     dist = mask['distance_vertices']
 

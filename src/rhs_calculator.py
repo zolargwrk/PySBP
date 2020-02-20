@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import sparse
-from src.ref_elem import Ref2D
+from src.ref_elem import Ref2D_DG
 from mesh.mesh_tools import MeshTools2D
 from src.sats import SATs
 import matplotlib.pyplot as plt
@@ -98,7 +98,7 @@ class RHSCalculator:
         df = df.reshape((nfp*nface, nelem), order='F')
 
         # evaluate RHS
-        ux, uy = Ref2D.gradient_2d(x, y, Dr, Ds, u, u)
+        ux, uy = Ref2D_DG.gradient_2d(x, y, Dr, Ds, u, u)
         rhs = -(ax*ux + ay*uy) + lift@(fscale*df)
 
         return rhs
@@ -246,7 +246,7 @@ class RHSCalculator:
         du[mapD] = 2*u[vmapD]
 
         # compute qx and qy
-        dudx, dudy = Ref2D.gradient_2d(x, y, Dr, Ds, u0)
+        dudx, dudy = Ref2D_DG.gradient_2d(x, y, Dr, Ds, u0)
 
         # compute flux in u
         fluxxu = (nx*du/2).reshape(nfp*nface, nelem,order='F')
@@ -275,13 +275,13 @@ class RHSCalculator:
         fluxq = fluxq.reshape(nfp * nface, nelem,order='F')
 
         # compute divergence
-        divq = Ref2D.divergence_2d(x, y, Dr, Ds, qx.reshape((Dr.shape[1], nelem), order='F'), qy.reshape((Ds.shape[1], nelem), order='F'))
+        divq = Ref2D_DG.divergence_2d(x, y, Dr, Ds, qx.reshape((Dr.shape[1], nelem), order='F'), qy.reshape((Ds.shape[1], nelem), order='F'))
 
         # compute rhs
         rhs = divq - lift @ (fscale*fluxq)
 
         # compute mass matrix times solution
-        v = Ref2D.vandermonde_2d(p, r, s)
+        v = Ref2D_DG.vandermonde_2d(p, r, s)
         Mu = jac*(((np.linalg.inv(v)).T @ np.linalg.inv(v)) @ u0)
 
         return rhs, Mu

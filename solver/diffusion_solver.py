@@ -248,7 +248,7 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
     return
 
 # diffusion_solver_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine, refine_type, boundary_type=None, b=1, n=1):
-# u = poisson_1d(3, 0, 1, 2, 'CSBP_Mattsson2004', 'BR2', 7, 'ntrad', 'nPeriodic', 'sbp_sat', poisson1D_problem_input, a=0, n=16, app=2)
+# u = poisson_1d(3, 0, 1, 2, 'LGL', 'BR2', 5, 'ntrad', 'nPeriodic', 'sbp_sat', poisson1D_problem_input, a=0, n=16, app=2)
 
 
 #
@@ -319,7 +319,7 @@ def poisson_2d(p, h, nrefine=1, flux_type='BR1'):
 
     plot_err = 0
     if plot_err == 1:
-        conv_start = 1
+        conv_start = 0
         conv_end = nrefine
         hs = np.asarray(np.sqrt(nelems))
         conv = calc_conv(hs, errs, conv_start, conv_end)
@@ -335,6 +335,6 @@ def poisson_2d(p, h, nrefine=1, flux_type='BR1'):
 
     return
 
-# poisson_2d(2, 0.25, 1)
+poisson_2d(8, 0.25, 1)
 
 

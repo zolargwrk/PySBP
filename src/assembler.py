@@ -2,7 +2,7 @@ import numpy as np
 import quadpy
 from mesh.mesh_tools import MeshTools1D, MeshTools2D
 from mesh.mesh_generator import MeshGenerator1D, MeshGenerator2D
-from src.ref_elem import Ref1D, Ref2D
+from src.ref_elem import Ref1D, Ref2D_DG
 from src.csbp_type_operators import CSBPTypeOperators
 
 
@@ -192,8 +192,8 @@ class Assembler:
         nface = 3
 
         # obtain mesh data on reference element
-        x_ref, y_ref = Ref2D.nodes_2d(p)    # on equilateral triangle element
-        r, s = Ref2D.xytors(x_ref, y_ref)   # on right triangle reference element
+        x_ref, y_ref = Ref2D_DG.nodes_2d(p)    # on equilateral triangle element
+        r, s = Ref2D_DG.xytors(x_ref, y_ref)   # on right triangle reference element
 
         # obtain mesh data on the physical element
         vx = mesh['vx']
@@ -205,18 +205,18 @@ class Assembler:
         x, y = MeshTools2D.affine_map_2d(vx, vy, r, s, etov)
 
         # obtain the nodes on the edges of the triangles on the physical element
-        mask = Ref2D.fmask_2d(r, s, x, y)
+        mask = Ref2D_DG.fmask_2d(r, s, x, y)
         fx = mask['fx']
         fy = mask['fy']
         fmask = mask['fmask']
 
         # get derivative and mass matrices on the reference element
-        v = Ref2D.vandermonde_2d(p, r, s)
-        Dr, Ds = Ref2D.derivative_2d(p, r, s, v)
+        v = Ref2D_DG.vandermonde_2d(p, r, s)
+        Dr, Ds = Ref2D_DG.derivative_2d(p, r, s, v)
         Mmat = (np.linalg.inv(v @ v.T))
 
         # obtain the lift
-        lift = Ref2D.lift_2d(p, r, s, fmask)
+        lift = Ref2D_DG.lift_2d(p, r, s, fmask)
 
         # get necessary the geometric factors
         geo = MeshTools2D.geometric_factors_2d(x, y, Dr, Ds)

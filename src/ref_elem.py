@@ -1,6 +1,8 @@
 import numpy as np
 import orthopy
 import quadpy
+from src.cubature_rules import CubatureRules
+from types import SimpleNamespace
 
 
 class Ref1D:
@@ -10,6 +12,7 @@ class Ref1D:
     @staticmethod
     def vandermonde_1d(p, x_ref):
         """ Calculates the vandermonde matrix in 1D"""
+        x_ref = x_ref.flatten()
         v = np.polynomial.legendre.legvander(x_ref, p)
         for i in range(0, p+1):
             v[:, i] /= np.sqrt(2/(2*i+1))
@@ -19,6 +22,7 @@ class Ref1D:
     @staticmethod
     def grad_vandermonde_1d(p, x_ref):
         """Calculates the gradient of the vandermonde matrix in 1D"""
+        x_ref = x_ref.flatten()
         vx = np.zeros((len(x_ref), p+1))
         for i in range(1, p+1):
             jacobi_polynomial = orthopy.line_segment.tree_jacobi(x_ref, i-1, 1, 1, 'normal', symbolic=False)
@@ -107,7 +111,7 @@ class Ref1D:
         return {'fx': fx, 'fmask': fmask}
 
 
-class Ref2D:
+class Ref2D_DG:
 
     @staticmethod
     def warp_factor(p, rout):
@@ -180,9 +184,9 @@ class Ref2D:
         b3 = 4*lambda_1*lambda_2
 
         # evaluate the warp
-        warp1 = Ref2D.warp_factor(p, lambda_3 - lambda_2)
-        warp2 = Ref2D.warp_factor(p, lambda_1 - lambda_3)
-        warp3 = Ref2D.warp_factor(p, lambda_2 - lambda_1)
+        warp1 = Ref2D_DG.warp_factor(p, lambda_3 - lambda_2)
+        warp2 = Ref2D_DG.warp_factor(p, lambda_1 - lambda_3)
+        warp3 = Ref2D_DG.warp_factor(p, lambda_2 - lambda_1)
 
         # warp and blend
         w1 = warp1 * b1
@@ -202,7 +206,7 @@ class Ref2D:
     def xytors(x, y):
         """Maps the coordinates of the nodes on equilateral reference triangle to a right reference triangle
         Inputs:  x, y   - coordinates on the reference equilateral triangle
-        Outputs: r, s   - coordinates on the reference equilateral triangle"""
+        Outputs: r, s   - coordinates on the reference right triangle"""
 
         # using the relation (x,y) = -(r+s)/2 * v1 + (r+1)/2 * v2 + (s+1)/2 * v3 where the vertices v1 = (-1, -1/sqrt(3)
         # v2 = (1, -1/sqrt(3)) and v3 = (0, 2/sqrt(3)) we get the expression for s and r in terms of x and y
@@ -237,34 +241,51 @@ class Ref2D:
     @staticmethod
     def vandermonde_2d(p, r, s):
         n = int((p+1)*(p+2)/2)
-        ab = Ref2D.rstoab(r, s)
+        ab = Ref2D_DG.rstoab(r, s)
         a = ab['a']
         b = ab['b']
 
-        v = np.zeros((len(r), n))
+        V = np.zeros((len(r), n))
         k = 0
         for i in range(0, p+1):
             for j in range(0, p+1-i):
-                v[:, k] = Ref2D.ortho_poly_simplex2d(a, b, i, j)[:, 0]
+                V[:, k] = Ref2D_DG.ortho_poly_simplex2d(a, b, i, j)[:, 0]
                 k += 1
 
-        return v
+        return V
 
     @staticmethod
     def grad_ortho_poly_simplex2d(a, b, i, j):
-        pa = orthopy.line_segment.tree_jacobi(a, i, 0, 0, 'normal', symbolic=False)[i].reshape(len(a))
-        dpa = np.sqrt(i*(i+1))*(orthopy.line_segment.tree_jacobi(a, i-1, 1, 1, 'normal', symbolic=False)[i-1].reshape(len(a)))
-        pb = orthopy.line_segment.tree_jacobi(b, j, 2*i+1, 0, 'normal', symbolic=False)[j].reshape(len(a))
-        dpb = np.sqrt(j*(j+(2*i+1)+1))*(orthopy.line_segment.tree_jacobi(b, j-1, 2*i+1+1, 1, 'normal', symbolic=False)[j-1].reshape(len(a)))
-        # np.sqrt(j*(j+(2*i+1)+1)) because np.sqrt(j*(j+(alpha-1)+(beta-1)+1))
+        # We refer to the book by Hesthaven and Warburton: Nodal DG Methods, 2007 for the construction of the Legendre
+        # polynomials. pages are referred as p. , equations eq. , section sec. , appendix app.
 
+        # get the jacobi polynomial from the python package "orthopy" with alpha=0 and beta=0, see app.A, p.445(457/511)
+        pa = orthopy.line_segment.tree_jacobi(a, i, 0, 0, 'normal', symbolic=False)[i].reshape(len(a))
+
+        # get the jacobi polynomial from the python package "orthopy" with alpha=0 and beta=2*i+1
+        pb = orthopy.line_segment.tree_jacobi(b, j, 2 * i + 1, 0, 'normal', symbolic=False)[j].reshape(len(a))
+
+        # get the derivative of the jacobi polynomial with respect to a  and setting alpha=0 and beta=0
+        # the property used to get the derivative is given in eq.A.2, p.445(457/511)
+        dpa = np.sqrt(i*(i+1))*(orthopy.line_segment.tree_jacobi(a, i-1, 1, 1, 'normal', symbolic=False)[i-1].reshape(len(a)))
+
+        # get the derivative of the jacobi polynomial with respect to b  and setting alpha=0 and beta=2*i+1
+        # the property used to get the derivative is given in eq.A.2, p.445(457/511)
+        dpb = np.sqrt(j*(j+(2*i+1)+1))*(orthopy.line_segment.tree_jacobi(b, j-1, 2*i+1+1, 1, 'normal', symbolic=False)[j-1].reshape(len(a)))
+
+        # reshape into a column vector
         pa = pa.reshape(len(pa), 1)
         dpa = dpa.reshape(len(pa), 1)
         pb = pb.reshape(len(pa), 1)
         dpb = dpb.reshape(len(pa), 1)
 
+        # apply scaling and get the derivative of the Legendre polynomial
         if i > 0:
+            # use eq.6.6, p.173 (185/511) to evaluate the Legendre polynomial, also a = 2(1+r)/(1-s) - 1, and b = s
+            # note that dpsi/dr = dpsi/da * da/dr + dpsi/db * db/dr, and da/dr = 2/(1-b), and db/dr = 0
             dpsi_dr = 2*np.sqrt(2)*(1-b)**(i-1)*dpa*pb
+            
+            # dpsi/ds = dpsi/da * da/ds + dpsi/db *db/ds, and da/ds = ((1+a)/2)/((1-b)/2) = (1+a)/(1-b), and db/ds = 1
             dpsi_ds = np.sqrt(2)*(1 + a)*(1-b)**(i-1)*dpa*pb - i*np.sqrt(2)*(1-b)**(i-1)*pa*pb + np.sqrt(2)*pa*dpb*(1-b)**i
         else:
             dpsi_dr = 2*np.sqrt(2)*dpa*pb
@@ -273,19 +294,66 @@ class Ref2D:
         return {'dpsi_dr': dpsi_dr, 'dpsi_ds': dpsi_ds}
 
     @staticmethod
+    def laplacian_ortho_poly_simplex2d(a, b, i, j):
+        # We refer to the book by Hesthaven and Warburton: Nodal DG Methods, 2007 for the construction of the Legendre
+        # polynomials. pages are referred as p. , equations eq. , section sec. , appendix app.
+
+        # get the first derivative of jacobi polynomial with alpha=0 and beta=0
+        pa = orthopy.line_segment.tree_jacobi(a, i, 0, 0, 'normal', symbolic=False)[i]
+        # get the first derivative of jacobi polynomial with alpha=0 and beta=0 (with out the scaling)
+        dpa = orthopy.line_segment.tree_jacobi(a, i-1, 1, 1, 'normal', symbolic=False)[-1]
+        # get the second derivative of jacobi polynomial with alpha=0 and beta=0 (with out the scaling)
+        ddpa = orthopy.line_segment.tree_jacobi(a, i-2, 2, 2, 'normal', symbolic=False)[-1]
+
+        # get the jacobi polynomial with alpha=0 and beta=2*i+1
+        pb = orthopy.line_segment.tree_jacobi(b, j, 2*i + 1, 0, 'normal', symbolic=False)[-1]
+        # get the first derivative of jacobi polynomial with alpha=0 and beta=2*i+1 (with out the scaling)
+        dpb = orthopy.line_segment.tree_jacobi(b, j-1, 2*i + 2, 1, 'normal', symbolic=False)[-1]
+        # get the second derivative of jacobi polynomial with alpha=0 and beta=2*i+1 (with out the scaling)
+        ddpb = orthopy.line_segment.tree_jacobi(b, j-2, 2*i + 3, 2, 'normal', symbolic=False)[-1]
+
+        # apply scaling and get the derivative of the Legendre polynomial
+        if i > 1:
+            # calculate d2psi/dr2 (see notes on Constructio of SBP operators)
+            ddpsi_drr = 4*(1-b)**(i-2)*np.sqrt(2*i*(i-1)*(i+1)*(i+2)) * ddpa * pb
+
+            #  calculate d2psi/ds2
+            ddpsi_dss = (a+b)**2 * (1-b)**(i-2) * np.sqrt(2*i*(i-1)*(i+1)*(i+2)) * ddpa * pb \
+                        + (2*a + 2) * (1-b)**(i-1) * np.sqrt(4*i*j*(i+1)*(j+2*i+2)) * dpa * dpb \
+                        + (1-b)**i * np.sqrt(2*j*(j-1)*(j+2*i+2)*(j+2*i+3)) * pa * ddpb
+        elif i > 0:
+            # calculate d2psi/dr2 (see notes on Constructio of SBP operators)
+            ddpsi_drr = 4 * np.sqrt(2 * i * (i - 1) * (i + 1) * (i + 2)) * ddpa * pb
+
+            #  calculate d2psi/ds2
+            ddpsi_dss = (a + b) ** 2 * np.sqrt(2 * i * (i - 1) * (i + 1) * (i + 2)) * ddpa * pb \
+                        + (2 * a + 2) * (1 - b) ** (i - 1) * np.sqrt(4 * i * j * (i + 1) * (j + 2 * i + 2)) * dpa*dpb \
+                        + (1 - b) ** i * np.sqrt(2 * j * (j - 1) * (j + 2 * i + 2) * (j + 2 * i + 3)) * pa * ddpb
+        else:
+            # calculate d2psi/dr2 (see notes on Constructio of SBP operators)
+            ddpsi_drr = 4 * np.sqrt(2 * i * (i - 1) * (i + 1) * (i + 2)) * ddpa * pb
+
+            #  calculate d2psi/ds2
+            ddpsi_dss = (a + b) ** 2 * np.sqrt(2 * i * (i - 1) * (i + 1) * (i + 2)) * ddpa * pb \
+                        + (2 * a + 2) *  np.sqrt(4 * i * j * (i + 1) * (j + 2 * i + 2)) * dpa * dpb \
+                        + (1 - b) ** i * np.sqrt(2 * j * (j - 1) * (j + 2 * i + 2) * (j + 2 * i + 3)) * pa * ddpb
+
+        return {'ddpsi_drr': ddpsi_drr, 'ddpsi_dss': ddpsi_dss}
+
+    @staticmethod
     def grad_vandermonde2d(p, r, s):
         nd = int((p+1)*(p+2)/2)
         vdr = np.zeros((len(r), nd))
         vds = np.zeros((len(r), nd))
 
-        ab = Ref2D.rstoab(r, s)
+        ab = Ref2D_DG.rstoab(r, s)
         a = ab['a']
         b = ab['b']
 
         k = 0
         for i in range(0, p+1):
             for j in range(0, p+1-i):
-                grad_ortho = Ref2D.grad_ortho_poly_simplex2d(a, b, i, j)
+                grad_ortho = Ref2D_DG.grad_ortho_poly_simplex2d(a, b, i, j)
                 vdr[:, k] = grad_ortho['dpsi_dr'].reshape(len(a))
                 vds[:, k] = grad_ortho['dpsi_ds'].reshape(len(a))
                 k += 1
@@ -293,8 +361,29 @@ class Ref2D:
         return {'vdr': vdr, 'vds': vds}
 
     @staticmethod
+    def laplacian_vandermonde2d(p, r, s):
+        nd = int((p+1)*(p+2)/2)
+        vdrr = np.zeros((len(r), nd))
+        vdss = np.zeros((len(r), nd))
+
+        ab = Ref2D_DG.rstoab(r, s)
+        a = ab['a']
+        b = ab['b']
+
+        k = 0
+        for i in range(0, p+1):
+            for j in range(0, p+1-i):
+                # obtain the second derivative of the Vandermonde matrix column by column
+                lap_ortho = Ref2D_DG.laplacian_ortho_poly_simplex2d(a, b, i, j)
+                vdrr[:, k] = lap_ortho['ddpsi_drr'].reshape(len(a))
+                vdss[:, k] = lap_ortho['ddpsi_dss'].reshape(len(a))
+                k += 1
+
+        return {'vdrr': vdrr, 'vdss': vdss}
+
+    @staticmethod
     def derivative_2d(p, r, s, v):
-        vd = Ref2D.grad_vandermonde2d(p, r, s)
+        vd = Ref2D_DG.grad_vandermonde2d(p, r, s)
         vdr = vd['vdr']
         vds = vd['vds']
         Dr = vdr @ np.linalg.inv(v)
@@ -360,7 +449,7 @@ class Ref2D:
         e_mat[fmask[:, 2].reshape(nfp, 1), np.arange(2*nfp, 3*nfp)] = mass_f2
 
         # compute the 2D vandermonde matrix
-        v = Ref2D.vandermonde_2d(p, r, s)
+        v = Ref2D_DG.vandermonde_2d(p, r, s)
         # compute lift
         lift = v @ (v.T @ e_mat)
 
@@ -404,7 +493,7 @@ class Ref2D:
     def gradient_2d(x, y, Dr, Ds, u_x, u_y=1, u_z=1):
 
         # compute necessary derivatives and geometric factors
-        der_geom = Ref2D.compute_der_geom_ref(x, y, Dr, Ds, u_x, u_y, u_z)
+        der_geom = Ref2D_DG.compute_der_geom_ref(x, y, Dr, Ds, u_x, u_y, u_z)
         uxr = der_geom['uxr']
         uxs = der_geom['uxs']
         rx = der_geom['rx']
@@ -421,7 +510,7 @@ class Ref2D:
     @staticmethod
     def divergence_2d(x, y, Dr, Ds, u_x, u_y=1, u_z=1):
         # compute necessary derivatives and geometric factors
-        der_geom = Ref2D.compute_der_geom_ref(x, y, Dr, Ds, u_x, u_y, u_z)
+        der_geom = Ref2D_DG.compute_der_geom_ref(x, y, Dr, Ds, u_x, u_y, u_z)
         uxr = der_geom['uxr']
         uxs = der_geom['uxs']
         uyr = der_geom['uyr']
@@ -439,7 +528,7 @@ class Ref2D:
     @staticmethod
     def curl_2d(x, y, Dr, Ds, u_x, u_y=1, u_z=1):
         # compute necessary derivatives and geometric factors
-        der_geom = Ref2D.compute_der_geom_ref(x, y, Dr, Ds, u_x, u_y, u_z)
+        der_geom = Ref2D_DG.compute_der_geom_ref(x, y, Dr, Ds, u_x, u_y, u_z)
         uxr = der_geom['uxr']
         uxs = der_geom['uxs']
         uyr = der_geom['uyr']
@@ -524,7 +613,7 @@ class Ref2D:
             else:
                 raise("Quadrature type not implemented, use either 'Liu-Vinokur' or 'Witherden-Vincent' rules")
         else:
-            raise('Degree greater than 8 not implemented so far')
+            raise ValueError('Degree greater than 8 not implemented so far')
 
         wts = scheme.weights
         pts = scheme.points
@@ -543,7 +632,7 @@ class Ref2D:
         elif p == 2:
             scheme = quadpy.triangle.witherden_vincent_04()
         else:
-            raise("Degree not implemented.")
+            raise ValueError("Degree not implemented.")
 
         # points are returned in barycentric coordinate from quadpy, hence get x and y on the right triangle ref element
         pts = scheme.points
@@ -553,39 +642,323 @@ class Ref2D:
         r = pts @ np.array([[-1], [1], [-1]])
         s = pts @ np.array([[-1], [-1], [1]])
 
-        v = Ref2D.vandermonde_2d(p, r, s)
+        v = Ref2D_DG.vandermonde_2d(p, r, s)
 
         M = (np.linalg.inv(v)).T @ np.linalg.inv(v)
 
         # mass matrix on nodes of Hesthaven
-        x_ref, y_ref = Ref2D.nodes_2d(p)
+        x_ref, y_ref = Ref2D_DG.nodes_2d(p)
 
-        r2, s2 = Ref2D.xytors(x_ref, y_ref)
-        v2 = Ref2D.vandermonde_2d(p, r2, s2)
+        r2, s2 = Ref2D_DG.xytors(x_ref, y_ref)
+        v2 = Ref2D_DG.vandermonde_2d(p, r2, s2)
 
         M2 = (np.linalg.inv(v2)).T @ np.linalg.inv(v2)
 
         return M, M2
 
-M = Ref2D.mass_matrix(1)
+
+class Ref2D_SBP:
+
+    @staticmethod
+    def shape_tri(p, sbp_family="sbp-gamma"):
+        """Calculates the shape function and its derivatives at the cubature nodes"""
+
+        sbp_family = str.lower(sbp_family)
+
+        # get the cubature points
+        cub_data = CubatureRules.cub_tri_volume(p, sbp_family)
+        cub = SimpleNamespace(**cub_data)
+
+        # get the interpolation points on equilateral triangle reference element
+        x, y = Ref2D_DG.nodes_2d(p)
+
+        # map interpolation nodes to the right triangle reference element
+        r, s = Ref2D_DG.xytors(x, y)
+
+        # calculate Vandermonde matrix (with Legendre basis) on the interpolation nodes
+        V = Ref2D_DG.vandermonde_2d(p, r, s)
+        # calculate the coefficient matrix
+        C = np.linalg.inv(V)
+
+        # calculate the Vandermonde matrix on the quadrature/cubature nodes
+        Vq = Ref2D_DG.vandermonde_2d(p, cub.r, cub.s)
+
+        # evaluate the shape function at the cubature nodes
+        shp = Vq @ C
+
+        # calculate the first derivatives of the Vandermonde matrix on the cubature nodes
+        Vqx_data = Ref2D_DG.grad_vandermonde2d(p, cub.r, cub.s)
+        vdr = Vqx_data['vdr']
+        vds = Vqx_data['vds']
+
+        # evaluate the first derivative of the shape function at the cubature nodes
+        shpx = vdr @ C
+        shpy = vds @ C
+
+        # evaluate the second derivative of the shape function at the cubature nodes
+        Vqxx_data = Ref2D_DG.laplacian_vandermonde2d(p, cub.r, cub.s)
+        vdrr = Vqxx_data['vdrr']
+        vdss = Vqxx_data['vdss']
+
+        # caluculte the second derivative of the shape function at the cubature nodes
+        shpxx = vdrr @ C
+        shpyy = vdss @ C
+
+        # -----------
+        # delete the following later
+        b = Ref2D_SBP.cartesian_to_barycentric2D(cub.r, cub.s)
+        nodal_sym = Ref2D_SBP.nodal_sym_map2D(cub.r, cub.s)
+        sym_grps = Ref2D_SBP.sym_group_map2D(cub.r, cub.s)
+        sym_grp = sym_grps['sym_grp']
+        rperm = Ref2D_SBP.make_rperm2D(sym_grp, cub.r, cub.s)
+        xqf, wqf = CubatureRules.quad_line_volume(p, "LG")
+        sym_grps_xqf = Ref2D_SBP.sym_group_map2D(xqf)
+        sym_grp_xqf = sym_grps_xqf['sym_grp']
+        vf = Ref1D.vandermonde_1d(p, xqf)
+        vdxf = Ref1D.grad_vandermonde_1d(p, xqf)
+
+        #------------
+        return {'shp': shp, 'shpx': shpx, 'shpy': shpy, 'shpxx': shpxx, 'shpyy': shpyy}
+
+    @staticmethod
+    def nodal_sym_map2D(r, s):
+        """Finds which nodes are in the x=y symmetry group for given cubature nodes. First all nodes are labeled
+        and then the nodes that are symmetric with the labled nodes are found by comparing their x and y components
+        with those of the labeled nodes
+        Args:
+            r (float64) : the x component of the cubature node locations on the right triangle reference element
+            s (float64) : the y component of the cubature node locations on the right triangle reference element
+        Returns:
+            rs_sym_map (array): an array with mapping between nodes that are symmetric about x=y line
+        """
+        tol = 1e-10     # tolerance between nodes that are symmetric along the x=y line
+        n = len(r)      # number of cubature nodes
+        # lable nodes from 1 to n and get which ones are symmetric with them (in the second row or rs_sym_map)
+        rs_sym_map = np.zeros((2, n), dtype=int)
+        rs_sym_map[0, :] = range(1, n+1)
+
+        for i in range(0, n):
+            for j in range(0, n):
+                if rs_sym_map[1, j] != 0:   # has been mapped earlier
+                    continue
+                else:
+                    if np.abs(r[i]-s[j]) <= tol and np.abs(r[j]-s[i]) <= tol:
+                        rs_sym_map[1, j] = rs_sym_map[0, i]
+
+        return rs_sym_map
+
+    @ staticmethod
+    def simplex_vertices(dim):
+        vert = np.zeros((dim+1, dim))
+        if dim == 1:
+            vert = np.array([[-1], [1]])
+        elif dim == 2:
+            vert = np.array([[-1, -1], [1, -1], [-1, 1]])
+
+        return vert
+
+    @ staticmethod
+    def cartesian_to_barycentric2D(r, s=None):
+        """Converts Cartesian coordinate to Barycentric on the right triangle reference element."""
+        dim = 1
+        if s is not None:
+            dim = 2
+
+        vert = Ref2D_SBP.simplex_vertices(dim)
+
+        rs = np.ones((len(r), dim+1))
+        v = np.ones((dim+1, dim+1))
+        rs[:, 0] = r.flatten()
+        if dim == 2:
+            rs[:, 1] = s.flatten()
+
+        v[:, 0:dim] = vert
+        b = rs @ np.linalg.inv(v)
+
+        return b
+
+    @staticmethod
+    def barycentric_to_cartesian(b, vert):
+
+        return cart
+
+    @staticmethod
+    def sym_group_map2D(r, s=None):
+        """Maps the cubature node by type of symmetry group"""
+        tol = 1e-10     # tolerance
+        n = len(r)      # number of cubature nodes
+        dim = 1
+        if s is not None:
+            dim = 2
+
+        # convert cartesian coordinate to barycentric and sort by row
+        bry = Ref2D_SBP.cartesian_to_barycentric2D(r, s)
+        bry_sort = np.sort(bry)
+
+        # find nodes in certain symmetry group by looking at their Barycentric coordinates, i.e., a Barycentric
+        # coordinate (including permutation) (a,a,a)-->S3, (a,a,1-2a)-->S21, (a,b,1-a-b)-->S111
+        sym_grp_temp = np.zeros((dim+1, n, n), dtype=int)
+        sym_grp = []
+        sym_grp_by_type = np.zeros((dim+1, n), dtype=int)
+        S2_cnt = 0
+        S11_cnt = 0
+        S3_cnt = 0
+        S21_cnt = 0
+        S111_cnt = 0
+
+        if dim == 1:
+            for i in range(0, n):
+                if np.abs(bry_sort[i, 1] - bry_sort[i, 0]) <= tol:
+                    # find nodes in S2 symmetry group
+                    sym_grp_by_type[0, S2_cnt] = i + 1
+                    S2_cnt += 1
+                else:
+                    # find nodes in S11 symmetry group
+                    sym_grp_by_type[1, S11_cnt] = i + 1
+                    S11_cnt += 1
+
+            max_row = np.max([S2_cnt, S11_cnt])     # get the maximum number of nodes grouped in a symmetry group
+            sym_grp_by_type = sym_grp_by_type[:, 0:max_row]     # eliminate unnecessary columns
+
+            # find nodes that are in the same type of symmetry group and are permutation of one another
+            for k1 in range(0, S2_cnt):
+                cnt = 0
+                for k2 in range(k1, S2_cnt):
+                    if np.sum(np.abs(
+                            bry_sort[sym_grp_by_type[0, k1] - 1, :] - bry_sort[sym_grp_by_type[0, k2] - 1, :])) <= tol:
+                        if sym_grp_by_type[0, k2] not in (sym_grp_temp[0, :, :]).flatten():
+                            sym_grp_temp[0, k1, k2] = sym_grp_by_type[0, k2]
+                            cnt += 1
+            for k1 in range(0, S11_cnt):
+                cnt = 0
+                for k2 in range(k1, S11_cnt):
+                    if np.sum(np.abs(
+                            bry_sort[sym_grp_by_type[1, k1] - 1, :] - bry_sort[sym_grp_by_type[1, k2] - 1, :])) <= tol:
+                        if sym_grp_by_type[1, k2] not in (sym_grp_temp[1, :, :]).flatten():
+                            sym_grp_temp[1, k1, cnt] = sym_grp_by_type[1, k2]
+                            cnt += 1
+
+            # delete zero rows and columns
+            sym_grpS2 = np.delete(sym_grp_temp[0, :, :], np.where(~(sym_grp_temp[0, :, :]).any(axis=1))[0], axis=0)
+            sym_grpS2 = np.delete(sym_grpS2[:, :], np.where(~(sym_grpS2[:, :]).any(axis=0))[0], axis=1)
+
+            sym_grpS11 = np.delete(sym_grp_temp[1, :, :], np.where(~(sym_grp_temp[1, :, :]).any(axis=1))[0], axis=0)
+            sym_grpS11 = np.delete(sym_grpS11[:, :], np.where(~(sym_grpS11[:, :]).any(axis=0))[0], axis=1)
+
+            sym_grp.append(sym_grpS2)
+            sym_grp.append(sym_grpS11)
+
+        elif dim == 2:
+            for i in range(0, n):
+                if np.abs(bry_sort[i, 1] - bry_sort[i, 0]) <=tol and np.abs(bry_sort[i, 2] - bry_sort[i, 0]) <= tol:
+                    # find nodes in S3 symmetry group
+                    sym_grp_by_type[0, S3_cnt] = i+1
+                    S3_cnt += 1
+                elif np.abs(bry_sort[i, 1] - bry_sort[i, 0]) <=tol or np.abs(bry_sort[i, 2] - bry_sort[i, 0]) <= tol or \
+                        np.abs(bry_sort[i, 2] - bry_sort[i, 1]) <= tol:
+                    # find nodes in S21 symmetry group
+                    sym_grp_by_type[1, S21_cnt] = i+1
+                    S21_cnt += 1
+                else:
+                    # find nodes in S111 symmetry group
+                    sym_grp_by_type[2, S111_cnt] = i+1
+                    S111_cnt += 1
+
+            max_row = np.max([S3_cnt, S21_cnt, S111_cnt])      # get the maximum number of nodes grouped in a symmetry group
+            sym_grp_by_type = sym_grp_by_type[:, 0:max_row]    # eliminate unnecessary columns
+
+            # find nodes that are in the same type of symmetry group and are permutation of one another
+            for k1 in range(0, S3_cnt):
+                cnt = 0
+                for k2 in range(k1, S3_cnt):
+                    if np.sum(np.abs(bry_sort[sym_grp_by_type[0, k1]-1, :] - bry_sort[sym_grp_by_type[0, k2]-1, :])) <= tol:
+                        if sym_grp_by_type[0, k2] not in (sym_grp_temp[0, :, :]).flatten():
+                            sym_grp_temp[0, k1, k2] = sym_grp_by_type[0, k2]
+                            cnt += 1
+            for k1 in range(0, S21_cnt):
+                cnt = 0
+                for k2 in range(k1, S21_cnt):
+                    if np.sum(np.abs(bry_sort[sym_grp_by_type[1, k1]-1, :] - bry_sort[sym_grp_by_type[1, k2]-1, :])) <= tol:
+                        if sym_grp_by_type[1, k2] not in (sym_grp_temp[1, :, :]).flatten():
+                            sym_grp_temp[1, k1, cnt] = sym_grp_by_type[1, k2]
+                            cnt += 1
+            for k1 in range(0, S111_cnt):
+                cnt = 0
+                for k2 in range(k1, S111_cnt):
+                    if np.sum(np.abs(bry_sort[sym_grp_by_type[2, k1]-1, :] - bry_sort[sym_grp_by_type[2, k2]-1, :])) <= tol:
+                        if sym_grp_by_type[2, k2] not in (sym_grp_temp[2, :, :]).flatten():
+                            sym_grp_temp[2, k1, k2] = sym_grp_by_type[2, k2]
+                            cnt += 1
+
+            # delete zero rows and columns
+            sym_grpS3 = np.delete(sym_grp_temp[0, :, :], np.where(~(sym_grp_temp[0, :, :]).any(axis=1))[0], axis=0)
+            sym_grpS3 = np.delete(sym_grpS3[:, :], np.where(~(sym_grpS3[:, :]).any(axis=0))[0], axis=1)
+
+            sym_grpS21 = np.delete(sym_grp_temp[1, :, :], np.where(~(sym_grp_temp[1, :, :]).any(axis=1))[0], axis=0)
+            sym_grpS21 = np.delete(sym_grpS21[:, :], np.where(~(sym_grpS21[:, :]).any(axis=0))[0], axis=1)
+
+            sym_grpS111 = np.delete(sym_grp_temp[2, :, :], np.where(~(sym_grp_temp[2, :, :]).any(axis=1))[0], axis=0)
+            sym_grpS111 = np.delete(sym_grpS111[:, :], np.where(~(sym_grpS111[:, :]).any(axis=0))[0], axis=1)
+
+            sym_grp.append(sym_grpS3)
+            sym_grp.append(sym_grpS21)
+            sym_grp.append(sym_grpS111)
+
+        return {'sym_grp': sym_grp, 'sym_grp_by_type': sym_grp_by_type}
+
+    @staticmethod
+    def make_rperm2D(sym_grp, r, s):
+        nvert = 3
+        n = len(r)
+        Rperm = np.zeros((nvert, n), dtype=int)
+        Rperm[0, :] = range(1, n+1)
+
+        # permutation for S3 symmetry group
+        for i in range(0, sym_grp[0].shape[0]):
+            Rperm[:, sym_grp[0][i, 0]] = sym_grp[0][i, 0]
+
+        # permutation for S21 symmetry group
+        for i in range(0, sym_grp[1].shape[0]):
+            Rperm[0, sym_grp[1][i, :]-1] = sym_grp[1][i, [0, 1, 2]]
+            Rperm[1, sym_grp[1][i, :]-1] = sym_grp[1][i, [2, 0, 1]]
+            Rperm[2, sym_grp[1][i, :]-1] = sym_grp[1][i, [1, 2, 0]]
+
+        # permutation for S111 symmetry group
+        for i in range(0, sym_grp[2].shape[0]):
+            Rperm[0, sym_grp[2][i, :]-1] = sym_grp[2][i, [0, 1, 2, 3, 4, 5]]
+            Rperm[1, sym_grp[2][i, :]-1] = sym_grp[2][i, [2, 0, 1, 5, 3, 4]]
+            Rperm[2, sym_grp[2][i, :]-1] = sym_grp[2][i, [1, 2, 0, 4, 5, 3]]
+
+        return Rperm
+
+
+#M = Ref2D_DG.mass_matrix(1)
 
 
 # print(M)
 # p = 3
 # n = int((p+1)*(p+2)/2)
-# x_ref, y_ref = Ref2D.nodes_2d(p)
+# x_ref, y_ref = Ref2D_DG.nodes_2d(p)
 #
-# r, s = Ref2D.xytors(x_ref, y_ref)
+# r, s = Ref2D_DG.xytors(x_ref, y_ref)
 
-# edge_nodes = Ref2D.fmask_2d(r, s, x_ref, y_ref)
+# edge_nodes = Ref2D_DG.fmask_2d(r, s, x_ref, y_ref)
 # fmask = edge_nodes['fmask']
 #
 #
-# v = Ref2D.vandermonde_2d(p, r, s)
+# v = Ref2D_DG.vandermonde_2d(p, r, s)
 #
-# drvtv = Ref2D.derivative_2d(p, r, s, v)
+# drvtv = Ref2D_DG.derivative_2d(p, r, s, v)
 # Dr = drvtv['Dr']
 # Ds = drvtv['Ds']
 #
 #
-# lift = Ref2D.lift_2d(p, r, s, fmask)
+# lift = Ref2D_DG.lift_2d(p, r, s, fmask)
+
+p = 4
+sbp_family = "sbp-gamma"
+# w, r, s= Ref2D_DG.quad_rule_tri(p, 'Liu-Vinokur')
+shp_data = Ref2D_SBP.shape_tri(p, sbp_family)
+shp = shp_data['shp']
+shpx = shp_data['shpx']
+shp_data

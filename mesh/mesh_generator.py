@@ -136,7 +136,7 @@ class MeshGenerator2D:
         # top = 1 * np.pi
         # geo = dmsh.Rectangle(left, right, bottom, top)
 
-        mat = scipy.io.loadmat('/\\mesh\\square_mesh_data.mat')
+        mat = scipy.io.loadmat('C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\mesh\\square_mesh_data.mat')
         etov = (np.asarray(mat['etov'])-1).astype(int)
         vxy = np.asarray(mat['vxy'])
         bgrp_mat = (np.asarray(mat['bgrp']))

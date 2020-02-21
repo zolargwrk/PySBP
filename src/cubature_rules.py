@@ -66,7 +66,7 @@ class CubatureRules:
             p_cub = 2*p - 1
 
         sbp_family = str.lower(sbp_family)
-        if sbp_family == "sbp-gamma":
+        if sbp_family == "gamma":
             if p == 1:
                 if p_cub == 1:
                     r = np.array([-1.0,  1.0, -1.0])
@@ -113,8 +113,9 @@ class CubatureRules:
         r = r.reshape(r.shape[0], 1)
         s = s.reshape(s.shape[0], 1)
         w = w.reshape(w.shape[0], 1)
+        cub_vert = np.array([[-1,-1], [1, -1], [-1, 1]])
 
-        return {'r': r, 's': s, 'w': w}
+        return {'r': r, 's': s, 'w': w, 'cub_vert': cub_vert}
 
 
 # quad = CubatureRules(5, 'LG')

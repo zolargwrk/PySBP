@@ -660,7 +660,7 @@ class Ref2D_DG:
 class Ref2D_SBP:
 
     @staticmethod
-    def shape_tri(p, sbp_family="sbp-gamma"):
+    def shape_tri(p, sbp_family="gamma"):
         """Calculates the shape function and its derivatives at the cubature nodes"""
 
         sbp_family = str.lower(sbp_family)
@@ -704,20 +704,6 @@ class Ref2D_SBP:
         shpxx = vdrr @ C
         shpyy = vdss @ C
 
-        # -----------
-        # delete the following later
-        b = Ref2D_SBP.cartesian_to_barycentric2D(cub.r, cub.s)
-        nodal_sym = Ref2D_SBP.nodal_sym_map2D(cub.r, cub.s)
-        sym_grps = Ref2D_SBP.sym_group_map2D(cub.r, cub.s)
-        sym_grp = sym_grps['sym_grp']
-        rperm = Ref2D_SBP.make_rperm2D(sym_grp, cub.r, cub.s)
-        xqf, wqf = CubatureRules.quad_line_volume(p, "LG")
-        sym_grps_xqf = Ref2D_SBP.sym_group_map2D(xqf)
-        sym_grp_xqf = sym_grps_xqf['sym_grp']
-        vf = Ref1D.vandermonde_1d(p, xqf)
-        vdxf = Ref1D.grad_vandermonde_1d(p, xqf)
-
-        #------------
         return {'shp': shp, 'shpx': shpx, 'shpy': shpy, 'shpxx': shpxx, 'shpyy': shpyy}
 
     @staticmethod
@@ -754,17 +740,19 @@ class Ref2D_SBP:
             vert = np.array([[-1], [1]])
         elif dim == 2:
             vert = np.array([[-1, -1], [1, -1], [-1, 1]])
+            # vert = np.array([[0, 0], [1, 0], [0, 1]]) # this doesn't work probably due to the orthogonal
+                                                        # polynomial used to construct the Vandermonde matrix
 
         return vert
 
     @ staticmethod
-    def cartesian_to_barycentric2D(r, s=None):
+    def cartesian_to_barycentric2D(r, s=None, vert=None):
         """Converts Cartesian coordinate to Barycentric on the right triangle reference element."""
         dim = 1
         if s is not None:
             dim = 2
-
-        vert = Ref2D_SBP.simplex_vertices(dim)
+        if vert is None:
+            vert = Ref2D_SBP.simplex_vertices(dim)
 
         rs = np.ones((len(r), dim+1))
         v = np.ones((dim+1, dim+1))
@@ -779,7 +767,7 @@ class Ref2D_SBP:
 
     @staticmethod
     def barycentric_to_cartesian(b, vert):
-
+        cart = b @ vert
         return cart
 
     @staticmethod
@@ -931,6 +919,212 @@ class Ref2D_SBP:
 
         return Rperm
 
+    @ staticmethod
+    def elem_size(vert):
+        """Calculates the length, area, and volume of a line, triangle, and tetrahedral reference elements given
+        the coordinates of their vertices.
+        """
+        nvert = vert.shape[0]
+        ncoord = vert.shape[1]
+        dim = nvert - 1
+        elem_size = 0
+
+        if dim == 1:
+            elem_size = np.linalg.norm(vert[1,:] - vert[0,:])
+        elif dim == 2:
+            if ncoord == 2:
+                vert_zero = np.zeros((nvert, ncoord+1))
+                vert_zero[:, :-1] = vert
+                vert = vert_zero
+            elem_size = 1/2 * np.linalg.norm(np.cross(vert[1,:]-vert[0,:], vert[2, :]-vert[1,:]))
+        elif dim == 3:
+            elem_size = 1/6 * np.linalg.norm(np.dot(np.cross(vert[1,:]-vert[0,:], vert[2, :]-vert[1,:]), vert[3, :]-vert[0, :]))
+
+        return elem_size
+
+    @ staticmethod
+    def face_to_vert(dim):
+        """Returns the facet to vertex connectivity. It assumes that the node 1 is at [-1,-1] and the rest are numbered
+        moving in counter clockwise direction. The faces are numbered with the node number oppositeto them.
+        E.g., The slanted facet of the triangle reference element is face 1.
+        """
+        f2v = 0
+        if dim == 1:
+            f2v = np.array([0,1])
+        elif dim ==2:
+            f2v = np.array([[1, 2, 0], [2, 0, 1]])
+
+        if f2v is 0:
+            raise ValueError("Dimension entered not implemented.")
+
+        return f2v
+
+    @staticmethod
+    def normals(vert):
+        """Calculates the surface normals of the reference element given the vertices."""
+        nvert = vert.shape[0]
+        ncoord = vert.shape[1]
+        dim = nvert - 1
+        vz = np.array([0, 0, 1])    # normal vector out of the page
+        f2v = Ref2D_SBP.face_to_vert(dim)
+        vn = np.zeros((nvert, 3))
+        vn_nor = np.zeros((nvert, 3))
+
+        for i in range(0, dim+1):
+            vf = f2v[:, i]      # vertices on the face
+            coord = vert[vf, :]
+            v1 = 0
+            if ncoord < 3:
+                v1_zero = np.zeros((1, ncoord + 1))
+                v1_zero[:, :-1] = coord[1,:] - coord[0,:]
+                v1 = v1_zero
+            else:
+                v1 = coord[1,:] - coord[0,:]
+
+            vn[i,:] = np.cross(v1, vz)                              # calculate the normal vectors
+            vn_nor[i,:] = vn[i,:]/(np.sqrt(np.sum(vn[i,:]**2)))     # normalize the normal vectors
+
+        return {'vn': vn, 'vn_nor': vn_nor}
+
+    @ staticmethod
+    def fmask_2d(r, s, vert, rsf=None):
+        """Gets the node number (row in r) of the nodes on the facets. If quadrature nodes on the facets are provided,
+        those volume nodes that correspond to the quadrature nodes are also returned. An assumption that the
+        reference element is right triangle is made.
+        Args:
+            r - x coordinate of the volume nodes on the reference element
+            s - y coordinate of the volume nodes on the reference element
+            vert - (3 X 2) array containing the coordinates of the vertices of the reference element
+            rsf -  (3 X nq X 2) array containing the coordinates of the facet quadrature nodes on the 3 facets
+        Returns:
+            fmask - (nn X 3) array containing the row numbers of the volume nodes on the facets of the reference
+                    triangle; nn is the number of volume nodes per facet
+            fmask_q - (qq X 3) array containing the row numbers of the volume nodes that are on the same location on
+                    the facet as the quadrature nodes (required to construct SBP-diagE type operators)
+            """
+
+        tol = 1e-10
+        fmask_q = None
+
+        fmask1 = ((np.abs(r + s - (vert[1,0]+vert[1,1])) < tol).nonzero())[0]       # nodes on face 1
+        fmask2 = ((np.abs(r - vert[0, 0]) < tol).nonzero())[0]                      # nodes on face 2
+        fmask3 = ((np.abs(s - vert[0, 1]) < tol).nonzero())[0]                      # nodes on face 3
+        fmask = np.array([fmask1, fmask2, fmask3]).T
+
+        if rsf is not None:
+            fmask1_q = fmask1[np.abs(r[fmask1].flatten() - rsf[0][:,0]) + np.abs(s[fmask1].flatten() - rsf[0][:,1]) < tol]
+            fmask2_q = fmask2[np.abs(r[fmask2].flatten() - rsf[1][:,0]) + np.abs(s[fmask2].flatten() - rsf[1][:,1]) < tol]
+            fmask3_q = fmask3[np.abs(r[fmask3].flatten() - rsf[2][:,0]) + np.abs(s[fmask3].flatten() - rsf[2][:,1]) < tol]
+            fmask_q = np.array([fmask1_q, fmask2_q, fmask3_q]).T
+
+        return {'fmask': fmask, 'fmask_q': fmask_q}
+
+    @ staticmethod
+    def make_r(V, Vf, sbp_family="gamma", fmask=None, fmask_q=None):
+        """Builds the interpolation/extrapolation matrix."""
+        sbp_family = str.lower(sbp_family)
+        R = np.zeros((Vf.shape[0], V.shape[0]))
+
+        if sbp_family == "gamma":
+            fmask1 = fmask[:, 0]
+            R_temp = Vf @ np.linalg.pinv(V[fmask1, :])
+            R[:, fmask1] = R_temp
+        elif sbp_family == "diage":
+            fmask1 = fmask[:, 0]
+            fmask1_q = fmask_q[:, 0]
+            R[fmask1, fmask1_q] = 1
+        else:
+            R = Vf @ np.linalg.pinv(V)
+
+        return R
+
+    @staticmethod
+    def make_sbp_operators2D(p, sbp_family="gamma"):
+
+        sbp_family = str.lower(sbp_family)
+        dim = 2
+        nface = dim + 1
+        ns = (p+1)*(p+2)/2
+        tol = 1e-10
+        vert = Ref2D_SBP.simplex_vertices(dim)
+
+        # get the cubature points
+        cub_data = CubatureRules.cub_tri_volume(p, sbp_family)
+        cub = SimpleNamespace(**cub_data)
+        nnodes = len(cub.r)
+
+        # get Barycentric coordinat of the cubature nodes
+        b = Ref2D_SBP.cartesian_to_barycentric2D(cub.r, cub.s, cub.cub_vert)
+
+        # get the coordinates of the cubature nodes on the reference triangle
+        # (if it is different form the reference element for which the cubature rule is given for)
+        rs_data = Ref2D_SBP.barycentric_to_cartesian(b, vert)
+        r = rs_data[:, 0].reshape(len(rs_data[:,0]), 1)
+        s = rs_data[:, 1].reshape(len(rs_data[:,1]), 1)
+
+        # identrify the nodal symmetry (with respect to x=y line) and symmetry group (S3, S211, and S111)
+        nodal_sym = Ref2D_SBP.nodal_sym_map2D(r, s)
+        sym_grps = Ref2D_SBP.sym_group_map2D(r, s)
+        sym_grp = sym_grps['sym_grp']
+
+        # get the permutation matrix for R
+        Rperm = Ref2D_SBP.make_rperm2D(sym_grp, r, s)
+
+        # get the cubature rule for the facets and find the symmetry group of the facet quadrature nodes
+        xqf, wqf = CubatureRules.quad_line_volume(p, "LG")
+        sym_grps_xqf = Ref2D_SBP.sym_group_map2D(xqf)
+        sym_grp_xqf = sym_grps_xqf['sym_grp']
+
+        # get the barcentric coordinate for the facet quadrature nodes
+        bf = Ref2D_SBP.cartesian_to_barycentric2D(xqf)
+
+        # get the coordinates of the quadrature points on the facets
+        rsf1 = Ref2D_SBP.barycentric_to_cartesian(bf, np.array([vert[2, :], vert[1, :]]))   # facet 1
+        rsf2 = Ref2D_SBP.barycentric_to_cartesian(bf, np.array([vert[0, :], vert[2, :]]))   # facet 2
+        rsf3 = Ref2D_SBP.barycentric_to_cartesian(bf, np.array([vert[1, :], vert[0, :]]))   # facet 3
+        rsf = np.array([rsf1, rsf2, rsf3])
+
+        # calculate the Vandermonde matrix and its derivative for the facet quadrature nodes (on face 1 - the slant)
+        Vf = Ref2D_DG.vandermonde_2d(p, rsf1[:, 0], rsf1[:, 1])
+        Vdxf = Ref2D_DG.grad_vandermonde2d(p, rsf1[:, 0], rsf1[:, 1])
+
+        # calculate the vandermonde matrix on the volume nodes
+        V = Ref2D_DG.vandermonde_2d(p, r, s)
+
+        # get H: the volume norm matrix
+        elem_size = Ref2D_SBP.elem_size(vert)
+        H = np.diag((cub.w).flatten()) * (elem_size/np.sum(cub.w))
+
+        # get B: the facet norm matrix
+        vertf = Ref2D_SBP.simplex_vertices(dim-1)
+        elem_sizef = Ref2D_SBP.elem_size(vertf)
+        B = np.diag(wqf.flatten()) * (elem_sizef/np.sum(wqf))
+
+        # get N: the surface normal vectors
+        normals_data = Ref2D_SBP.normals(vert)
+        vn = normals_data['vn']  # scaled normal vector (not normailzed)
+        nx = vn[:, 0]
+        ny = vn[:, 1]
+
+        # get R: the interpolation/extrapolation matrix on face 1
+        fmask_data = Ref2D_SBP.fmask_2d(r, s, vert, rsf)
+        fmask = fmask_data['fmask']
+        fmask_q = fmask_data['fmask_q']
+        R = Ref2D_SBP.make_r(V, Vf, sbp_family, fmask, fmask_q)
+
+        # get E: the surface integral matrix
+        Pr = np.zeros((nface, nnodes, nnodes))
+        Ex = np.zeros((nnodes, nnodes))
+        I = np.eye(nnodes)
+        A = R.T @ B @ R
+
+        for i in range(0, nface):
+            Pr[i, :, :] = I[:, Rperm[i, :]-1]
+            Ex = Ex + nx[i] * (Pr[i, :, :].T @ A @ Pr[i, :, :])
+
+
+        return
+
 
 #M = Ref2D_DG.mass_matrix(1)
 
@@ -956,9 +1150,10 @@ class Ref2D_SBP:
 # lift = Ref2D_DG.lift_2d(p, r, s, fmask)
 
 p = 4
-sbp_family = "sbp-gamma"
+sbp_family = "gamma"
 # w, r, s= Ref2D_DG.quad_rule_tri(p, 'Liu-Vinokur')
-shp_data = Ref2D_SBP.shape_tri(p, sbp_family)
-shp = shp_data['shp']
-shpx = shp_data['shpx']
-shp_data
+# shp_data = Ref2D_SBP.shape_tri(p, sbp_family)
+shp_data = Ref2D_SBP.make_sbp_operators2D(p, sbp_family)
+# shp = shp_data['shp']
+# shpx = shp_data['shpx']
+# shp_data

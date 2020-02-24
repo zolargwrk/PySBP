@@ -63,7 +63,7 @@ class CubatureRules:
         """
         # order of the cubature rule
         if p_cub == 0:
-            p_cub = 2*p - 1     # assume 2p-1 if not provided
+            p_cub = 2*p -1     # assume 2p-1 if not provided
 
         # the reference triangle on which the cubature rules are given
         cub_vert_BigTriangle = np.array([[-1, -1], [1, -1], [-1, 1]])

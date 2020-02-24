@@ -1008,14 +1008,18 @@ class Ref2D_SBP:
         tol = 1e-10
         fmask_q = None
 
-        fmask1 = ((np.abs(r + s - (vert[1,0]+vert[1,1])) < tol).nonzero())[0]       # nodes on face 1
-        fmask2 = ((np.abs(r - vert[0, 0]) < tol).nonzero())[0]                      # nodes on face 2
-        fmask3 = ((np.abs(s - vert[0, 1]) < tol).nonzero())[0]                      # nodes on face 3
+        fmask1_unsorted = ((np.abs(r + s - (vert[1,0]+vert[1,1])) < tol).nonzero())[0]       # nodes on face 1
+        fmask2_unsorted = ((np.abs(r - vert[0, 0]) < tol).nonzero())[0]                      # nodes on face 2
+        fmask3_unsorted = ((np.abs(s - vert[0, 1]) < tol).nonzero())[0]                      # nodes on face 3
+
+        # sort to read nodes counterclockwise on facets
+        fmask1 = fmask1_unsorted[np.argsort(s[fmask1_unsorted].flatten())]
+        fmask2 = fmask2_unsorted[np.argsort(-s[fmask2_unsorted].flatten())]
+        fmask3 = fmask3_unsorted[np.argsort(r[fmask3_unsorted].flatten())]
         fmask = np.array([fmask1, fmask2, fmask3]).T
 
         if rsf is not None:
-            # flip volume nodes on the facet using [::-1] and subtract the quadrature node coordinates to see if the
-            # location of the quadrature nodes and the volume nodes coincide on the facets
+            # check if the location of the quadrature nodes and the volume nodes coincide on the facets
             fmask1_q = fmask1[np.abs(r[fmask1].flatten() - rsf[0][:,0]) + np.abs(s[fmask1].flatten() - rsf[0][:,1]) < tol]
             fmask2_q = fmask2[np.abs(r[fmask2].flatten() - rsf[1][:,0]) + np.abs(s[fmask2].flatten() - rsf[1][:,1]) < tol]
             fmask3_q = fmask3[np.abs(r[fmask3].flatten() - rsf[2][:,0]) + np.abs(s[fmask3].flatten() - rsf[2][:,1]) < tol]
@@ -1046,7 +1050,7 @@ class Ref2D_SBP:
         R2 = np.zeros((Vf[1].shape[0], V.shape[0]))
         R3 = np.zeros((Vf[2].shape[0], V.shape[0]))
 
-        if sbp_family == "gamma":
+        if sbp_family == "gamma" and (len(fmask_q[:, 0]) != len(fmask[:,0])):
             fmask1 = fmask[:, 0]
             fmask2 = fmask[:, 1]
             fmask3 = fmask[:, 2]
@@ -1060,7 +1064,7 @@ class Ref2D_SBP:
             R_temp3 = Vf[2] @ np.linalg.pinv(V[fmask3, :])
             R3[:, fmask3] = R_temp3
 
-        elif sbp_family == "diage":
+        elif sbp_family == "diage" or (sbp_family=="gamma" and (len(fmask_q[:, 0]) == len(fmask[:,0]))):
             fmask1_q = fmask_q[:, 0]
             fmask2_q = fmask_q[:, 1]
             fmask3_q = fmask_q[:, 2]
@@ -1117,7 +1121,7 @@ class Ref2D_SBP:
         sym_grps_xqf = Ref2D_SBP.sym_group_map2D(xqf)
         sym_grp_xqf = sym_grps_xqf['sym_grp']
 
-        # get the barcentric coordinate for the facet quadrature nodes
+        # get the barycentric coordinate for the facet quadrature nodes
         bf = Ref2D_SBP.cartesian_to_barycentric2D(xqf)
 
         # get the coordinates of the quadrature points on the facets
@@ -1140,9 +1144,6 @@ class Ref2D_SBP:
         V_der = Ref2D_DG.grad_vandermonde2d(p, r, s)
         Vdr = V_der['vdr']
         Vds = V_der['vds']
-
-        # get the permutation matrix for R
-        # Rperm = Ref2D_SBP.make_rperm2D(sym_grp, r, s)
 
         # get permutation matrix to go from x to y (e.g., obtain Es from Er)
         I = np.eye(nnodes)
@@ -1210,7 +1211,7 @@ class Ref2D_SBP:
 
         return {'H': H, 'B': B, 'Dr': Dr, 'Ds': Ds, 'Er': Er, 'Es': Es, 'Qr': Qr, 'Qs': Qs, 'B1': B_list[0],
                 'B2': B_list[1], 'B3': B_list[2], 'R1': R.R1, 'R2': R.R2, 'R3': R.R3,'vert': cub.cub_vert,
-                'r': cub.r, 's': cub.s, 'V': V, 'Vf': Vf}
+                'r': cub.r, 's': cub.s, 'rsf': rsf, 'V': V, 'Vf': Vf}
 
 
 #M = Ref2D_DG.mass_matrix(1)
@@ -1235,12 +1236,13 @@ class Ref2D_SBP:
 #
 #
 # lift = Ref2D_DG.lift_2d(p, r, s, fmask)
-
-# p = 4
-# sbp_family = "diage"
 # w, r, s= Ref2D_DG.quad_rule_tri(p, 'Liu-Vinokur')
 # shp_data = Ref2D_SBP.shape_tri(p, sbp_family)
+
+# p = 3
+# sbp_family = "gamma"
 # shp_data = Ref2D_SBP.make_sbp_operators2D(p, sbp_family)
+
 # shp = shp_data['shp']
 # shpx = shp_data['shpx']
 # shp_data

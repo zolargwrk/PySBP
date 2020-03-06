@@ -1,7 +1,7 @@
 import numpy as np
 from types import SimpleNamespace
 from mesh.mesh_generator import MeshGenerator1D, MeshGenerator2D
-from src.ref_elem import Ref2D_DG
+from src.ref_elem import Ref2D_DG, Ref2D_SBP
 
 
 class MeshTools1D:
@@ -211,7 +211,7 @@ class MeshTools2D:
         jac = -xs*yr + xr*ys
         rx = ys/jac
         sx = -yr/jac
-        ry = -xs
+        ry = -xs/jac
         sy = xr/jac
 
         return {'xr': xr, 'xs': xs, 'yr': yr, 'ys': ys, 'jac': jac, 'rx': rx, 'sx': sx, 'ry': ry, 'sy': sy}
@@ -265,12 +265,36 @@ class MeshTools2D:
         return {'etoe': etoe, 'etof': etof}
 
     @staticmethod
-    def affine_map_2d(vx, vy, r, s, etov):
+    def affine_map_2d(vx, vy, r, s, etov, baryf=None):
         va = etov[:, 0].T
         vb = etov[:, 1].T
         vc = etov[:, 2].T
-        x = 0.5*(-(r+s)*(vx[va]).flatten() + (1+r)*(vx[vb]).flatten() + (1+s)*(vx[vc]).flatten())
-        y = 0.5*(-(r+s)*(vy[va]).flatten() + (1+r)*(vy[vb]).flatten() + (1+s)*(vy[vc]).flatten())
+        if baryf is None:
+            x = 0.5*(-(r+s)*(vx[va]).flatten() + (1+r)*(vx[vb]).flatten() + (1+s)*(vx[vc]).flatten())
+            y = 0.5*(-(r+s)*(vy[va]).flatten() + (1+r)*(vy[vb]).flatten() + (1+s)*(vy[vc]).flatten())
+
+        # we can also use barycentric coordinates as follows (for nodes at the facet that do not coincide with volume nodes)
+        if baryf is not None:
+                vert1 = np.array([[vx[vb], vy[vb]], [vx[vc], vy[vc]]])
+                vert2 = np.array([[vx[vc], vy[vc]], [vx[va], vy[va]]])
+                vert3 = np.array([[vx[va], vy[va]], [vx[vb], vy[vb]]])
+                v1 = vert1.transpose(0, 2, 1).reshape(2, 2*len(va))
+                xy1 = Ref2D_SBP.barycentric_to_cartesian(baryf, v1)
+                v2 = vert2.transpose(0, 2, 1).reshape(2, 2 * len(va))
+                xy2 = Ref2D_SBP.barycentric_to_cartesian(baryf, v2)
+                v3 = vert3.transpose(0, 2, 1).reshape(2, 2 * len(va))
+                xy3 = Ref2D_SBP.barycentric_to_cartesian(baryf, v3)
+                xy = np.vstack([xy1, xy2, xy3])
+                x = xy[:, 0::2]
+                y = xy[:, 1::2]
+
+        # something similar but for volume nodes (using barycentric coordinates, bary is barycentric for the volume nodes)
+        # if bary is not None:
+        #     vert1 = np.array([[vx[va], vy[va]], [vx[vb], vy[vb]], [vx[vc], vy[vc]]])
+        #     vert2 = vert1.transpose(0,2,1).reshape(3, 2*len(va))
+        #     xy = Ref2D_SBP.barycentric_to_cartesian(bary, vert2)
+        #     x = xy[:, 0::2]
+        #     y = xy[:, 1::2]
 
         return x, y
 
@@ -426,7 +450,7 @@ class MeshTools2D:
         vmapM = vmapM.reshape(nelem, nface, nfp).transpose(0, 1, 2)
         mapM = mapM.reshape((nelem, nface, nfp)).transpose(0, 1, 2)
 
-        # get the boundary nodes that the elements in indx contain at its boundary on the face contained in the bgrp
+        # get the boundary nodes that the elements in index contain at its boundary on the face contained in the bgrp
         bnodes = list()
         for i in range(0, len(bgrp)):
             vmapMgrp = vmapM[bgrp[i][:, 2], bgrp[i][:, 3], :]
@@ -455,16 +479,42 @@ class MeshTools2D:
         return u0
 
     @ staticmethod
+    def bgrp_by_type(btype, bgrp):
+        """Gets the boundary groups by type, i.e., Dirichlet or Neumann. It returns the element and facet numbers
+        associated with these boundary types"""
+        bgrpDs = list()
+        bgrpNs = list()
+        for i in range(0, len(btype)):
+            bndry = btype[i]
+            if bndry == 'd' or bndry == 'D' or 'Dirichlet':
+                bgrpDs.append(bgrp[i])
+            elif bndry == 'n' or bndry == 'N' or 'Neumann':
+                bgrpNs.append(bgrp[i])
+
+        if bgrpDs !=[]:
+            bgrpD = np.vstack(bgrpDs)[:, 2:4]
+        else:
+            bgrpD = bgrpDs
+        if bgrpNs !=[]:
+            bgrpN = np.vstack(bgrpNs)[:, 2:4]
+        else:
+            bgrpN = bgrpNs
+
+        return {'bgrpD': bgrpD, 'bgrpN': bgrpN}
+
+    @ staticmethod
     def bndry_list(btype, bnodes, bnodesB):
         vmapDs = list()
         mapDs = list()
         vmapNs = list()
         mapNs = list()
+
         for i in range(0, len(btype)):
             bndry = btype[i]
             if bndry == 'd' or bndry == 'D':
                 vmapDs.append(bnodes[i])
                 mapDs.append(bnodesB[i])
+
             elif bndry == 'n' or bndry == 'N':
                 vmapNs.append(bnodes[i])
                 mapNs.append(bnodesB[i])

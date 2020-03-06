@@ -726,3 +726,251 @@ class SATs:
             fB[:, 0] = fB[:, 0] + fD_right.flatten()
 
         return sI, fB
+
+    @staticmethod
+    def diffusion_sbp_sat_2d_steady(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, LB, Ds, Dr, H, B1, B2, B3, R1, R2, R3, rx, ry,
+                                    sx, sy, jac, surf_jac,  nx, ny, etoe, etof, bgrp, bgrpD, bgrpN, flux_type='BR2',
+                                    uD=None, uN=None):
+
+        nfp = int(nx.shape[0] / 3)  # number of nodes per facet, also nfp = p+1
+        dim = 2
+        bgrp = np.vstack(bgrp)[:, 2:4]  # boundary group (obtain element number and facet number only)
+
+        # get the geometric factors for each element (in rxB, B stands for Block)
+        rxB = rx.T.reshape(nelem, nnodes, 1)
+        ryB = ry.T.reshape(nelem, nnodes, 1)
+        sxB = sx.T.reshape(nelem, nnodes, 1)
+        syB = sy.T.reshape(nelem, nnodes, 1)
+
+        # get volume and surface Jacobians for each elements
+        jacB = jac.T.reshape(nelem, nnodes, 1)
+        surf_jac1B = surf_jac[nfp:2*nfp, :].flatten(order='F').reshape(nelem, nfp, 1)   # facet numbering see note below
+        surf_jac2B = surf_jac[2*nfp:3*nfp, :].flatten(order='F').reshape(nelem, nfp, 1)
+        surf_jac3B = surf_jac[0:nfp, :].flatten(order='F').reshape(nelem, nfp, 1)
+
+        # Note: difference in facet numbering in SBP and DG codes,  facets (3, 1, 2) in DG imply (1, 2, 3) in SBP code
+
+        # get the normal vectors on each facet.
+        nx1B = nx[nfp:2*nfp, :].flatten(order='F').reshape(nelem, nfp, 1)
+        ny1B = ny[nfp:2*nfp, :].flatten(order='F').reshape(nelem, nfp, 1)
+
+        nx2B = nx[2*nfp:3*nfp, :].flatten(order='F').reshape(nelem, nfp, 1)
+        ny2B = ny[2*nfp:3*nfp, :].flatten(order='F').reshape(nelem, nfp, 1)
+
+        nx3B = nx[0:nfp, :].flatten(order='F').reshape(nelem, nfp, 1)
+        ny3B = ny[0:nfp, :].flatten(order='F').reshape(nelem, nfp, 1)
+
+        # get the derivative operator on the physical elements and store it for each element
+        DrB = np.block([Dr] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        DsB = np.block([Ds] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        DxB = rxB * DrB + sxB * DsB
+        DyB = ryB * DrB + syB * DsB
+
+        # np.block([R1] * nelem) is a matrix of size nfp X nelem*nnodes, since python reads row by row first transpose
+        # it, then reshape it in to 3D array of size nelem X nnodes X nfp, gets the first 3*10 entries and form 10 X 3
+        # matrix and do that for the second, etc. So we need to transpose 10X3 matrices corresponding to each element
+        R1B = np.block([R1] * nelem).T.reshape(nelem, nnodes, nfp).transpose(0, 2, 1)
+        R2B = np.block([R2] * nelem).T.reshape(nelem, nnodes, nfp).transpose(0, 2, 1)
+        R3B = np.block([R3] * nelem).T.reshape(nelem, nnodes, nfp).transpose(0, 2, 1)
+
+        RB = [R1B, R2B, R3B]
+
+        # get derivative operator on each facet
+        Dgk1B = nx1B * R1B @ (LxxB @ DxB + LxyB @ DyB) + ny1B * R1B @ (LyxB @ DxB + LyyB @ DyB)
+        Dgk2B = nx2B * R2B @ (LxxB @ DxB + LxyB @ DyB) + ny2B * R2B @ (LyxB @ DxB + LyyB @ DyB)
+        Dgk3B = nx3B * R3B @ (LxxB @ DxB + LxyB @ DyB) + ny3B * R3B @ (LyxB @ DxB + LyyB @ DyB)
+
+        Dgk = [Dgk1B, Dgk2B, Dgk3B]
+
+        # get volume norm matrix on physical elements
+        HB = jacB * np.block([H] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+
+        # get surface norm matrix for each facet of each element
+        BB1 = surf_jac1B * np.block([B1] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1)
+        BB2 = surf_jac2B * np.block([B2] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1)
+        BB3 = surf_jac3B * np.block([B3] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1)
+
+        BB = [BB1, BB2, BB3]
+
+        # calculate Upsilon in Eq.(74) in my notes
+        Ugk1B = (nx1B * R1B) @ (np.linalg.inv(HB) @ LxxB) @ (R1B.transpose(0, 2, 1) * nx1B.transpose(0,2,1)) \
+                + (nx1B * R1B) @ (np.linalg.inv(HB) @ LxyB) @ (R1B.transpose(0, 2, 1) * ny1B.transpose(0,2,1))\
+                + (ny1B * R1B) @ (np.linalg.inv(HB) @ LyxB) @ (R1B.transpose(0, 2, 1) * nx1B.transpose(0,2,1))\
+                + (ny1B * R1B) @ (np.linalg.inv(HB) @ LyyB) @ (R1B.transpose(0, 2, 1) * ny1B.transpose(0,2,1))
+
+        Ugk2B = (nx2B * R2B) @ (np.linalg.inv(HB) @ LxxB) @ (R2B.transpose(0, 2, 1) * nx2B.transpose(0,2,1)) \
+                + (nx2B * R2B) @ (np.linalg.inv(HB) @ LxyB) @ (R2B.transpose(0, 2, 1) * ny2B.transpose(0,2,1))\
+                + (ny2B * R2B) @ (np.linalg.inv(HB) @ LyxB) @ (R2B.transpose(0, 2, 1) * nx2B.transpose(0,2,1))\
+                + (ny2B * R2B) @ (np.linalg.inv(HB) @ LyyB) @ (R2B.transpose(0, 2, 1) * ny2B.transpose(0,2,1))
+
+        Ugk3B = (nx3B * R3B) @ (np.linalg.inv(HB) @ LxxB) @ (R3B.transpose(0, 2, 1) * nx3B.transpose(0,2,1)) \
+                + (nx3B * R3B) @ (np.linalg.inv(HB) @ LxyB) @ (R3B.transpose(0, 2, 1) * ny3B.transpose(0,2,1))\
+                + (ny3B * R3B) @ (np.linalg.inv(HB) @ LyxB) @ (R3B.transpose(0, 2, 1) * nx3B.transpose(0,2,1))\
+                + (ny3B * R3B) @ (np.linalg.inv(HB) @ LyyB) @ (R3B.transpose(0, 2, 1) * ny3B.transpose(0,2,1))
+
+        Ugk = [Ugk1B, Ugk2B, Ugk3B]
+
+        # # get the derivative operator on each element
+        # Dr_block = ([Dr] * nelem)  # Dr matrix for every element
+        # Ds_block = ([Ds] * nelem)  # Ds matrix for every element
+        #
+        # # get the derivative on the physical element, we've: Dx = Dr*rx + Ds*sx and  Dy = Dr*ry + Ds*sy
+        # DxB = sparse.diags(rx.flatten(order='F')) @ sparse.block_diag(Dr_block) \
+        #       + sparse.diags(sx.flatten(order='F')) @ sparse.block_diag(Ds_block)
+        # DyB = sparse.diags(ry.flatten(order='F')) @ sparse.block_diag(Dr_block) \
+        #       + sparse.diags(sy.flatten(order='F')) @ sparse.block_diag(Ds_block)
+        #
+        # # get the extrapolation/interpolation matrix in block matrix form
+        # R1B = sparse.block_diag([R1] * nelem)
+        # R2B = sparse.block_diag([R2] * nelem)
+        # R3B = sparse.block_diag([R3] * nelem)
+        #
+        # # get the normal matrices in block matrix form. Note: due to difference in facet numbering in SBP and DG codes
+        # # nx and ny store normals in facet number order of 3, 1, 2)
+        # nx1 = sparse.block_diag(nx[nfp:2*nfp, :].flatten(order='F'))
+        # ny1 = sparse.block_diag(ny[nfp:2*nfp, :].flatten(order='F'))
+        #
+        # nx2 = sparse.block_diag(nx[2*nfp:3*nfp, :].flatten(order='F'))
+        # ny2 = sparse.block_diag(ny[2*nfp:3*nfp, :].flatten(order='F'))
+        #
+        # nx3 = sparse.block_diag(nx[0:nfp, :].flatten(order='F'))
+        # ny3 = sparse.block_diag(ny[0:nfp, :].flatten(order='F'))
+        #
+        # # get derivative matrix at the surface of each element
+        # Dgk1 = (np.block([nx1, ny1]) @ np.block([[R1B, 0*R1B], [0*R1B, R1B]]) @ (LB @ np.block([[DxB], [DyB]])))[0,0]
+        # Dgk2 = (np.block([nx2, ny2]) @ np.block([[R2B, 0*R2B], [0*R2B, R2B]]) @ (LB @ np.block([[DxB], [DyB]])))[0,0]
+        # Dgk3 = (np.block([nx3, ny3]) @ np.block([[R3B, 0*R3B], [0*R3B, R3B]]) @ (LB @ np.block([[DxB], [DyB]])))[0,0]
+
+        # SAT coefficients for different methods
+
+        # coefficients for the BR2 method
+        eta = dim + 1
+        # facet 1
+        T2gk1B = -1/2*BB1
+        T2gv1B = -1/2*BB1
+        T3gk1B = 1/2*BB1
+        T3gv1B = 1/2*BB1
+        T4gk1B = 0*BB1
+        T4gv1B = 0*BB1
+
+        # facet 2
+        T2gk2B = -1/2*BB2
+        T2gv2B = -1/2*BB2
+        T3gk2B = 1/2*BB2
+        T3gv2B = 1/2*BB2
+        T4gk2B = 0*BB2
+        T4gv2B = 0*BB2
+
+        # facet 3
+        T2gk3B = -1/2*BB3
+        T2gv3B = -1/2*BB3
+        T3gk3B = 1/2*BB3
+        T3gv3B = 1/2*BB3
+        T4gk3B = 0*BB3
+        T4gv3B = 0*BB3
+
+        # calcualte the T1gk matrix
+        T1gk1B = np.block(np.zeros((nelem, nfp, nfp))).reshape(nelem, nfp, nfp)     # T1gk at facet 1
+        T1gk2B = np.block(np.zeros((nelem, nfp, nfp))).reshape(nelem, nfp, nfp)     # T1gk at facet 2
+        T1gk3B = np.block(np.zeros((nelem, nfp, nfp))).reshape(nelem, nfp, nfp)     # T1gk at facet 3
+        # T1gk for BR2 method, note that etoe facet numbering is adjusted to match SBP reference element facet numbering
+        for i in range(0, nelem):
+            T1gk1B[i, :, :] = eta / 4 * BB1[i, :, :] @ (Ugk[0][i, :, :] + Ugk[etof[i, 1]][etoe[i, 0], :, :]) @ BB1[i, :, :]
+            T1gk2B[i, :, :] = eta / 4 * BB2[i, :, :] @ (Ugk[1][i, :, :] + Ugk[etof[i, 2]][etoe[i, 1], :, :]) @ BB2[i, :, :]
+            T1gk3B[i, :, :] = eta / 4 * BB3[i, :, :] @ (Ugk[2][i, :, :] + Ugk[etof[i, 0]][etoe[i, 2], :, :]) @ BB3[i, :, :]
+
+        # calculate the TDg matrix (the SAT coefficient at Dirichlet boundaries)
+        nD = len(bgrpD)    # number of elements where Dirichlet boundary is imposed
+        nN = len(bgrpN)    # number of elements where Neumann boundary is imposed
+        TDg = np.block(np.zeros((nelem, nfp, nfp))).reshape(nelem, nfp, nfp)
+        for i in range(0, nD):
+            TDg[bgrp[i, 0], :, :] = eta * (BB[bgrp[i, 1]][bgrp[i, 0], :, :] @ Ugk[bgrp[i, 1]][bgrp[i, 0], :, : ] \
+                                    @ BB[bgrp[i, 1]][bgrp[i, 0], :, :])
+
+        # put coefficinets in a list to access them by facet number, i.e., facet 1, 2, 3 --> 0, 1, 2
+        T1gk = [T1gk1B, T1gk2B, T1gk3B]
+        T2gk = [T2gk1B, T2gk2B, T2gk3B]
+        T3gk = [T3gk1B, T3gk2B, T3gk3B]
+        T4gk = [T4gk1B, T4gk2B, T4gk3B]
+
+        # construct a block matrix to hold all the interface SATs
+        # sI = sparse.bsr_matrix(np.zeros(nelem*nnodes, nelem*nnodes)), blocksize=(nnodes, nnodes))
+        sI = (np.block(np.zeros((nelem*nnodes, nelem*nnodes)))).reshape(nelem, nelem, nnodes, nnodes)
+
+        sI_diag = np.block([R1B.transpose(0,2,1), Dgk1B.transpose(0,2,1)]) @ np.block([[T1gk1B, T3gk1B], [T2gk1B, T4gk1B]]) \
+                  @ np.block([[R1B], [Dgk1B]]) \
+                  + np.block([R2B.transpose(0,2,1), Dgk2B.transpose(0,2,1)]) @ np.block([[T1gk2B, T3gk2B], [T2gk2B, T4gk2B]]) \
+                  @ np.block([[R2B], [Dgk2B]]) \
+                  + np.block([R3B.transpose(0,2,1), Dgk3B.transpose(0,2,1)]) @ np.block([[T1gk3B, T3gk3B], [T2gk3B, T4gk3B]]) \
+                  @ np.block([[R3B], [Dgk3B]])
+
+        for i in range(0, nelem):
+            # facet 1
+            sI[i, etoe[i, 0], :, :] += np.block([R1B.transpose(0,2,1)[i, :, :], Dgk1B.transpose(0,2,1)[i, :, :]]) \
+                                       @ np.block([[T1gk1B[i,:,:], T3gk1B[i,:,:]], [T2gk1B[i,:,:], T4gk1B[i,:,:]]]) \
+                                       @ np.block([[-1*R1B[etoe[i, 0], :, :]], [-1*Dgk1B[etoe[i, 0], : , : ]]])
+            # facet 2
+            sI[i, etoe[i, 1], :, :] += np.block([R2B.transpose(0,2,1)[i, :, :], Dgk2B.transpose(0,2,1)[i, :, :]]) \
+                                       @ np.block([[T1gk2B[i,:,:], T3gk1B[i,:,:]], [T2gk2B[i,:,:], T4gk2B[i,:,:]]]) \
+                                       @ np.block([[-1*R2B[etoe[i, 1], :, :]], [-1*Dgk2B[etoe[i, 1], : , : ]]])
+            # facet 3
+            sI[i, etoe[i, 2], :, :] += np.block([R3B.transpose(0,2,1)[i, :, :], Dgk3B.transpose(0,2,1)[i, :, :]]) \
+                                       @ np.block([[T1gk3B[i,:,:], T3gk3B[i,:,:]], [T2gk3B[i,:,:], T4gk3B[i,:,:]]]) \
+                                       @ np.block([[-1*R3B[etoe[i, 2], :, :]], [-1*Dgk3B[etoe[i, 2], : , : ]]])
+
+        # subtract interface SATs added at facets that are at the boundaries and add boundary SATs instead
+        for i in range(0, bgrp.shape[0]):
+            sI[bgrp[i, 0], bgrp[i, 0], :, :] = sI[bgrp[i, 0], bgrp[i, 0], :, :]\
+                                               - np.block([(RB[bgrp[i, 1]].transpose(0,2,1))[bgrp[i, 0], :, :],
+                                                           (Dgk[bgrp[i, 1]].transpose(0,2,1))[bgrp[i, 0], :, :]])\
+                                               @ np.block([[T1gk[bgrp[i, 1]][bgrp[i, 0], :, :],
+                                                            T3gk[bgrp[i, 1]][bgrp[i, 0], :, :]],
+                                                           [T2gk[bgrp[i, 1]][bgrp[i, 0], :, :],
+                                                            T4gk[bgrp[i, 1]][bgrp[i, 0], :, :]]])\
+                                               @ np.block([[RB[bgrp[i, 1]][bgrp[i, 0], :, :]],
+                                                             [Dgk[bgrp[i, 1]][bgrp[i, 0], :, :]]]) \
+
+        # add Dirichlet boundary SATs (and construct sD matrix to obtain the Dirichlet SAT contribution  to the RHS)
+        sD = (np.block(np.zeros((nelem * nnodes, nelem * nfp)))).reshape(nelem, nelem, nnodes, nfp)
+        for i in range(0, nD):
+            sI[bgrpD[i, 0], bgrpD[i, 0], :, :] += np.block([(RB[bgrpD[i, 1]].transpose(0,2,1))[bgrpD[i, 0], :, :],
+                                                           (Dgk[bgrpD[i, 1]].transpose(0,2,1))[bgrpD[i, 0], :, :]]) \
+                                                  @ np.block([[TDg[bgrpD[i, 0], :, :]],
+                                                              [-1*BB[bgrpD[i, 1]][bgrpD[i, 0], :, :]]]) \
+                                                  @ RB[bgrpD[i, 1]][bgrpD[i, 0], :, :]
+
+            sD[bgrpD[i, 0], bgrpD[i, 0], :, :] += np.block([(RB[bgrpD[i, 1]].transpose(0, 2, 1))[bgrpD[i, 0], :, :],
+                                                            (Dgk[bgrpD[i, 1]].transpose(0, 2, 1))[bgrpD[i, 0], :, :]]) \
+                                                  @ np.block([[TDg[bgrpD[i, 0], :, :]],
+                                                              [-1 * BB[bgrpD[i, 1]][bgrpD[i, 0], :, :]]])
+
+        # add Neumann boundary SATs (and construct sN matrix to obtain the Neumann SAT contribution that go to the RHS)
+        sN = (np.block(np.zeros((nelem * nnodes, nelem * nfp)))).reshape(nelem, nelem, nnodes, nfp)
+        for i in range(0, nN):
+            sI[bgrpN[i, 0], bgrpN[i, 0], :, :] += (RB[bgrpN[i, 1]].transpose(0,2,1))[bgrpN[i, 0], :, :] \
+                                                  @ BB[bgrpN[i, 1]][bgrpN[i, 0], :, :] \
+                                                  @ Dgk[bgrpN[i, 1]][bgrpN[i, 0], :, :]
+
+            sN[bgrpN[i, 0], bgrpN[i, 0], :, :] += (RB[bgrpN[i, 1]].transpose(0, 2, 1))[bgrpN[i, 0], :, :] \
+                                                  @ BB[bgrpN[i, 1]][bgrpN[i, 0], :, :]
+
+        # diagonal of the SAT matrix
+        for i in range(0, nelem):
+            sI[i, i, :, :] += sI_diag[i, :, :]
+
+        # reshape the 4D array of the SATs into 2D
+        sI_mat = (sI.transpose(0, 2, 1, 3)).reshape(nelem*nnodes, nelem*nnodes)
+        sI_mat = sparse.csr_matrix(sI_mat)
+
+        # construct the forcing terms that go to right hand side
+        if uD is None:
+            uD = np.zeros((nelem*nfp, 1))
+        if uN is None:
+            uN = np.zeros((nelem*nfp, 1))
+        # reshape the sD and sN matrices and change them to sparse matrices
+        sD_mat = sparse.csr_matrix((sD.transpose(0, 2, 1, 3)).reshape(nelem * nnodes, nelem * nfp))
+        sN_mat = sparse.csr_matrix((sN.transpose(0, 2, 1, 3)).reshape(nelem * nnodes, nelem * nfp))
+        # get the forcing term obtained as a result of implementing the boundary SAT (goes to the RHS)
+        fB = sD_mat @ uD + sN_mat @ uN
+
+        return sI_mat, fB

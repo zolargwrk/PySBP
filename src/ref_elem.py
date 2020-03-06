@@ -2,7 +2,6 @@ import numpy as np
 from scipy.linalg import null_space
 import orthopy
 import quadpy
-from collections import deque
 from src.cubature_rules import CubatureRules
 from types import SimpleNamespace
 
@@ -1088,6 +1087,29 @@ class Ref2D_SBP:
         return {'R1': R1, 'R2': R2, 'R3': R3}
 
     @staticmethod
+    def nodes_sbp_2d(p, sbp_family):
+        """Returns the nodal locations on the reference element"""
+        # set dimension
+        dim = 2
+        # get the vertices of the reference element
+        vert = Ref2D_SBP.simplex_vertices(dim)
+        # get cubature data on the a reference element
+        cub_data = CubatureRules.cub_tri_volume(p, sbp_family)
+        cub = SimpleNamespace(**cub_data)
+        nnodes = len(cub.r)
+
+        # get Barycentric coordinat of the cubature nodes
+        b = Ref2D_SBP.cartesian_to_barycentric2D(cub.r, cub.s, cub.cub_vert)
+
+        # get the coordinates of the cubature nodes on the reference triangle
+        # (if it is different form the reference element for which the cubature rule is given for)
+        rs_data = Ref2D_SBP.barycentric_to_cartesian(b, vert)
+        r = rs_data[:, 0].reshape(len(rs_data[:, 0]), 1)
+        s = rs_data[:, 1].reshape(len(rs_data[:, 1]), 1)
+
+        return {'r': r, 's': s}
+
+    @staticmethod
     def make_sbp_operators2D(p, sbp_family="gamma"):
 
         sbp_family = str.lower(sbp_family)
@@ -1211,7 +1233,7 @@ class Ref2D_SBP:
 
         return {'H': H, 'B': B, 'Dr': Dr, 'Ds': Ds, 'Er': Er, 'Es': Es, 'Qr': Qr, 'Qs': Qs, 'B1': B_list[0],
                 'B2': B_list[1], 'B3': B_list[2], 'R1': R.R1, 'R2': R.R2, 'R3': R.R3,'vert': cub.cub_vert,
-                'r': cub.r, 's': cub.s, 'rsf': rsf, 'V': V, 'Vf': Vf}
+                'r': r, 's': s, 'rsf': rsf, 'V': V, 'Vf': Vf, 'bary': b, 'baryf': bf}
 
 
 #M = Ref2D_DG.mass_matrix(1)

@@ -8,8 +8,8 @@ class TestRef2D_SBP(unittest.TestCase):
 
     def test_make_sbp_operators2D(self):
         tol = 1e-12
-        p = 4
-        sbp_family = "omega"
+        p = 1
+        sbp_family = "diagE"
         oper_data = Ref2D_SBP.make_sbp_operators2D(p, sbp_family)
         oper = SimpleNamespace(**oper_data)
 
@@ -44,7 +44,7 @@ class TestRef2D_SBP(unittest.TestCase):
         # setting v = 1 gives int(du) = int_surface(uv)
         q = 2*p
         u = oper.r
-        surf_integral = ((u**0).T @ (oper.Er + oper.Es) @ (u ** q))[0]
+        surf_integral = ((u**p).T @ (oper.Er + oper.Es) @ (u ** p))[0]
         analytical_surf_integral = -q/(q+1) + 1 + (-1)**(q+1)*q/(q+1) - (-1)**q
         errE = np.abs(surf_integral - analytical_surf_integral)
 
@@ -62,12 +62,15 @@ class TestRef2D_SBP(unittest.TestCase):
         line_B3 = np.diag(oper.B3).T @ oper.rsf[2][:, 0] ** t
         errB3 = np.abs(line_B3 - analytical_line_B3)
 
-        # test the norm matrix: H
-        H_test = ((u**0).T @ oper.H @ (q* u**(q-1))).flatten()[0]
-        errH = np.abs(H_test - analytical_surf_integral)
+        # tests the norm matrix: H
+        H_test = lambda pL, pR: ((u**pL).T @ oper.H @ (pR * u**(pR-1))).flatten()[0]
+        errH = np.abs(H_test(0, q) - analytical_surf_integral)
+
+        H_test2 = ((u ** p).T @ oper.H @ (oper.Dr @ (u ** (p)))).flatten()[0]
+        errH2 = np.abs(H_test2 - H_test(p, p))
 
         # test compatibility: v^T@H@du + u^T@ H @v = u^T @ E @ v
-        errComp = np.abs(H_test - surf_integral)[0]
+        errComp = np.abs(H_test(p, p) + H_test(p, p) - surf_integral)[0]
 
         # self.assertEqual(True, False)
         self.assertLessEqual(errDr, tol)
@@ -81,8 +84,9 @@ class TestRef2D_SBP(unittest.TestCase):
         self.assertLessEqual(errB2, tol)
         self.assertLessEqual(errB3, tol)
         self.assertLessEqual(errH, tol)
-        # self.assertLessEqual(errE, tol)       # fails for SBP-Gamma and SBP-Omega
-        # self.assertLessEqual(errComp, tol)    # fails for SBP-Gamma and SBP-Omega
+        self.assertLessEqual(errH2, tol)
+        self.assertLessEqual(errE, tol)
+        self.assertLessEqual(errComp, tol)
 
 
 if __name__ == '__main__':

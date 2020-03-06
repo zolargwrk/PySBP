@@ -4,7 +4,9 @@ from src.ref_elem import Ref2D_DG
 from mesh.mesh_tools import MeshTools2D
 from src.sats import SATs
 import matplotlib.pyplot as plt
-
+from mesh.mesh_generator import MeshGenerator1D, MeshGenerator2D
+from src.assembler import Assembler
+from types import SimpleNamespace
 
 class RHSCalculator:
 
@@ -317,3 +319,81 @@ class RHSCalculator:
         M = sparse.spmatrix.tocsc(M)
         return A, M
 
+    @staticmethod
+    def rhs_poisson_sbp_2d(p, u, x, y, r, s, Dr, Ds, H, B1, B2, B3, R1, R2, R3, nx, ny, rx, ry, sx, sy, fscale, etoe,
+                           etof, bgrp, bgrpD, bgrpN, nelem, surf_jac, jac, flux_type='BR2', LB=None):
+
+        # define and set important variables
+        ns = (p+1)*(p+2)/2      # number of shape functions (cardinality)
+        nnodes = u.shape[0]     # number of nodes per each element
+        dim = 2                 # dimension
+        nface = dim + 1         # number of facets
+
+        # variable coefficient
+        if LB is None:
+            I = np.eye(nnodes)
+            Z = np.zeros((nnodes, nnodes))
+            Lxx = sparse.block_diag([I] * nelem)   # variable coefficient -- only handles constant coefficient this way unless changed later
+            Lyy = sparse.block_diag([I] * nelem)   # LB should be a block matrix of size 2 by 2, i.e., LB = [[Lxx, Lxy],[Lyx, Lyy]]
+            Lxy = 0*Lxx
+            Lyx = 0*Lyy
+            LB = np.block([[Lxx, Lxy], [Lyx, Lyy]])
+            LxxB = np.block([I] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+            LxyB = np.block([Z] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+            LyxB = np.block([Z] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+            LyyB = np.block([I] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+
+        # get the derivative operator on each element
+        Dr_block = ([Dr]*nelem)     # Dr matrix for every element
+        Ds_block = ([Ds]*nelem)     # Ds matrix for every element
+
+        # get the derivative on the physical element, we've: Dx = Dr*rx + Ds*sx and  Dy = Dr*ry + Ds*sy
+        DxB = sparse.diags(rx.flatten(order='F')) @ sparse.block_diag(Dr_block) \
+            + sparse.diags(sx.flatten(order='F')) @ sparse.block_diag(Ds_block)
+        DyB = sparse.diags(ry.flatten(order='F')) @ sparse.block_diag(Dr_block) \
+            + sparse.diags(sy.flatten(order='F')) @ sparse.block_diag(Ds_block)
+
+        # get system matrix
+        D2B = (np.block([DxB, DyB]) @ LB @ np.block([[DxB], [DyB]]))[0, 0]
+        A = D2B
+
+        # construct the scaled norm matrix
+        Hblock = ([H]*nelem)
+        HB = sparse.diags(jac.flatten(order='F'))@ sparse.block_diag(Hblock)
+
+        # tests
+        # kk1 = (D2B @ ((x.flatten(order='F'))**3))
+        # Der_err= np.max((kk1 - 6*(x.flatten(order='F'))**1))
+        # area_err = np.max(np.ones((nnodes*nelem, 1)).T @ HB @ np.ones((nnodes*nelem, 1)) - 4) # rectanglular domain on [-1,1], [1,-1],[1, 1], [-1, 1]
+
+        # get the SATs
+        SATs.diffusion_sbp_sat_2d_steady(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, LB, Ds, Dr, H, B1, B2, B3, R1, R2, R3,
+                                         rx, ry, sx, sy, jac, surf_jac, nx, ny, etoe, etof, bgrp, bgrpD, bgrpN, 'BR2')
+
+
+
+
+
+
+        return
+
+
+p = 2
+mesh = MeshGenerator2D.rectangle_mesh(0.75)
+btype = ['d', 'd', 'd', 'd']
+ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, 'diagE')
+adata = SimpleNamespace(**ass_data)
+x = adata.x
+u = 0*x
+# set type of boundary: [left, right, bottom, top]
+
+bcmaps = MeshTools2D.bndry_list(btype, adata.bnodes, adata.bnodesB)
+bcmap = SimpleNamespace(**bcmaps)
+mapD = bcmap.mapD
+vmapD = bcmap.vmapD
+mapN = bcmap.mapN
+vmapN = bcmap.vmapN
+rhs = RHSCalculator.rhs_poisson_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.Dr, adata.Ds, adata.H, adata.B1,
+                                       adata.B2, adata.B3, adata.R1, adata.R2, adata.R3, adata.nx, adata.ny, adata.rx,
+                                       adata.ry, adata.sx, adata.sy, adata.fscale, adata.etoe, adata.etof, adata.bgrp,
+                                       adata.bgrpD, adata.bgrpN, adata.nelem, adata.surf_jac, adata.jac, 'BR2')

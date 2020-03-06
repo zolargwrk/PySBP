@@ -257,11 +257,11 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
 # profile.run('check_time()')
 
 
-def poisson_2d(p, h, nrefine=1, flux_type='BR1'):
+def poisson_2d(p, h, nrefine=1, flux_type='BR2'):
 
     nface = 3
     nfp = p+1
-    n = int((p+1)*(p+2)/2)
+    ns = int((p+1)*(p+2)/2)
     errs = list()
     nelems = list()
 
@@ -307,7 +307,7 @@ def poisson_2d(p, h, nrefine=1, flux_type='BR1'):
                                             mapD, vmapD, mapN, vmapN, nelem, nfp, rdata.surf_jac, rdata.jac, flux_type)
         f = - 2*(np.pi**2)*np.sin(np.pi*x)*np.sin(np.pi*y)
 
-        u = spsolve(A, f.reshape((n * nelem, 1), order='F'))
+        u = spsolve(A, f.reshape((ns * nelem, 1), order='F'))
         uu = u.reshape(x.shape, order='F')
         u_exact = np.sin(np.pi * x) * np.sin(np.pi * y)
 

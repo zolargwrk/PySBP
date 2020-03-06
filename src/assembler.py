@@ -2,8 +2,9 @@ import numpy as np
 import quadpy
 from mesh.mesh_tools import MeshTools1D, MeshTools2D
 from mesh.mesh_generator import MeshGenerator1D, MeshGenerator2D
-from src.ref_elem import Ref1D, Ref2D_DG
+from src.ref_elem import Ref1D, Ref2D_DG, Ref2D_SBP
 from src.csbp_type_operators import CSBPTypeOperators
+from types import SimpleNamespace
 
 
 class Assembler:
@@ -188,7 +189,7 @@ class Assembler:
         boundary_type = self.boundary_type
 
         nfp = p+1
-        n = int((p+1)*(p+2)/2)
+        ns = int((p+1)*(p+2)/2)
         nface = 3
 
         # obtain mesh data on reference element
@@ -239,7 +240,7 @@ class Assembler:
         etof = connect['etof']
 
         # build connectivity maps
-        maps = MeshTools2D.buildmaps_2d(p, n, x, y, etov, etoe, etof, fmask)
+        maps = MeshTools2D.buildmaps_2d(p, ns, x, y, etov, etoe, etof, fmask)
         mapM = maps['mapM']
         mapP = maps['mapP']
         vmapM = maps['vmapM']
@@ -253,12 +254,117 @@ class Assembler:
         bgrp = MeshTools2D.mesh_bgrp(nelem, bgrp0, edge)
         bnodes, bnodesB = MeshTools2D.boundary_nodes(p, nelem, bgrp, vmapB, vmapM, mapB, mapM)
 
-        return {'nfp': nfp, 'n': n, 'nface': nface, 'nelem': nelem, 'Dr': Dr, 'Ds': Ds, 'Mmat': Mmat, 'lift':lift,
+        return {'nfp': nfp, 'ns': ns, 'nface': nface, 'nelem': nelem, 'Dr': Dr, 'Ds': Ds, 'Mmat': Mmat, 'lift':lift,
                 'rx': rx, 'ry': ry, 'sx': sx, 'sy': sy, 'jac': jac, 'nx': nx, 'ny': ny, 'surf_jac': surf_jac,
                 'fscale': fscale, 'mapM': mapM, 'mapP': mapP, 'vmapM': vmapM, 'vmapP': vmapP, 'vmapB': vmapB,
                 'mapB': mapB, 'bgrp': bgrp, 'bnodes': bnodes, 'bnodesB': bnodesB, 'x': x, 'y': y, 'fx': fx, 'fy': fy,
                 'etov': etov, 'r': r, 's': s, 'etoe': etoe, 'etof': etof, 'vx': vx, 'vy': vy}
 
+    @staticmethod
+    def assembler_sbp_2d(p, mesh, btype, sbp_family="gamma"):
+
+        # define and set important variables
+        nfp = p + 1                         # number of points on each facet
+        ns = int((p + 1) * (p + 2) / 2)     # number of shape function
+        dim = 2                             # dimension
+        nface = dim + 1                     # number of facets
+
+        # obtain data on the reference element
+        sbp_ref_data = Ref2D_SBP.make_sbp_operators2D(p, sbp_family)
+        sbpref = SimpleNamespace(**sbp_ref_data)
+        r = sbpref.r
+        s = sbpref.s
+        nnodes = len(r)
+        bary = sbpref.bary
+
+        # obtain mesh data on the physical element
+        vx = mesh['vx']
+        vy = mesh['vy']
+        etov = mesh['etov']
+        nelem = mesh['nelem']
+
+        # apply affine mapping and obtain mesh location of all nodes on the physical element
+        x, y = MeshTools2D.affine_map_2d(vx, vy, r, s, etov)
+
+        # apply affine mapping to obtain location of nodes on the facets of the physical elements
+        rf = sbpref.rsf[:, 0]
+        sf = sbpref.rsf[:, 1]
+        baryf = sbpref.baryf
+        xf, yf = MeshTools2D.affine_map_2d(vx, vy, rf, sf, etov, baryf)
+
+        # obtain the nodes on the edges of the triangles on the physical element
+        mask = Ref2D_DG.fmask_2d(r, s, x, y)
+        fx = mask['fx']
+        fy = mask['fy']
+        fmask = mask['fmask']
+
+        # get directional operators
+        Dr = sbpref.Dr
+        Ds = sbpref.Ds
+        Er = sbpref.Er
+        Es = sbpref.Es
+
+        # get norm matrices
+        H = sbpref.H        # volume norm matrix
+        B1 = sbpref.B1      # surface 1 norm matrix
+        B2 = sbpref.B2      # surface 2 norm matrix
+        B3 = sbpref.B3      # surface 3 norm matrix
+
+        # get the extrapolation/interpolation matrix at each face
+        R1 = sbpref.R1
+        R2 = sbpref.R2
+        R3 = sbpref.R3
+
+        # get necessary geometric factors
+        geo = MeshTools2D.geometric_factors_2d(x, y, Dr, Ds)
+        rx = geo['rx']
+        ry = geo['ry']
+        sx = geo['sx']
+        sy = geo['sy']
+        jac = geo['jac']
+
+        # get normals and surface scaling factor
+        norm = MeshTools2D.normals_2d(p, x, y, Dr, Ds, fmask)
+        nx = norm['nx']
+        ny = norm['ny']
+        surf_jac = norm['surf_jac']
+        fscale = surf_jac / jac[fmask.reshape((fmask.shape[0] * fmask.shape[1], 1), order='F'), :].reshape(surf_jac.shape)
+
+        # build connectivity matrices
+        connect = MeshTools2D.connectivity_2d(etov)
+        etoe = connect['etoe']
+        etof = connect['etof']
+
+        # build connectivity maps
+        maps = MeshTools2D.buildmaps_2d(p, nnodes, x, y, etov, etoe, etof, fmask)
+        mapM = maps['mapM']
+        mapP = maps['mapP']
+        vmapM = maps['vmapM']
+        vmapP = maps['vmapP']
+        vmapB = maps['vmapB']
+        mapB = maps['mapB']
+
+        # boundary groups and boundary nodes
+        bgrp0 = mesh['bgrp']
+        edge = mesh['edge']
+        bgrp = MeshTools2D.mesh_bgrp(nelem, bgrp0, edge)
+        bnodes, bnodesB = MeshTools2D.boundary_nodes(p, nelem, bgrp, vmapB, vmapM, mapB, mapM)
+
+        # get boundary groups by type
+        bgrp_type = MeshTools2D.bgrp_by_type(btype, bgrp)
+        bgrpD = bgrp_type['bgrpD']
+        bgrpN = bgrp_type['bgrpN']
+
+        return {'nfp': nfp, 'ns': ns, 'nface': nface, 'nelem': nelem, 'Dr': Dr, 'Ds': Ds, 'H': H, 'B1': B1, 'B2': B2,
+                'B3': B3, 'R1': R1, 'R2': R2, 'R3': R3, 'Er': Er, 'Es': Es, 'rx': rx, 'ry': ry, 'sx': sx, 'sy': sy,
+                'jac': jac, 'nx': nx, 'ny': ny, 'surf_jac': surf_jac, 'fscale': fscale, 'mapM': mapM, 'mapP': mapP,
+                'vmapM': vmapM, 'vmapP': vmapP, 'vmapB': vmapB, 'mapB': mapB, 'bgrp': bgrp, 'bnodes': bnodes,
+                'bnodesB': bnodesB, 'x': x, 'y': y, 'fx': fx, 'fy': fy, 'etov': etov, 'r': r, 's': s, 'etoe': etoe,
+                'etof': etof, 'vx': vx, 'vy': vy, 'bgrpD': bgrpD, 'bgrpN': bgrpN}
+
+
+# mesh = MeshGenerator2D.rectangle_mesh(0.25)
+# kk = Assembler.assembler_sbp_2d(2, mesh)
 
 # a = Assembler(3, 'DG')
 # kk = Assembler.assembler_2d(a)

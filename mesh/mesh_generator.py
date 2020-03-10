@@ -130,32 +130,29 @@ class MeshGenerator2D:
     @staticmethod
     def rectangle_mesh(h):
         # ----------------------
-        # geo = dmsh.Rectangle(-1.0, 1.0, -1.0, 1.0)
-        # left = -1 #* np.pi
-        # right = 1 #* np.pi
-        # bottom = -1 #* np.pi
-        # top = 1 #* np.pi
-        # geo = dmsh.Rectangle(left, right, bottom, top)
+        geo = dmsh.Rectangle(-1.0, 1.0, -1.0, 1.0)
+        left = -1 #* np.pi
+        right = 1 #* np.pi
+        bottom = -1 #* np.pi
+        top = 1 #* np.pi
+        geo = dmsh.Rectangle(left, right, bottom, top)
+        vxy, etov = dmsh.generate(geo, h)
+
+        # # vxy, etov = optimesh.cvt.quasi_newton_uniform_full(vxy, etov, 1.0e-10, 100)
+        # # NOTE: optimesh gives rise to error when solving with h=0.4 (this is very weired, took me a whole day to figure
+        # #      out that the issue for the solution divergence was the mesh, got to consider changing the mesher!)
         #-------------------------
 
-        mat = scipy.io.loadmat('C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\mesh\\square_mesh_data.mat')
-        etov = (np.asarray(mat['etov'])-1).astype(int)
-        vxy = np.asarray(mat['vxy'])
-        bgrp_mat = (np.asarray(mat['bgrp']))
-        bgrp = list()
-        bgrp.append(((np.asarray(bgrp_mat[0][0]) - 1)).astype(int))
-        bgrp.append(((np.asarray(bgrp_mat[0][1]) - 1)).astype(int))
-        bgrp.append(((np.asarray(bgrp_mat[0][2]) - 1)).astype(int))
-        bgrp.append(((np.asarray(bgrp_mat[0][3]) - 1)).astype(int))
-
-        #-------------------------
-        # vertex coordiante and element to vertex connectivity
-        # vxy, etov = dmsh.generate(geo, h)
-
-        # vxy, etov = optimesh.cvt.quasi_newton_uniform_full(vxy, etov, 1.0e-10, 100)
-        # NOTE: optimesh gives rise to error when solving with h=0.4 (this is very weired, took me a whole day to figure
-        #       out that the issue for the solution divergence was the mesh, got to consider changing the mesher!)
-        #-------------------------
+        # mat = scipy.io.loadmat('C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\mesh\\square_mesh_data.mat')
+        # etov = (np.asarray(mat['etov'])-1).astype(int)
+        # vxy = np.asarray(mat['vxy'])
+        # bgrp_mat = (np.asarray(mat['bgrp']))
+        # bgrp = list()
+        # bgrp.append(((np.asarray(bgrp_mat[0][0]) - 1)).astype(int))
+        # bgrp.append(((np.asarray(bgrp_mat[0][1]) - 1)).astype(int))
+        # bgrp.append(((np.asarray(bgrp_mat[0][2]) - 1)).astype(int))
+        # bgrp.append(((np.asarray(bgrp_mat[0][3]) - 1)).astype(int))
+        #---------------------------------------
 
         vx = vxy[:, 0]
         vy = vxy[:, 1]
@@ -199,9 +196,9 @@ class MeshGenerator2D:
         #          0 face2  1
         #
 
-        edge[0:nelem, [0, 1]] = etov[:, [1, 2]]                 # face 0
-        edge[nelem:2 * nelem, [0, 1]] = etov[:, [2, 0]]         # face 1
-        edge[2 * nelem:3 * nelem, [0, 1]] = etov[:, [0, 1]]     # face 2
+        edge[0:nelem, [0, 1]] = etov[:, [1, 2]]             # face 0
+        edge[nelem:2*nelem, [0, 1]] = etov[:, [2, 0]]       # face 1
+        edge[2*nelem:3*nelem, [0, 1]] = etov[:, [0, 1]]     # face 2
 
         # calculate mid edge coordinate all edges
         edge_vec = edge.reshape((nelem*3*2, 1))

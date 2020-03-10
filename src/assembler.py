@@ -287,10 +287,12 @@ class Assembler:
         x, y = MeshTools2D.affine_map_2d(vx, vy, r, s, etov)
 
         # apply affine mapping to obtain location of nodes on the facets of the physical elements
-        rf = sbpref.rsf[:, 0]
-        sf = sbpref.rsf[:, 1]
+        # rf = sbpref.rsf[:, 0]
+        # sf = sbpref.rsf[:, 1]
+        rf = sbpref.rsf[2, :, 0]
+        sf = sbpref.rsf[2, :, 1]
         baryf = sbpref.baryf
-        xf, yf = MeshTools2D.affine_map_2d(vx, vy, rf, sf, etov, baryf)
+        xf, yf = MeshTools2D.affine_map_facet_sbp_2d(vx, vy, rf, sf, etov, baryf)
 
         # obtain the nodes on the edges of the triangles on the physical element
         mask = Ref2D_DG.fmask_2d(r, s, x, y)
@@ -323,15 +325,29 @@ class Assembler:
         sy = geo['sy']
         jac = geo['jac']
 
+        # #----------- test H and jac ---------
+        # # area of each element
+        # a0 = 1/2*((vx[etov[:, 1]] - vx[etov[:, 0]]) * (vy[etov[:, 2]] - vy[etov[:, 0]])
+        #           - (vx[etov[:, 2]] - vx[etov[:, 0]]) * (vy[etov[:, 1]] - vy[etov[:, 0]]))
+        # a0_H = np.sum(np.diag(H).reshape(-1, 1)*jac, axis=0)
+        # err_a0 = np.max(a0 - a0_H)
+        # #------------------------------------
+
         # get normals and surface scaling factor
-        norm = MeshTools2D.normals_2d(p, x, y, Dr, Ds, fmask)
+        norm = MeshTools2D.normals_sbp_2d(nfp, vx, vy, etov)
         nx = norm['nx']
         ny = norm['ny']
         surf_jac = norm['surf_jac']
         fscale = surf_jac / jac[fmask.reshape((fmask.shape[0] * fmask.shape[1], 1), order='F'), :].reshape(surf_jac.shape)
 
+        # norm = MeshTools2D.normals_2d(p, x, y, Dr, Ds, fmask)
+        # nx = norm['nx']
+        # ny = norm['ny']
+        # surf_jac = norm['surf_jac']
+        # fscale = surf_jac / jac[fmask.reshape((fmask.shape[0] * fmask.shape[1], 1), order='F'), :].reshape(surf_jac.shape)
+
         # build connectivity matrices
-        connect = MeshTools2D.connectivity_2d(etov)
+        connect = MeshTools2D.connectivity_sbp_2d(etov)
         etoe = connect['etoe']
         etof = connect['etof']
 
@@ -347,7 +363,7 @@ class Assembler:
         # boundary groups and boundary nodes
         bgrp0 = mesh['bgrp']
         edge = mesh['edge']
-        bgrp = MeshTools2D.mesh_bgrp(nelem, bgrp0, edge)
+        bgrp = MeshTools2D.mesh_bgrp_sbp(nelem, bgrp0, edge)
         bnodes, bnodesB = MeshTools2D.boundary_nodes(p, nelem, bgrp, vmapB, vmapM, mapB, mapM)
 
         # get boundary groups by type
@@ -360,7 +376,7 @@ class Assembler:
                 'jac': jac, 'nx': nx, 'ny': ny, 'surf_jac': surf_jac, 'fscale': fscale, 'mapM': mapM, 'mapP': mapP,
                 'vmapM': vmapM, 'vmapP': vmapP, 'vmapB': vmapB, 'mapB': mapB, 'bgrp': bgrp, 'bnodes': bnodes,
                 'bnodesB': bnodesB, 'x': x, 'y': y, 'fx': fx, 'fy': fy, 'etov': etov, 'r': r, 's': s, 'etoe': etoe,
-                'etof': etof, 'vx': vx, 'vy': vy, 'bgrpD': bgrpD, 'bgrpN': bgrpN}
+                'etof': etof, 'vx': vx, 'vy': vy, 'bgrpD': bgrpD, 'bgrpN': bgrpN, 'xf': xf, 'yf': yf, 'nnodes': nnodes}
 
 
 # mesh = MeshGenerator2D.rectangle_mesh(0.25)

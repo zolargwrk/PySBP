@@ -248,7 +248,7 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
     return
 
 # diffusion_solver_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine, refine_type, boundary_type=None, b=1, n=1):
-# u = poisson_1d(3, 0, 1, 2, 'LGL', 'BR2', 5, 'ntrad', 'nPeriodic', 'sbp_sat', poisson1D_problem_input, a=0, n=16, app=2)
+# u = poisson_1d(2, 0, 1, 20, 'LGL', 'BR2', 1, 'ntrad', 'nPeriodic', 'sbp_sat', poisson1D_problem_input, a=0, n=16, app=2)
 
 
 #
@@ -335,6 +335,61 @@ def poisson_2d(p, h, nrefine=1, flux_type='BR2'):
 
     return
 
-poisson_2d(8, 0.25, 1)
+# poisson_2d(8, 0.25, 1)
 
+def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2'):
 
+    dim = 2
+    nface = dim + 1
+    nfp = p+1
+    ns = int((p+1)*(p+2)/2)
+
+    mesh = MeshGenerator2D.rectangle_mesh(h)
+    btype = ['d', 'd', 'd', 'd']
+    ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family)
+    adata = SimpleNamespace(**ass_data)
+    x = adata.x
+    y = adata.y
+    nelem = adata.nelem
+    nnodes = adata.nnodes
+    u = 0*x
+
+    # boundary conditions
+    uD_x = np.array([-1, 1])
+    uD_y = np.array([-1, 1])
+    uN_x = None
+    uN_y = None
+    uD_fun = lambda x, y: x*0
+    uN_fun = lambda x, y: y*0
+
+    A, fB = RHSCalculator.rhs_poisson_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
+                                             adata.Ds, adata.H, adata.B1,adata.B2, adata.B3, adata.R1, adata.R2, adata.R3,
+                                             adata.nx, adata.ny, adata.rx, adata.ry, adata.sx, adata.sy, adata.fscale,
+                                             adata.etoe, adata.etof, adata.bgrp, adata.bgrpD, adata.bgrpN, adata.nelem,
+                                             adata.surf_jac, adata.jac, flux_type, uD_x, uD_y, uN_x, uN_y, uD_fun, uN_fun)
+
+    f = - 2 * (np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y) + fB.reshape(nelem, nnodes).T
+    u = spsolve(A, f.reshape((nnodes * nelem, 1), order='F'))
+    uu = u.reshape(nelem, nnodes).T
+    u_exact = np.sin(np.pi * x) * np.sin(np.pi * y)
+
+    # -------------- test boundary condition-----------
+    # bgrpD = adata.bgrpD
+    # fid1 = np.arange(0, nfp)
+    # fid2 = np.arange(nfp, 2*nfp)
+    # fid3 = np.arange(2*nfp, 3*nfp)
+    # fid = [fid1, fid2, fid3]
+    # u_bndry = -100*np.ones((3*nfp, nelem))
+    # for k in range(0, len(bgrpD)):
+    #     u_bndry[fid[bgrpD[k, 1]], bgrpD[k, 0]] = uu[fid[bgrpD[k, 1]], bgrpD[k, 0]]
+    #--------------------------------------------------
+
+    # error calculation
+    err = np.linalg.norm((uu - u_exact), 2)
+    err2 = (uu - u_exact)
+    plot_figure_2d(x, y, u_exact)
+    plot_figure_2d(x, y, uu)
+    print(err)
+    return u
+
+poisson_sbp_2d(2, 0.25, 1, 'diagE', 'BR2')

@@ -1,4 +1,5 @@
 import numpy as np
+import scipy as sp
 from scipy import sparse
 from src.ref_elem import Ref2D_DG
 from mesh.mesh_tools import MeshTools2D
@@ -320,8 +321,9 @@ class RHSCalculator:
         return A, M
 
     @staticmethod
-    def rhs_poisson_sbp_2d(p, u, x, y, r, s, Dr, Ds, H, B1, B2, B3, R1, R2, R3, nx, ny, rx, ry, sx, sy, fscale, etoe,
-                           etof, bgrp, bgrpD, bgrpN, nelem, surf_jac, jac, flux_type='BR2', LB=None):
+    def rhs_poisson_sbp_2d(p, u, x, y, r, s, xf, yf, Dr, Ds, H, B1, B2, B3, R1, R2, R3, nx, ny, rx, ry, sx, sy, fscale,
+                           etoe, etof, bgrp, bgrpD, bgrpN, nelem, surf_jac, jac, flux_type='BR2', uD_x=None, uD_y=None,
+                           uN_x=None, uN_y=None, uD_fun=None, uN_fun=None, LB=None):
 
         # define and set important variables
         ns = (p+1)*(p+2)/2      # number of shape functions (cardinality)
@@ -343,6 +345,7 @@ class RHSCalculator:
             LyxB = np.block([Z] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
             LyyB = np.block([I] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
 
+
         # get the derivative operator on each element
         Dr_block = ([Dr]*nelem)     # Dr matrix for every element
         Ds_block = ([Ds]*nelem)     # Ds matrix for every element
@@ -354,46 +357,55 @@ class RHSCalculator:
             + sparse.diags(sy.flatten(order='F')) @ sparse.block_diag(Ds_block)
 
         # get system matrix
-        D2B = (np.block([DxB, DyB]) @ LB @ np.block([[DxB], [DyB]]))[0, 0]
-        A = D2B
+        D2B = sparse.csr_matrix((np.block([DxB, DyB]) @ LB @ np.block([[DxB], [DyB]]))[0, 0])
 
         # construct the scaled norm matrix
         Hblock = ([H]*nelem)
-        HB = sparse.diags(jac.flatten(order='F'))@ sparse.block_diag(Hblock)
+        HB = sparse.diags(jac.flatten(order='F')) @ sparse.block_diag(Hblock)
 
-        # tests
-        # kk1 = (D2B @ ((x.flatten(order='F'))**3))
-        # Der_err= np.max((kk1 - 6*(x.flatten(order='F'))**1))
+        # construct the scaled inverse of the norm matrix
+        HB_inv = sparse.csr_matrix(np.linalg.inv(HB.toarray()))
+
+        # #-------- tests with p4 operator ------------
+        # kk1 = (D2B @ ((x.flatten(order='F'))**2 * (y.flatten(order='F'))**2))
+        # Der_err= np.max((kk1 - 2*(x.flatten(order='F')**2 + y.flatten(order='F')**2)))
+        # print(Der_err)
         # area_err = np.max(np.ones((nnodes*nelem, 1)).T @ HB @ np.ones((nnodes*nelem, 1)) - 4) # rectanglular domain on [-1,1], [1,-1],[1, 1], [-1, 1]
+        # print(area_err)
+        # #----------------------------------------------
+
+        # set boundary conditions
+        uD, uN = MeshTools2D.set_bndry_sbp_2D(xf, yf, uD_x, uD_y, uN_x, uN_y, uD_fun, uN_fun)
 
         # get the SATs
-        SATs.diffusion_sbp_sat_2d_steady(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, LB, Ds, Dr, H, B1, B2, B3, R1, R2, R3,
-                                         rx, ry, sx, sy, jac, surf_jac, nx, ny, etoe, etof, bgrp, bgrpD, bgrpN, 'BR2')
+        sI, fB = SATs.diffusion_sbp_sat_2d_steady(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, LB, Ds, Dr, H, B1, B2, B3,
+                                                  R1, R2, R3, rx, ry, sx, sy, jac, surf_jac, nx, ny, etoe, etof, bgrp,
+                                                  bgrpD, bgrpN, x, y, xf, yf, 'BR2', uD, uN)
+
+        A = (D2B - sI)
+
+        return A, fB
 
 
+# p = 2
+# mesh = MeshGenerator2D.rectangle_mesh(0.75)
+# btype = ['d', 'd', 'd', 'd']
+# ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, 'diagE')
+# adata = SimpleNamespace(**ass_data)
+# x = adata.x
+# u = 0*x
+#
+# # boundary conditions
+# uD_x = np.array([-1, 1])
+# uD_y = np.array([-1, 1])
+# uN_x = None
+# uN_y = None
+# uD_fun = lambda x, y: x**1+y
+# uN_fun = lambda x, y: x + 2*y
+#
+# A, fb = RHSCalculator.rhs_poisson_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
+#                                          adata.Ds, adata.H, adata.B1,adata.B2, adata.B3, adata.R1, adata.R2, adata.R3,
+#                                          adata.nx, adata.ny, adata.rx, adata.ry, adata.sx, adata.sy, adata.fscale,
+#                                          adata.etoe, adata.etof, adata.bgrp, adata.bgrpD, adata.bgrpN, adata.nelem,
+#                                          adata.surf_jac, adata.jac, 'BR2',uD_x, uD_y, uN_x, uN_y, uD_fun, uN_fun)
 
-
-
-
-        return
-
-
-p = 2
-mesh = MeshGenerator2D.rectangle_mesh(0.75)
-btype = ['d', 'd', 'd', 'd']
-ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, 'diagE')
-adata = SimpleNamespace(**ass_data)
-x = adata.x
-u = 0*x
-# set type of boundary: [left, right, bottom, top]
-
-bcmaps = MeshTools2D.bndry_list(btype, adata.bnodes, adata.bnodesB)
-bcmap = SimpleNamespace(**bcmaps)
-mapD = bcmap.mapD
-vmapD = bcmap.vmapD
-mapN = bcmap.mapN
-vmapN = bcmap.vmapN
-rhs = RHSCalculator.rhs_poisson_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.Dr, adata.Ds, adata.H, adata.B1,
-                                       adata.B2, adata.B3, adata.R1, adata.R2, adata.R3, adata.nx, adata.ny, adata.rx,
-                                       adata.ry, adata.sx, adata.sy, adata.fscale, adata.etoe, adata.etof, adata.bgrp,
-                                       adata.bgrpD, adata.bgrpN, adata.nelem, adata.surf_jac, adata.jac, 'BR2')

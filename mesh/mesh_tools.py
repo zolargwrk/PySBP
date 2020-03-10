@@ -265,28 +265,66 @@ class MeshTools2D:
         return {'etoe': etoe, 'etof': etof}
 
     @staticmethod
-    def affine_map_2d(vx, vy, r, s, etov, baryf=None):
+    def connectivity_sbp_2d(etov):
+        """Returns the element to element and element to facet connectivity where the reference element has facet
+        numbering such that the facet numbers are the same as the vertex number opposite to them (i.e., the vertex
+        that is not on at the ends of the facets)"""
+        # number of faces, elements, and vertices
+        nface = 3
+        nelem = etov.shape[0]
+        nvert = np.max(np.max(etov))+1
+
+        # create list of faces 1, 2 and 3
+        fnodes = np.array([etov[:, [1, 2]], etov[:, [2, 0]], etov[:, [0, 1]]])
+        fnodes = np.sort(fnodes.reshape(3*nelem, 2), 1)
+        fnodes = np.sort(fnodes[:], 1)
+
+        # default element to element and element to face connectivity
+        etoe = np.arange(0, nelem).reshape((nelem, 1)) @ np.ones((1, nface))
+        etoe = etoe.astype(int)
+        etof = np.ones((nelem, 1)) @ np.arange(0, nface).reshape((1, nface))
+        etof = etof.astype(int)
+
+        # give unique id number for faces using their node number
+        id = fnodes[:, 0]*nvert + fnodes[:, 1] + 1
+        vtov = np.asarray([id.reshape(nelem*nface, 1), np.array((np.arange(0, nelem*nface)).reshape((nelem*nface, 1), order='F')),
+                                np.array(etoe.reshape((nelem*nface, 1), order='F')), np.array(etof.reshape((nface*nelem, 1), order='F'))])
+        vtov = (vtov.reshape((nelem*nface*4, 1))).reshape((nelem*nface, 4), order='F')
+
+        # # give unique id number for faces using their node number
+        # id = fnodes[:, 0] * nvert + fnodes[:, 1] + 1
+
+        # sort by global face number (first column)
+        sorted = vtov[vtov[:, 0].argsort(), ]
+
+        # find matches
+        indx = np.where(sorted[0:-1, 0] == sorted[1:, 0])[0]
+
+        # match
+        matchL = np.vstack([sorted[indx, :], sorted[indx + 1, :]])
+        matchR = np.vstack([sorted[indx + 1, :], sorted[indx, :]])
+
+        etoe_temp = (etoe.reshape((etoe.shape[0]*etoe.shape[1], 1), order='F'))
+        etoe_temp[matchL[:, 1].T] = np.asarray(matchR[:, 2]).reshape(len(matchR[:, 2]), 1)
+        etoe = etoe_temp.reshape((nelem, 3), order='F')
+
+        etof_temp = (etof.reshape((etof.shape[0]*etof.shape[1], 1), order='F'))
+        etof_temp[matchL[:, 1].T] = np.asarray(matchR[:, 3]).reshape(len(matchR[:, 3]), 1)
+        etof = etof_temp.reshape((nelem, 3), order='F')
+
+        # etoe = np.roll(etoe, -1, axis=1)
+        # etof = np.roll(etof, -1, axis=1)
+
+        return {'etoe': etoe, 'etof': etof}
+
+    @staticmethod
+    def affine_map_2d(vx, vy, r, s, etov):
         va = etov[:, 0].T
         vb = etov[:, 1].T
         vc = etov[:, 2].T
-        if baryf is None:
-            x = 0.5*(-(r+s)*(vx[va]).flatten() + (1+r)*(vx[vb]).flatten() + (1+s)*(vx[vc]).flatten())
-            y = 0.5*(-(r+s)*(vy[va]).flatten() + (1+r)*(vy[vb]).flatten() + (1+s)*(vy[vc]).flatten())
 
-        # we can also use barycentric coordinates as follows (for nodes at the facet that do not coincide with volume nodes)
-        if baryf is not None:
-                vert1 = np.array([[vx[vb], vy[vb]], [vx[vc], vy[vc]]])
-                vert2 = np.array([[vx[vc], vy[vc]], [vx[va], vy[va]]])
-                vert3 = np.array([[vx[va], vy[va]], [vx[vb], vy[vb]]])
-                v1 = vert1.transpose(0, 2, 1).reshape(2, 2*len(va))
-                xy1 = Ref2D_SBP.barycentric_to_cartesian(baryf, v1)
-                v2 = vert2.transpose(0, 2, 1).reshape(2, 2 * len(va))
-                xy2 = Ref2D_SBP.barycentric_to_cartesian(baryf, v2)
-                v3 = vert3.transpose(0, 2, 1).reshape(2, 2 * len(va))
-                xy3 = Ref2D_SBP.barycentric_to_cartesian(baryf, v3)
-                xy = np.vstack([xy1, xy2, xy3])
-                x = xy[:, 0::2]
-                y = xy[:, 1::2]
+        x = 0.5*(-(r+s)*(vx[va]).flatten() + (1+r)*(vx[vb]).flatten() + (1+s)*(vx[vc]).flatten())
+        y = 0.5*(-(r+s)*(vy[va]).flatten() + (1+r)*(vy[vb]).flatten() + (1+s)*(vy[vc]).flatten())
 
         # something similar but for volume nodes (using barycentric coordinates, bary is barycentric for the volume nodes)
         # if bary is not None:
@@ -297,6 +335,34 @@ class MeshTools2D:
         #     y = xy[:, 1::2]
 
         return x, y
+
+    @staticmethod
+    def affine_map_facet_sbp_2d(vx, vy, r, s, etov, baryf=None):
+        # vertices
+        va = etov[:, 0].T
+        vb = etov[:, 1].T
+        vc = etov[:, 2].T
+
+        # we can also use barycentric coordinates as follows (for nodes at the facet that do not coincide with volume nodes)
+        # get vertices on each facets
+        vert1 = np.array([[vx[vb], vy[vb]], [vx[vc], vy[vc]]])
+        v1 = vert1.transpose(0, 2, 1).reshape(2, 2 * len(va))
+        vert2 = np.array([[vx[vc], vy[vc]], [vx[va], vy[va]]])
+        v2 = vert2.transpose(0, 2, 1).reshape(2, 2 * len(va))
+        vert3 = np.array([[vx[va], vy[va]], [vx[vb], vy[vb]]])
+        v3 = vert3.transpose(0, 2, 1).reshape(2, 2 * len(va))
+
+        # calculate the coordinates of nodes on the facets
+        xy1 = Ref2D_SBP.barycentric_to_cartesian(baryf, v1)
+        xy2 = Ref2D_SBP.barycentric_to_cartesian(baryf, v2)
+        xy3 = Ref2D_SBP.barycentric_to_cartesian(baryf, v3)
+
+        # get x and y coordinates of nodes on the facet
+        xy = np.vstack([xy1, xy2, xy3])
+        xf = xy[:, 0::2]
+        yf = xy[:, 1::2]
+
+        return xf, yf
 
     @staticmethod
     def buildmaps_2d(p, n, x, y, etov, etoe, etof, fmask, boundary_type=None):
@@ -387,21 +453,88 @@ class MeshTools2D:
         fid2 = (np.arange(nfp, 2*nfp)).reshape((nfp, 1))
         fid3 = (np.arange(2*nfp, 3*nfp)).reshape((nfp, 1))
 
-        # The normals are computed as shown in Fig. 6.1 of the Nodal DG book by Hesthaven and following his code
-        # face 0
-        nx[fid1, :] = fyr[fid1, :]
-        ny[fid1, :] = -fxr[fid1, :]
-        # face 1
-        nx[fid2, :] = fys[fid2, :] - fyr[fid2, :]
-        ny[fid2, :] = -fxs[fid2, :] + fxr[fid2, :]
+        # # The normals are computed as shown in Fig. 6.1 of the Nodal DG book by Hesthaven and following his code
+        # # face 0
+        # nx[fid1, :] = fyr[fid1, :]
+        # ny[fid1, :] = -fxr[fid1, :]
+        # # face 1
+        # nx[fid2, :] = fys[fid2, :] - fyr[fid2, :]
+        # ny[fid2, :] = -fxs[fid2, :] + fxr[fid2, :]
+        # # face 3
+        # nx[fid3, :] = -fys[fid3, :]
+        # ny[fid3, :] = fxs[fid3, :]
+
         # face 3
-        nx[fid3, :] = -fys[fid3, :]
-        ny[fid3, :] = fxs[fid3, :]
+        nx[fid3, :] = fyr[fid3, :]
+        ny[fid3, :] = -fxr[fid3, :]
+        # face 1
+        nx[fid1, :] = (fys[fid1, :] - fyr[fid1, :]) / np.sqrt(2)
+        ny[fid1, :] = (-fxs[fid1, :] + fxr[fid1, :]) / np.sqrt(2)
+        # face 2
+        nx[fid2, :] = -fys[fid2, :]
+        ny[fid2, :] = fxs[fid2, :]
 
         # normalize
         surf_jac = np.sqrt(nx*nx + ny*ny)
         nx = nx/surf_jac
         ny = ny/surf_jac
+
+        return {'nx': nx, 'ny': ny, 'surf_jac': surf_jac}
+
+    @staticmethod
+    def normals_sbp_2d(nfp, vx, vy, etov):
+        """Calculates the surface normals of the physical element given the vertices."""
+        nelem = etov.shape[0]
+        # vector along facet 1
+        vx1 = np.array([vx[etov[:, 2]] - vx[etov[:, 1]]]).reshape(-1, 1)
+        vy1 = np.array([vy[etov[:, 2]] - vy[etov[:, 1]]]).reshape(-1, 1)
+        # vector along facet 2
+        vx2 = np.array([vx[etov[:, 0]] - vx[etov[:, 2]]]).reshape(-1, 1)
+        vy2 = np.array([vy[etov[:, 0]] - vy[etov[:, 2]]]).reshape(-1, 1)
+        # vector along facet 3
+        vx3 = np.array([vx[etov[:, 1]] - vx[etov[:, 0]]]).reshape(-1, 1)
+        vy3 = np.array([vy[etov[:, 1]] - vy[etov[:, 0]]]).reshape(-1, 1)
+
+        # put components of the vectors together
+        zz = np.zeros((len(vx1), 1))
+        v1 = np.hstack([vx1, vy1, zz])
+        v2 = np.hstack([vx2, vy2, zz])
+        v3 = np.hstack([vx3, vy3, zz])
+
+        # vector pointing out of the page
+        vz = np.array([0, 0, 1])
+
+        # get normal vector on each facet
+        vn1 = np.cross(v1, vz)[:, 0:2]
+        vn2 = np.cross(v2, vz)[:, 0:2]
+        vn3 = np.cross(v3, vz)[:, 0:2]
+
+        # get the normal vectors for each element and facet
+        nfp = int(nfp)
+        fid1 = np.arange(0, nfp)
+        fid2 = np.arange(nfp, 2*nfp)
+        fid3 = np.arange(2*nfp, 3*nfp)
+        # x-component of the normal vector
+        nx = np.ones((3*nfp, nelem))
+        nx[fid1, :] = nx[fid1, :] * vn1[:, 0]
+        nx[fid2, :] = nx[fid2, :] * vn2[:, 0]
+        nx[fid3, :] = nx[fid3, :] * vn3[:, 0]
+        # y-component of the normal vector
+        ny = np.ones((3*nfp, nelem))
+        ny[fid1, :] = ny[fid1, :] * vn1[:, 1]
+        ny[fid2, :] = ny[fid2, :] * vn2[:, 1]
+        ny[fid3, :] = ny[fid3, :] * vn3[:, 1]
+
+        # find the surface Jacobian (the coefficient that gives the length of the edges of the reference triangle)
+        surf_jac = np.ones((3 * nfp, nelem))
+        surf_jac[fid1] = np.sqrt(nx[fid1, :]**2 + ny[fid1, :]**2) / (2 * np.sqrt(2))
+        surf_jac[fid2] = np.sqrt(nx[fid2, :]**2 + ny[fid2, :]**2) / 2
+        surf_jac[fid3] = np.sqrt(nx[fid3, :]**2 + ny[fid3, :]**2) / 2
+
+        # normalize
+        magnitude = np.sqrt(nx**2 + ny**2)
+        nx = nx / magnitude
+        ny = ny / magnitude
 
         return {'nx': nx, 'ny': ny, 'surf_jac': surf_jac}
 
@@ -433,6 +566,43 @@ class MeshTools2D:
             # if index is >= 2*nelem  but < 3*nelem, element number = ind_edge - 2*nelem and local face number is 0
             belem.append(ind_edge[np.where(np.logical_and(2*nelem <= ind_edge, ind_edge < 3 * nelem))] - 2*nelem)
             bface[np.where(np.logical_and(2*nelem <= ind_edge, ind_edge < 3*nelem))] = 0
+
+            belem = [i for j in belem for i in j]
+            belem = (np.asarray(belem)).reshape(len(belem), 1)
+
+            bgrp[ibgrp] = np.vstack([bgrp[ibgrp][:, 0], bgrp[ibgrp][:, 1], belem.flatten(), bface.flatten()]).T
+
+        return bgrp
+
+    @staticmethod
+    def mesh_bgrp_sbp(nelem, bgrp, edge):
+        """Includes element number and local face number to the boundary information contained in bgrp"""
+
+        for ibgrp in range(0, len(bgrp)):
+            # give all edges in the element unique identifier based on the vertices they connect
+            s1 = np.char.array(edge[:, 0] * 10) + np.char.array(edge[:, 1] * 10)
+            # give edges on the boundaries unique identifier based on the vertices they connect
+            s2 = np.char.array(bgrp[ibgrp][:, 0] * 10) + np.char.array(bgrp[ibgrp][:, 1] * 10)
+            # find indices where the boundary edge identifier matches the edeges in the element
+            ind_edge = np.where(np.in1d(s1, s2))[0]
+
+            # create a list to contain the boundary element numbers and local boundary facets numbers
+            belem = list()
+            bface = np.zeros((len(ind_edge), 1), dtype=int)
+
+            # edge[0:nelem, :] --> facet 0; edge[nelem:2*nelem] --> facet 1; and edge[2*nelem:3*nelem] --> facet 2
+            # (see ow the edge matrix is constructed in "mid_edge" method in mesh_generator.py). Therefore,
+            # if index is below nelem, the element number doesn't change and the local face number is 0
+            belem.append(ind_edge[np.where(ind_edge < nelem)])
+            bface[np.where(ind_edge < nelem)] = 0
+
+            # if index is >= nelem but < 2*nelem, element number = ind_edge - nelem and local face number is 2
+            belem.append(ind_edge[np.where(np.logical_and(nelem <= ind_edge, ind_edge < 2 * nelem))] - nelem)
+            bface[np.where(np.logical_and(nelem <= ind_edge, ind_edge < 2 * nelem))] = 1
+
+            # if index is >= 2*nelem  but < 3*nelem, element number = ind_edge - 2*nelem and local face number is 0
+            belem.append(ind_edge[np.where(np.logical_and(2 * nelem <= ind_edge, ind_edge < 3 * nelem))] - 2 * nelem)
+            bface[np.where(np.logical_and(2 * nelem <= ind_edge, ind_edge < 3 * nelem))] = 2
 
             belem = [i for j in belem for i in j]
             belem = (np.asarray(belem)).reshape(len(belem), 1)
@@ -486,9 +656,9 @@ class MeshTools2D:
         bgrpNs = list()
         for i in range(0, len(btype)):
             bndry = btype[i]
-            if bndry == 'd' or bndry == 'D' or 'Dirichlet':
+            if bndry == 'd' or bndry == 'D' or bndry =='Dirichlet':
                 bgrpDs.append(bgrp[i])
-            elif bndry == 'n' or bndry == 'N' or 'Neumann':
+            elif bndry == 'n' or bndry == 'N' or bndry == 'Neumann':
                 bgrpNs.append(bgrp[i])
 
         if bgrpDs !=[]:
@@ -633,6 +803,71 @@ class MeshTools2D:
         vy = vy.flatten()
 
         return {'etov': etov, 'vx': vx, 'vy': vy, 'vxy': vxy, 'nelem': nelem, 'nvert': nvert, 'bgrp': bgrp, 'edge': edge}
+
+    @staticmethod
+    def set_bndry_sbp_2D(xf, yf, uD_x=None, uD_y=None, uN_x=None, uN_y=None, uD_fun=None, uN_fun=None):
+        """Calculates boundary conditions at boundary facet nodes. This is for rectangular domain, it needs to be
+        changed for other types of domains where both x and y axis might be required to impose the boundary
+        conditions"""
+        dim = 2
+        nface = dim + 1
+        nfp = int(xf.shape[0]/nface)
+        nelem = xf.shape[1]
+        tol = 1e-12
+
+        # boundary facet nodes by facet number
+        xf1 = xf.T[:, 0:nfp].reshape(nelem * nfp, 1)
+        xf2 = xf.T[:, nfp:2*nfp].reshape(nelem * nfp, 1)
+        xf3 = xf.T[:, 2*nfp:3*nfp].reshape(nelem * nfp, 1)
+
+        yf1 = yf.T[:, 0:nfp].reshape(nelem * nfp, 1)
+        yf2 = yf.T[:, nfp:2*nfp].reshape(nelem * nfp, 1)
+        yf3 = yf.T[:, 2*nfp:3*nfp].reshape(nelem * nfp, 1)
+
+        uD = np.zeros((nelem*nfp, nface))
+        uN = np.zeros((nelem*nfp, nface))
+
+        if (uD_x is not None) and (uD_fun is not None):
+            for i in range (0, len(uD_x)):
+                index1 = np.abs(xf1[:, 0] - uD_x[i]) <= tol
+                index2 = np.abs(xf2[:, 0] - uD_x[i]) <= tol
+                index3 = np.abs(xf3[:, 0] - uD_x[i]) <= tol
+
+                uD[index1, 0] = uD_fun(xf1[index1, 0], yf1[index1, 0])
+                uD[index2, 1] = uD_fun(xf2[index2, 0], yf2[index2, 0])
+                uD[index3, 2] = uD_fun(xf3[index3, 0], yf3[index3, 0])
+
+        if (uD_y is not None) and (uD_fun is not None):
+            for i in range (0, len(uD_y)):
+                index1 = np.abs(yf1[:, 0] - uD_y[i]) <= tol
+                index2 = np.abs(yf2[:, 0] - uD_y[i]) <= tol
+                index3 = np.abs(yf3[:, 0] - uD_y[i]) <= tol
+
+                uD[index1, 0] = uD_fun(xf1[index1, 0], yf1[index1, 0])
+                uD[index2, 1] = uD_fun(xf2[index2, 0], yf2[index2, 0])
+                uD[index3, 2] = uD_fun(xf3[index3, 0], yf3[index3, 0])
+
+        if (uN_x is not None) and (uN_fun is not None):
+            for i in range (0, len(uD_x)):
+                index1 = np.abs(xf1[:, 0] - uN_x[i]) <= tol
+                index2 = np.abs(xf2[:, 0] - uN_x[i]) <= tol
+                index3 = np.abs(xf3[:, 0] - uN_x[i]) <= tol
+
+                uN[index1, 0] = uN_fun(xf1[index1, 0], yf1[index1, 0])
+                uN[index2, 1] = uN_fun(xf2[index2, 0], yf2[index2, 0])
+                uN[index3, 2] = uN_fun(xf3[index3, 0], yf3[index3, 0])
+
+        if (uN_y is not None) and (uN_fun is not None):
+            for i in range(0, len(uN_y)):
+                index1 = np.abs(yf1[:, 0] - uN_y[i]) <= tol
+                index2 = np.abs(yf2[:, 0] - uN_y[i]) <= tol
+                index3 = np.abs(yf3[:, 0] - uN_y[i]) <= tol
+
+                uN[index1, 0] = uN_fun(xf1[index1, 0], yf1[index1, 0])
+                uN[index2, 1] = uN_fun(xf2[index2, 0], yf2[index2, 0])
+                uN[index3, 2] = uN_fun(xf3[index3, 0], yf3[index3, 0])
+
+        return uD, uN
 
 # mesh = MeshGenerator2D.rectangle_mesh(0.5)
 #

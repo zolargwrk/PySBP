@@ -208,7 +208,7 @@ class MeshTools2D:
         xs = Ds @ x
         yr = Dr @ y
         ys = Ds @ y
-        jac = -xs*yr + xr*ys
+        jac = xr*ys - xs*yr
         rx = ys/jac
         sx = -yr/jac
         ry = -xs/jac
@@ -454,25 +454,25 @@ class MeshTools2D:
         fid3 = (np.arange(2*nfp, 3*nfp)).reshape((nfp, 1))
 
         # # The normals are computed as shown in Fig. 6.1 of the Nodal DG book by Hesthaven and following his code
-        # # face 0
-        # nx[fid1, :] = fyr[fid1, :]
-        # ny[fid1, :] = -fxr[fid1, :]
-        # # face 1
-        # nx[fid2, :] = fys[fid2, :] - fyr[fid2, :]
-        # ny[fid2, :] = -fxs[fid2, :] + fxr[fid2, :]
-        # # face 3
-        # nx[fid3, :] = -fys[fid3, :]
-        # ny[fid3, :] = fxs[fid3, :]
-
-        # face 3
-        nx[fid3, :] = fyr[fid3, :]
-        ny[fid3, :] = -fxr[fid3, :]
+        # face 0
+        nx[fid1, :] = fyr[fid1, :]
+        ny[fid1, :] = -fxr[fid1, :]
         # face 1
-        nx[fid1, :] = (fys[fid1, :] - fyr[fid1, :]) / np.sqrt(2)
-        ny[fid1, :] = (-fxs[fid1, :] + fxr[fid1, :]) / np.sqrt(2)
-        # face 2
-        nx[fid2, :] = -fys[fid2, :]
-        ny[fid2, :] = fxs[fid2, :]
+        nx[fid2, :] = fys[fid2, :] - fyr[fid2, :]
+        ny[fid2, :] = -fxs[fid2, :] + fxr[fid2, :]
+        # face 3
+        nx[fid3, :] = -fys[fid3, :]
+        ny[fid3, :] = fxs[fid3, :]
+
+        # # face 3
+        # nx[fid3, :] = fyr[fid1, :]
+        # ny[fid3, :] = -fxr[fid1, :]
+        # # face 1
+        # nx[fid1, :] = (fys[fid2, :] - fyr[fid2, :])
+        # ny[fid1, :] = (-fxs[fid2, :] + fxr[fid2, :])
+        # # face 3
+        # nx[fid2, :] = -fys[fid3, :]
+        # ny[fid2, :] = fxs[fid3, :]
 
         # normalize
         surf_jac = np.sqrt(nx*nx + ny*ny)
@@ -481,62 +481,145 @@ class MeshTools2D:
 
         return {'nx': nx, 'ny': ny, 'surf_jac': surf_jac}
 
+    # @staticmethod
+    # def normals_sbp_2d(nfp, vx, vy, etov):
+    #     """Calculates the surface normals of the physical element given the vertices."""
+    #     nelem = etov.shape[0]
+    #     # vector along facet 1
+    #     vx1 = np.array([vx[etov[:, 2]] - vx[etov[:, 1]]]).reshape((-1, 1), order="F")
+    #     vy1 = np.array([vy[etov[:, 2]] - vy[etov[:, 1]]]).reshape((-1, 1), order="F")
+    #     # vector along facet 2
+    #     vx2 = np.array([vx[etov[:, 0]] - vx[etov[:, 2]]]).reshape((-1, 1), order="F")
+    #     vy2 = np.array([vy[etov[:, 0]] - vy[etov[:, 2]]]).reshape((-1, 1), order="F")
+    #     # vector along facet 3
+    #     vx3 = np.array([vx[etov[:, 1]] - vx[etov[:, 0]]]).reshape((-1, 1), order="F")
+    #     vy3 = np.array([vy[etov[:, 1]] - vy[etov[:, 0]]]).reshape((-1, 1), order="F")
+    #
+    #     # put components of the vectors together
+    #     zz = np.zeros((len(vx1), 1))
+    #     v1 = np.hstack([vx1, vy1, zz])
+    #     v2 = np.hstack([vx2, vy2, zz])
+    #     v3 = np.hstack([vx3, vy3, zz])
+    #
+    #     # vector pointing out of the page
+    #     vz = np.array([0, 0, 1])
+    #
+    #     # get normal vector on each facet
+    #     vn1 = np.cross(v1, vz)[:, 0:2]
+    #     vn2 = np.cross(v2, vz)[:, 0:2]
+    #     vn3 = np.cross(v3, vz)[:, 0:2]
+    #
+    #     # get the normal vectors for each element and face
+    #     nfp = int(nfp)
+    #     fid1 = np.arange(0, nfp)
+    #     fid2 = np.arange(nfp, 2*nfp)
+    #     fid3 = np.arange(2*nfp, 3*nfp)
+    #     # x-component of the normal vector
+    #     nx = np.ones((3*nfp, nelem))
+    #     nx[fid1, :] = nx[fid1, :] * vn1[:, 0]
+    #     nx[fid2, :] = nx[fid2, :] * vn2[:, 0]
+    #     nx[fid3, :] = nx[fid3, :] * vn3[:, 0]
+    #     # y-component of the normal vector
+    #     ny = np.ones((3*nfp, nelem))
+    #     ny[fid1, :] = ny[fid1, :] * vn1[:, 1]
+    #     ny[fid2, :] = ny[fid2, :] * vn2[:, 1]
+    #     ny[fid3, :] = ny[fid3, :] * vn3[:, 1]
+    #
+    #     # compute surface jacobian and normalize normals
+    #     surf_jac = np.sqrt(nx**2 + ny**2)
+    #     nx = nx / surf_jac
+    #     ny = ny / surf_jac
+    #     # surf_jac /= 2   # need to check why divide by 2?
+    #
+    #     return {'nx': nx, 'ny': ny, 'surf_jac': surf_jac}
+
     @staticmethod
-    def normals_sbp_2d(nfp, vx, vy, etov):
+    def normals_sbp_2d(rx, ry, sx, sy, jac, R1, R2, R3,):
         """Calculates the surface normals of the physical element given the vertices."""
-        nelem = etov.shape[0]
-        # vector along facet 1
-        vx1 = np.array([vx[etov[:, 2]] - vx[etov[:, 1]]]).reshape(-1, 1)
-        vy1 = np.array([vy[etov[:, 2]] - vy[etov[:, 1]]]).reshape(-1, 1)
-        # vector along facet 2
-        vx2 = np.array([vx[etov[:, 0]] - vx[etov[:, 2]]]).reshape(-1, 1)
-        vy2 = np.array([vy[etov[:, 0]] - vy[etov[:, 2]]]).reshape(-1, 1)
-        # vector along facet 3
-        vx3 = np.array([vx[etov[:, 1]] - vx[etov[:, 0]]]).reshape(-1, 1)
-        vy3 = np.array([vy[etov[:, 1]] - vy[etov[:, 0]]]).reshape(-1, 1)
+        # get number of nodes per face and number of elments
+        nfp = R1.shape[0]
 
-        # put components of the vectors together
-        zz = np.zeros((len(vx1), 1))
-        v1 = np.hstack([vx1, vy1, zz])
-        v2 = np.hstack([vx2, vy2, zz])
-        v3 = np.hstack([vx3, vy3, zz])
+        # calculate the geometric factors at each facet
+        rxf1 = R1 @ rx
+        sxf1 = R1 @ sx
+        rxf2 = R2 @ rx
+        sxf2 = R2 @ sx
+        rxf3 = R3 @ rx
+        sxf3 = R3 @ sx
 
-        # vector pointing out of the page
-        vz = np.array([0, 0, 1])
+        ryf1 = R1 @ ry
+        syf1 = R1 @ sy
+        ryf2 = R2 @ ry
+        syf2 = R2 @ sy
+        ryf3 = R3 @ ry
+        syf3 = R3 @ sy
 
-        # get normal vector on each facet
-        vn1 = np.cross(v1, vz)[:, 0:2]
-        vn2 = np.cross(v2, vz)[:, 0:2]
-        vn3 = np.cross(v3, vz)[:, 0:2]
+        # calculate normals at the facets
+        jac_all_face = np.repeat(jac[0, :], nfp).reshape((nfp, -1), order="F")
+        nx1 = (rxf1 + sxf1)*jac_all_face
+        ny1 = (ryf1 + syf1)*jac_all_face
 
-        # get the normal vectors for each element and facet
-        nfp = int(nfp)
-        fid1 = np.arange(0, nfp)
-        fid2 = np.arange(nfp, 2*nfp)
-        fid3 = np.arange(2*nfp, 3*nfp)
-        # x-component of the normal vector
-        nx = np.ones((3*nfp, nelem))
-        nx[fid1, :] = nx[fid1, :] * vn1[:, 0]
-        nx[fid2, :] = nx[fid2, :] * vn2[:, 0]
-        nx[fid3, :] = nx[fid3, :] * vn3[:, 0]
-        # y-component of the normal vector
-        ny = np.ones((3*nfp, nelem))
-        ny[fid1, :] = ny[fid1, :] * vn1[:, 1]
-        ny[fid2, :] = ny[fid2, :] * vn2[:, 1]
-        ny[fid3, :] = ny[fid3, :] * vn3[:, 1]
+        nx2 = -rxf2*jac_all_face
+        ny2 = -ryf2*jac_all_face
 
-        # find the surface Jacobian (the coefficient that gives the length of the edges of the reference triangle)
-        surf_jac = np.ones((3 * nfp, nelem))
-        surf_jac[fid1] = np.sqrt(nx[fid1, :]**2 + ny[fid1, :]**2) / (2 * np.sqrt(2))
-        surf_jac[fid2] = np.sqrt(nx[fid2, :]**2 + ny[fid2, :]**2) / 2
-        surf_jac[fid3] = np.sqrt(nx[fid3, :]**2 + ny[fid3, :]**2) / 2
+        nx3 = -sxf3*jac_all_face
+        ny3 = -syf3*jac_all_face
 
-        # normalize
-        magnitude = np.sqrt(nx**2 + ny**2)
-        nx = nx / magnitude
-        ny = ny / magnitude
+        # get the normals into one matrix
+        nx = np.vstack([nx1, nx2, nx3])
+        ny = np.vstack([ny1, ny2, ny3])
+
+        # get the magnitude of the surface jacobian
+        # surf_jac_scaling = np.repeat(np.array([1/np.sqrt(2), 1, 1]), nfp).reshape((nfp*3, -1), order="F")
+        surf_jac =np.sqrt(nx**2 + ny**2)
+        nx = nx / surf_jac
+        ny = ny / surf_jac
 
         return {'nx': nx, 'ny': ny, 'surf_jac': surf_jac}
+
+    # @staticmethod
+    # def normals_sbp_2d(x, y, Dr, Ds, R1, R2, R3, ):
+    #     """Calculates the surface normals of the physical element given the vertices."""
+    #     # get number of nodes per face and number of elments
+    #     nfp = R1.shape[0]
+    #
+    #     # calculate the geometric factors at each facet
+    #     xrf1 = R1 @ (Dr @ x)
+    #     xsf1 = R1 @ (Ds @ x)
+    #     xrf2 = R2 @ (Dr @ x)
+    #     xsf2 = R2 @ (Ds @ x)
+    #     xrf3 = R3 @ (Dr @ x)
+    #     xsf3 = R3 @ (Ds @ x)
+    #
+    #     yrf1 = R1 @ (Dr @ y)
+    #     ysf1 = R1 @ (Ds @ y)
+    #     yrf2 = R2 @ (Dr @ y)
+    #     ysf2 = R2 @ (Ds @ y)
+    #     yrf3 = R3 @ (Dr @ y)
+    #     ysf3 = R3 @ (Ds @ y)
+    #
+    #     # calculate normals at the facets
+    #     nx1 = rxf1 + sxf1
+    #     ny1 = ryf1 + syf1
+    #
+    #     nx2 = -rxf2
+    #     ny2 = -ryf2
+    #
+    #     nx3 = -sxf3
+    #     ny3 = -syf3
+    #
+    #     # get the normals into one matrix
+    #     nx = np.vstack([nx1, nx2, nx3])
+    #     ny = np.vstack([ny1, ny2, ny3])
+    #
+    #     # get the magnitude of the surface jacobian
+    #     jac_all_face = np.repeat(jac[0, :], nfp * 3).reshape((nfp * 3, -1), order="F")
+    #     surf_jac_scaling = np.repeat(np.array([1 / np.sqrt(2), 1, 1]), nfp).reshape((nfp * 3, -1), order="F")
+    #     surf_jac = surf_jac_scaling * jac_all_face * np.sqrt(nx ** 2 + ny ** 2)
+    #     nx = nx / np.sqrt(nx ** 2 + ny ** 2)
+    #     ny = ny / np.sqrt(nx ** 2 + ny ** 2)
+    #
+    #     return {'nx': nx, 'ny': ny, 'surf_jac': surf_jac}
 
     @staticmethod
     def mesh_bgrp(nelem, bgrp, edge):
@@ -805,7 +888,8 @@ class MeshTools2D:
         return {'etov': etov, 'vx': vx, 'vy': vy, 'vxy': vxy, 'nelem': nelem, 'nvert': nvert, 'bgrp': bgrp, 'edge': edge}
 
     @staticmethod
-    def set_bndry_sbp_2D(xf, yf, uD_x=None, uD_y=None, uN_x=None, uN_y=None, uD_fun=None, uN_fun=None):
+    def set_bndry_sbp_2D(xf, yf, bgrpD, bgrpN, bL, bR, bB, bT, uDL_fun=None, uNL_fun=None, uDR_fun=None, uNR_fun=None,
+                         uDB_fun=None, uNB_fun=None, uDT_fun=None, uNT_fun=None):
         """Calculates boundary conditions at boundary facet nodes. This is for rectangular domain, it needs to be
         changed for other types of domains where both x and y axis might be required to impose the boundary
         conditions"""
@@ -816,56 +900,45 @@ class MeshTools2D:
         tol = 1e-12
 
         # boundary facet nodes by facet number
-        xf1 = xf.T[:, 0:nfp].reshape(nelem * nfp, 1)
-        xf2 = xf.T[:, nfp:2*nfp].reshape(nelem * nfp, 1)
-        xf3 = xf.T[:, 2*nfp:3*nfp].reshape(nelem * nfp, 1)
+        fid1 = np.arange(0, nfp)
+        fid2 = np.arange(nfp, 2*nfp)
+        fid3 = np.arange(2*nfp, 3*nfp)
+        fid = [fid1, fid2, fid3]
 
-        yf1 = yf.T[:, 0:nfp].reshape(nelem * nfp, 1)
-        yf2 = yf.T[:, nfp:2*nfp].reshape(nelem * nfp, 1)
-        yf3 = yf.T[:, 2*nfp:3*nfp].reshape(nelem * nfp, 1)
+        uD = np.zeros((nfp*nface, nelem))
+        uN = np.zeros((nfp*nface, nelem))
 
-        uD = np.zeros((nelem*nfp, nface))
-        uN = np.zeros((nelem*nfp, nface))
+        for i in range(0, len(bgrpD)):
+            elem = bgrpD[i, 0]
+            face = bgrpD[i, 1]
+            # left boundary
+            if np.abs(xf[fid[face][1], elem] - bL) <= tol:
+                uD[fid[face], elem] = uDL_fun(xf[fid[face], elem], yf[fid[face], elem])
+            # right boundary
+            if np.abs(xf[fid[face][1], elem] - bR) <= tol:
+                uD[fid[face], elem] = uDR_fun(xf[fid[face], elem], yf[fid[face], elem])
+            # bottom boundary
+            if np.abs(yf[fid[face][1], elem] - bB) <= tol:
+                uD[fid[face], elem] = uDB_fun(xf[fid[face], elem], yf[fid[face], elem])
+            # top boundary
+            if np.abs(yf[fid[face][1], elem] - bT) <= tol:
+                uD[fid[face], elem] = uDT_fun(xf[fid[face], elem], yf[fid[face], elem])
 
-        if (uD_x is not None) and (uD_fun is not None):
-            for i in range (0, len(uD_x)):
-                index1 = np.abs(xf1[:, 0] - uD_x[i]) <= tol
-                index2 = np.abs(xf2[:, 0] - uD_x[i]) <= tol
-                index3 = np.abs(xf3[:, 0] - uD_x[i]) <= tol
-
-                uD[index1, 0] = uD_fun(xf1[index1, 0], yf1[index1, 0])
-                uD[index2, 1] = uD_fun(xf2[index2, 0], yf2[index2, 0])
-                uD[index3, 2] = uD_fun(xf3[index3, 0], yf3[index3, 0])
-
-        if (uD_y is not None) and (uD_fun is not None):
-            for i in range (0, len(uD_y)):
-                index1 = np.abs(yf1[:, 0] - uD_y[i]) <= tol
-                index2 = np.abs(yf2[:, 0] - uD_y[i]) <= tol
-                index3 = np.abs(yf3[:, 0] - uD_y[i]) <= tol
-
-                uD[index1, 0] = uD_fun(xf1[index1, 0], yf1[index1, 0])
-                uD[index2, 1] = uD_fun(xf2[index2, 0], yf2[index2, 0])
-                uD[index3, 2] = uD_fun(xf3[index3, 0], yf3[index3, 0])
-
-        if (uN_x is not None) and (uN_fun is not None):
-            for i in range (0, len(uD_x)):
-                index1 = np.abs(xf1[:, 0] - uN_x[i]) <= tol
-                index2 = np.abs(xf2[:, 0] - uN_x[i]) <= tol
-                index3 = np.abs(xf3[:, 0] - uN_x[i]) <= tol
-
-                uN[index1, 0] = uN_fun(xf1[index1, 0], yf1[index1, 0])
-                uN[index2, 1] = uN_fun(xf2[index2, 0], yf2[index2, 0])
-                uN[index3, 2] = uN_fun(xf3[index3, 0], yf3[index3, 0])
-
-        if (uN_y is not None) and (uN_fun is not None):
-            for i in range(0, len(uN_y)):
-                index1 = np.abs(yf1[:, 0] - uN_y[i]) <= tol
-                index2 = np.abs(yf2[:, 0] - uN_y[i]) <= tol
-                index3 = np.abs(yf3[:, 0] - uN_y[i]) <= tol
-
-                uN[index1, 0] = uN_fun(xf1[index1, 0], yf1[index1, 0])
-                uN[index2, 1] = uN_fun(xf2[index2, 0], yf2[index2, 0])
-                uN[index3, 2] = uN_fun(xf3[index3, 0], yf3[index3, 0])
+        for i in range(0, len(bgrpN)):
+            elem = bgrpN[i, 0]
+            face = bgrpN[i, 1]
+            # left boundary
+            if np.abs(xf[fid[face][1], elem] - bL) <= tol:
+                uN[fid[face], elem] = uNL_fun(xf[fid[face], elem], yf[fid[face], elem])
+            # right boundary
+            if np.abs(xf[fid[face][1], elem] - bR) <= tol:
+                uN[fid[face], elem] = uNR_fun(xf[fid[face], elem], yf[fid[face], elem])
+            # bottom boundary
+            if np.abs(yf[fid[face][1], elem] - bB) <= tol:
+                uN[fid[face], elem] = uNB_fun(xf[fid[face], elem], yf[fid[face], elem])
+            # top boundary
+            if np.abs(yf[fid[face][1], elem] - bT) <= tol:
+                uN[fid[face], elem] = uNT_fun(xf[fid[face], elem], yf[fid[face], elem])
 
         return uD, uN
 

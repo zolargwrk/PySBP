@@ -33,6 +33,8 @@ class MeshPlot:
 
         return
 
-mesh = MeshGenerator2D.rectangle_mesh(0.5)
+# mesh = MeshGenerator2D.rectangle_mesh(0.5, 0, 1, 0, 1)
+# geo = mesh['geo']
 # mesh = MeshGenerator2D.triangle_mesh(11)
-fig = MeshPlot.mesh_plot_2d('rec.vtu')
+fig = MeshPlot.mesh_plot_2d('square_4elem.vtu')
+# fig = MeshPlot.mesh_plot_2d(geo)

@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from mesh.mesh_generator import MeshGenerator1D, MeshGenerator2D
 from src.assembler import Assembler
 from types import SimpleNamespace
+from solver.plot_figure import plot_figure_1d, plot_figure_2d, plot_conv_fig
+from scipy.sparse.linalg import spsolve
 
 class RHSCalculator:
 
@@ -106,6 +108,41 @@ class RHSCalculator:
 
         return rhs
 
+    # @staticmethod
+    # def rhs_advection_steady_2d(u, time_loc, x, y, fx, fy, ax, ay, Dr, Ds, vmapM, vmapP, bnodes, bnodesB, nelem, nfp,
+    #                      btype, lift, fscale, nx, ny, u_bndry_fun=None, flux_type='Upwind', boundary_type=None):
+    #
+    #     n = u.shape[0]
+    #     g = np.zeros((nelem * n, 1))
+    #     # A = np.zeros((nelem * n, nelem * n))
+    #     A = sparse.lil_matrix((nelem * n, nelem * n))
+    #     M = sparse.lil_matrix((nelem * n, nelem * n))
+    #     for i in range(0, nelem * n):
+    #         g[i] = 1
+    #         gmat = g.reshape((n, nelem), order='F')
+    #         Avec = RHSCalculator.rhs_advection_2d(u, time_loc, x, y, fx, fy, ax, ay, Dr, Ds, vmapM, vmapP, bnodes,
+    #                                               bnodesB, nelem, nfp, btype, lift, fscale, nx, ny, u_bndry_fun,
+    #                                               flux_type, boundary_type)
+    #
+    #         # eliminate very small numbers from the A and M matrices
+    #         sm = np.abs(Avec.reshape((n * nelem, 1), order='F')) >= 1e-12
+    #         sm = (sm.reshape((n, nelem), order='F')) * 1
+    #         Avec = (sm * Avec).reshape((nelem * n, 1), order='F')
+    #
+    #         A[:, i] = sparse.lil_matrix(Avec)
+    #         g[i] = 0
+    #
+    #     A = sparse.spmatrix.tocsc(A)
+    #     A_mat = A.toarray()
+    #     f = (np.pi * np.cos(np.pi * x) * np.sin(np.pi * y) + np.pi * np.cos(np.pi * y) * np.sin(np.pi * x))
+    #     u = np.linalg.inv(A_mat) @ (f.reshape((n * nelem, 1), order='F'))
+    #     u = u.reshape(nelem, n).T
+    #     u_exact = np.sin(np.pi * x) * np.sin(np.pi * y)
+    #     err = np.linalg.norm(u - u_exact)
+    #
+    #     plot_figure_2d(x, y, u_exact)
+    #     plot_figure_2d(x, y, u)
+    #     return A
 
     @staticmethod
     def rhs_diffusion_1d(u, d_mat, h_mat, lift, tl, tr, nx, rx, fscale, vmapM, vmapP, mapI, mapO, vmapI, vmapO,
@@ -295,8 +332,8 @@ class RHSCalculator:
         n = u.shape[0]
         g = np.zeros((nelem * n, 1))
         # A = np.zeros((nelem * n, nelem * n))
-        A = sparse.lil_matrix((nelem * n, nelem * n))
-        M = sparse.lil_matrix((nelem * n, nelem * n))
+        A = sparse.csr_matrix((nelem * n, nelem * n))
+        M = sparse.csr_matrix((nelem * n, nelem * n))
         for i in range(0, nelem * n):
             g[i] = 1
             gmat = g.reshape((n, nelem), order='F')
@@ -312,8 +349,8 @@ class RHSCalculator:
             sm = (sm.reshape((n, nelem), order='F')) * 1
             Mvec = (sm * Mvec).reshape((nelem * n, 1), order='F')
 
-            A[:, i] = sparse.lil_matrix(Avec)
-            M[:, i] = sparse.lil_matrix(Mvec)
+            A[:, i] = Avec
+            M[:, i] = Mvec
             g[i] = 0
 
         A = sparse.spmatrix.tocsc(A)
@@ -321,9 +358,10 @@ class RHSCalculator:
         return A, M
 
     @staticmethod
-    def rhs_poisson_sbp_2d(p, u, x, y, r, s, xf, yf, Dr, Ds, H, B1, B2, B3, R1, R2, R3, nx, ny, rx, ry, sx, sy, fscale,
-                           etoe, etof, bgrp, bgrpD, bgrpN, nelem, surf_jac, jac, flux_type='BR2', uD_x=None, uD_y=None,
-                           uN_x=None, uN_y=None, uD_fun=None, uN_fun=None, LB=None):
+    def rhs_poisson_sbp_2d(p, u, x, y, r, s, xf, yf, Dr, Ds, H, B1, B2, B3, R1, R2, R3, nx, ny, rx, ry, sx, sy,
+                           etoe, etof, bgrp, bgrpD, bgrpN, nelem, surf_jac, jac, flux_type='BR2', uDL_fun=None,
+                           uNL_fun=None, uDR_fun=None, uNR_fun=None, uDB_fun=None, uNB_fun=None, uDT_fun=None,
+                           uNT_fun=None, bL=None, bR=None, bB=None, bT=None, LB=None, fscale=None):
 
         # define and set important variables
         ns = (p+1)*(p+2)/2      # number of shape functions (cardinality)
@@ -331,10 +369,13 @@ class RHSCalculator:
         dim = 2                 # dimension
         nface = dim + 1         # number of facets
 
+        jacB = jac.T.reshape(nelem, nnodes, 1)
         # variable coefficient
+
         if LB is None:
             I = np.eye(nnodes)
             Z = np.zeros((nnodes, nnodes))
+
             Lxx = sparse.block_diag([I] * nelem)   # variable coefficient -- only handles constant coefficient this way unless changed later
             Lyy = sparse.block_diag([I] * nelem)   # LB should be a block matrix of size 2 by 2, i.e., LB = [[Lxx, Lxy],[Lyx, Lyy]]
             Lxy = 0*Lxx
@@ -344,6 +385,16 @@ class RHSCalculator:
             LxyB = np.block([Z] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
             LyxB = np.block([Z] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
             LyyB = np.block([I] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+
+            # Lxx = sparse.diags(jac.flatten(order='F')) @ sparse.block_diag([I] * nelem)   # variable coefficient -- only handles constant coefficient this way unless changed later
+            # Lyy = sparse.diags(jac.flatten(order='F')) @ sparse.block_diag([I] * nelem)   # LB should be a block matrix of size 2 by 2, i.e., LB = [[Lxx, Lxy],[Lyx, Lyy]]
+            # Lxy = 0*Lxx
+            # Lyx = 0*Lyy
+            # LB = np.block([[Lxx, Lxy], [Lyx, Lyy]])
+            # LxxB = jacB * np.block([I] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+            # LxyB = jacB * np.block([Z] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+            # LyxB = jacB * np.block([Z] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+            # LyyB = jacB * np.block([I] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
 
 
         # get the derivative operator on each element
@@ -359,32 +410,22 @@ class RHSCalculator:
         # get system matrix
         D2B = sparse.csr_matrix((np.block([DxB, DyB]) @ LB @ np.block([[DxB], [DyB]]))[0, 0])
 
-        # construct the scaled norm matrix
-        Hblock = ([H]*nelem)
-        HB = sparse.diags(jac.flatten(order='F')) @ sparse.block_diag(Hblock)
-
-        # construct the scaled inverse of the norm matrix
-        HB_inv = sparse.csr_matrix(np.linalg.inv(HB.toarray()))
-
-        # #-------- tests with p4 operator ------------
-        # kk1 = (D2B @ ((x.flatten(order='F'))**2 * (y.flatten(order='F'))**2))
-        # Der_err= np.max((kk1 - 2*(x.flatten(order='F')**2 + y.flatten(order='F')**2)))
-        # print(Der_err)
-        # area_err = np.max(np.ones((nnodes*nelem, 1)).T @ HB @ np.ones((nnodes*nelem, 1)) - 4) # rectanglular domain on [-1,1], [1,-1],[1, 1], [-1, 1]
-        # print(area_err)
-        # #----------------------------------------------
-
         # set boundary conditions
-        uD, uN = MeshTools2D.set_bndry_sbp_2D(xf, yf, uD_x, uD_y, uN_x, uN_y, uD_fun, uN_fun)
+        uD, uN = MeshTools2D.set_bndry_sbp_2D(xf, yf, bgrpD, bgrpN, bL, bR, bB, bT, uDL_fun, uNL_fun, uDR_fun, uNR_fun,
+                                              uDB_fun, uNB_fun, uDT_fun, uNT_fun)
 
         # get the SATs
-        sI, fB = SATs.diffusion_sbp_sat_2d_steady(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, LB, Ds, Dr, H, B1, B2, B3,
+        sat_data = SATs.diffusion_sbp_sat_2d_steady(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, Ds, Dr, H, B1, B2, B3,
                                                   R1, R2, R3, rx, ry, sx, sy, jac, surf_jac, nx, ny, etoe, etof, bgrp,
-                                                  bgrpD, bgrpN, x, y, xf, yf, 'BR2', uD, uN)
+                                                  bgrpD, bgrpN, 'BR2', uD, uN)
+        sdata = SimpleNamespace(**sat_data)
 
-        A = (D2B - sI)
+        A = (D2B - sdata.sI)
 
-        return A, fB
+        return {'A': A, 'fB': sdata.fB, 'Hg': sdata.Hg, 'D2B': D2B, 'LxxB': LxxB, 'LxyB': LxyB, 'LyxB': LyxB,
+                'LyyB': LyyB, 'LB': LB, 'uD': uD, 'uN': uN}
+
+
 
 
 # p = 2

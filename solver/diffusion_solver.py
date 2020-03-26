@@ -9,6 +9,7 @@ from solver.plot_figure import plot_figure_1d, plot_figure_2d, plot_conv_fig
 from src.error_conv import calc_err, calc_conv
 from types import SimpleNamespace
 from scipy import sparse
+import matplotlib.pyplot as plt
 from solver.problem_statements import poisson1D_problem_input
 
 
@@ -266,7 +267,7 @@ def poisson_2d(p, h, nrefine=1, flux_type='BR2'):
     nelems = list()
 
     # generate mesh
-    mesh = MeshGenerator2D.rectangle_mesh(h)
+    mesh = MeshGenerator2D.rectangle_mesh(h, 0, 1, 0, 1)
 
     # obtain all data necessary for the residual (RHS) calculation
     self_assembler = Assembler(p)
@@ -331,20 +332,25 @@ def poisson_2d(p, h, nrefine=1, flux_type='BR2'):
 
     plot_figure_2d(x, y, u)
     print(errs)
-    # plot_figure_2d(x, y, u_exact)
+    plot_figure_2d(x, y, u_exact)
 
     return
 
-# poisson_2d(8, 0.25, 1)
+# poisson_2d(2, 0.5, 1)
 
-def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2'):
+def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_fig=True):
 
     dim = 2
     nface = dim + 1
     nfp = p+1
     ns = int((p+1)*(p+2)/2)
-
-    mesh = MeshGenerator2D.rectangle_mesh(h)
+    # the rectangular domain
+    bL = 0
+    bR = 1
+    bB = 0
+    bT = 1
+    # generate mesh
+    mesh = MeshGenerator2D.rectangle_mesh(h, bL, bR, bB, bT)
     btype = ['d', 'd', 'd', 'd']
     ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family)
     adata = SimpleNamespace(**ass_data)
@@ -354,42 +360,64 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2'):
     nnodes = adata.nnodes
     u = 0*x
 
-    # boundary conditions
-    uD_x = np.array([-1, 1])
-    uD_y = np.array([-1, 1])
-    uN_x = None
-    uN_y = None
-    uD_fun = lambda x, y: x*0
-    uN_fun = lambda x, y: y*0
+    # boundary conditions on a rectangular domain
+    uDL_fun = lambda x, y: 0
+    uNL_fun = lambda x, y: 0
+    uDR_fun = lambda x, y: 0
+    uNR_fun = lambda x, y: 0
+    uDB_fun = lambda x, y: 0
+    uNB_fun = lambda x, y: 0
+    uDT_fun = lambda x, y: 0 #np.sin(np.pi * x)
+    uNT_fun = lambda x, y: 0
 
-    A, fB = RHSCalculator.rhs_poisson_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
+    rhs_data = RHSCalculator.rhs_poisson_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
                                              adata.Ds, adata.H, adata.B1,adata.B2, adata.B3, adata.R1, adata.R2, adata.R3,
-                                             adata.nx, adata.ny, adata.rx, adata.ry, adata.sx, adata.sy, adata.fscale,
+                                             adata.nx, adata.ny, adata.rx, adata.ry, adata.sx, adata.sy,
                                              adata.etoe, adata.etof, adata.bgrp, adata.bgrpD, adata.bgrpN, adata.nelem,
-                                             adata.surf_jac, adata.jac, flux_type, uD_x, uD_y, uN_x, uN_y, uD_fun, uN_fun)
+                                             adata.surf_jac, adata.jac, flux_type, uDL_fun, uNL_fun, uDR_fun, uNR_fun,
+                                             uDB_fun, uNB_fun, uDT_fun, uNT_fun, bL, bR, bB, bT, None, adata.fscale)
+    rdata = SimpleNamespace(**rhs_data)
+    fB = rdata.fB
+    A = rdata.A
+    Hg = rdata.Hg
 
-    f = - 2 * (np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y) + fB.reshape(nelem, nnodes).T
-    u = spsolve(A, f.reshape((nnodes * nelem, 1), order='F'))
-    uu = u.reshape(nelem, nnodes).T
+    f = ((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y) + fB.reshape(nelem, nnodes).T).flatten(order="F")
+    # f = (fB.reshape(nelem, nnodes).T).flatten(order="F")
+    u = spsolve(A, f)
+    uu = u.reshape((nnodes, nelem), order="F")
     u_exact = np.sin(np.pi * x) * np.sin(np.pi * y)
+    # u_exact = 1/(np.sinh(np.pi)) * np.sinh(np.pi*y) * np.sin(np.pi*x)
 
-    # -------------- test boundary condition-----------
+    # --------------
+    # perm = (np.array([0, 2, 2, 2, 1, 1, 0, 1, 2, 0, 1, 0, 3, 4, 5, 4, 4, 3, 3, 3, 5, 5, 4, 5, 6, 6, 6, 6]).reshape(-1, nelem)).flatten(order="F").reshape(-1,1)
+    # add_perm = np.repeat(np.array([0, 7, 14, 21]), 7).reshape((-1, 1), order='F')
+    # perm2 = perm + add_perm
+    # u_perm = (u[perm2]).reshape((-1, nelem), order = 'F')
+    # # -------------- test boundary condition-----------
     # bgrpD = adata.bgrpD
     # fid1 = np.arange(0, nfp)
     # fid2 = np.arange(nfp, 2*nfp)
     # fid3 = np.arange(2*nfp, 3*nfp)
     # fid = [fid1, fid2, fid3]
-    # u_bndry = -100*np.ones((3*nfp, nelem))
+    # u_bndry = np.zeros((3*nfp, nelem))
+    # uD, uN = MeshTools2D.set_bndry_sbp_2D(adata.xf, adata.yf, adata.bgrpD, adata.bgrpN, bL, bR, bB, bT, uDL_fun,
+    #                                       uNL_fun, uDR_fun, uNR_fun, uDB_fun, uNB_fun, uDT_fun, uNT_fun)
     # for k in range(0, len(bgrpD)):
     #     u_bndry[fid[bgrpD[k, 1]], bgrpD[k, 0]] = uu[fid[bgrpD[k, 1]], bgrpD[k, 0]]
-    #--------------------------------------------------
+    # uB = uD + uN
+    # u_bndry_err = uB - u_bndry
+    # #--------------------------------------------------
 
     # error calculation
     err = np.linalg.norm((uu - u_exact), 2)
-    err2 = (uu - u_exact)
-    plot_figure_2d(x, y, u_exact)
-    plot_figure_2d(x, y, uu)
-    print(err)
+    err2 = np.sqrt((uu - u_exact).flatten(order="F") @ Hg @ (uu - u_exact).flatten(order="F"))\
+           /np.sqrt((u_exact).flatten(order="F") @ Hg @ (u_exact).flatten(order="F"))
+    if plot_fig==True:
+        plot_figure_2d(x, y, u_exact)
+        plot_figure_2d(x, y, uu)
+        # print(err)
+        print(err2)
     return u
 
-poisson_sbp_2d(2, 0.25, 1, 'diagE', 'BR2')
+# poisson_sbp_2d(2, 0.5, 1, 'gamma', 'BR2')
+# poisson_2d(1, 0.8, 1,'BR2')

@@ -394,12 +394,12 @@ class Ref2D_DG:
 
     @staticmethod
     def fmask_2d(r, s, x, y):
-        # fmask0 = ((np.abs(s + 1) < 1e-8).nonzero())[0]
-        # fmask1 = ((np.abs(r + s) < 1e-8).nonzero())[0]
-        # fmask2 = ((np.abs(r + 1) < 1e-8).nonzero())[0]
-        fmask2 = ((np.abs(s + 1) < 1e-8).nonzero())[0]
-        fmask0 = ((np.abs(r + s) < 1e-8).nonzero())[0]
-        fmask1 = ((np.abs(r + 1) < 1e-8).nonzero())[0]
+        fmask0 = ((np.abs(s + 1) < 1e-8).nonzero())[0]
+        fmask1 = ((np.abs(r + s) < 1e-8).nonzero())[0]
+        fmask2 = ((np.abs(r + 1) < 1e-8).nonzero())[0]
+        # fmask2 = ((np.abs(s + 1) < 1e-8).nonzero())[0]
+        # fmask0 = ((np.abs(r + s) < 1e-8).nonzero())[0]
+        # fmask1 = ((np.abs(r + 1) < 1e-8).nonzero())[0]
         fmask = np.array([fmask0, fmask1, fmask2]).T
         fmask_list = (np.hstack([fmask0, fmask1, fmask2]))
         nface = 3
@@ -1127,7 +1127,7 @@ class Ref2D_SBP:
         cub = SimpleNamespace(**cub_data)
         nnodes = len(cub.r)
 
-        # get Barycentric coordinat of the cubature nodes
+        # get Barycentric coordinate of the cubature nodes
         b = Ref2D_SBP.cartesian_to_barycentric2D(cub.r, cub.s, cub.cub_vert)
 
         # get the coordinates of the cubature nodes on the reference triangle
@@ -1236,7 +1236,7 @@ class Ref2D_SBP:
 
         return {'H': H, 'B': B, 'Dr': Dr, 'Ds': Ds, 'Er': Er, 'Es': Es, 'Qr': Qr, 'Qs': Qs, 'B1': B_list[0],
                 'B2': B_list[1], 'B3': B_list[2], 'R1': R.R1, 'R2': R.R2, 'R3': R.R3,'vert': cub.cub_vert,
-                'r': r, 's': s, 'rsf': rsf, 'V': V, 'Vf': Vf, 'bary': b, 'baryf': bf}
+                'r': r, 's': s, 'rsf': rsf, 'V': V, 'Vf': Vf, 'bary': b, 'baryf': bf, 'nx': nx, 'ny': ny}
 
 
 #M = Ref2D_DG.mass_matrix(1)
@@ -1264,8 +1264,8 @@ class Ref2D_SBP:
 # w, r, s= Ref2D_DG.quad_rule_tri(p, 'Liu-Vinokur')
 # shp_data = Ref2D_SBP.shape_tri(p, sbp_family)
 
-# p = 3
-# sbp_family = "gamma"
+# p = 4
+# sbp_family = "diagE"
 # shp_data = Ref2D_SBP.make_sbp_operators2D(p, sbp_family)
 
 # shp = shp_data['shp']

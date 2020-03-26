@@ -128,13 +128,13 @@ class MeshGenerator2D:
         return
 
     @staticmethod
-    def rectangle_mesh(h):
+    def rectangle_mesh(h, bL=-1, bR=1, bB=-1, bT=1):
         # ----------------------
-        geo = dmsh.Rectangle(-1.0, 1.0, -1.0, 1.0)
-        left = -1 #* np.pi
-        right = 1 #* np.pi
-        bottom = -1 #* np.pi
-        top = 1 #* np.pi
+        geo = dmsh.Rectangle(bL, bR, bB, bT)
+        left = bL #* np.pi
+        right = bR #* np.pi
+        bottom = bB #* np.pi
+        top = bT #* np.pi
         geo = dmsh.Rectangle(left, right, bottom, top)
         vxy, etov = dmsh.generate(geo, h)
 
@@ -142,7 +142,6 @@ class MeshGenerator2D:
         # # NOTE: optimesh gives rise to error when solving with h=0.4 (this is very weired, took me a whole day to figure
         # #      out that the issue for the solution divergence was the mesh, got to consider changing the mesher!)
         #-------------------------
-
         # mat = scipy.io.loadmat('C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\mesh\\square_mesh_data.mat')
         # etov = (np.asarray(mat['etov'])-1).astype(int)
         # vxy = np.asarray(mat['vxy'])
@@ -168,11 +167,11 @@ class MeshGenerator2D:
 
         #-----------------------
         # cells = {'triangle': etov}
-        # meshio.write_points_cells('square.vtu', points, cells)
+        # meshio.write_points_cells('square_4elem.vtu', points, cells)
         #-----------------------
 
         vxy_mid, edge = MeshGenerator2D.mid_edge(vxy, etov)
-        bgrp = MeshGenerator2D.get_bgrp(vxy_mid, edge)
+        bgrp = MeshGenerator2D.get_bgrp(vxy_mid, edge, bL, bR, bB, bT)
 
         return {'etov': etov, 'vx': vx, 'vy': vy, 'vxy': vxy, 'nelem': nelem, 'nvert': nvert, 'bgrp': bgrp, 'edge': edge}
 
@@ -208,32 +207,32 @@ class MeshGenerator2D:
         return vxy_mid, edge
 
     @staticmethod
-    def get_bgrp(vxy_mid, edge):
+    def get_bgrp(vxy_mid, edge, bL, bR, bB, bT):
         # left = -1 * np.pi
         # right = 1 * np.pi
         # bottom = -1 * np.pi
         # top = 1 * np.pi
-        left = -1
-        right = 1
-        bottom = -1
-        top = 1
+        # left = -1
+        # right = 1
+        # bottom = -1
+        # top = 1
 
         tol = 1e-10
         bgrp = list()
         # left boundary
-        i = np.abs(vxy_mid[:, 0] - left) < tol
+        i = np.abs(vxy_mid[:, 0] - bL) < tol
         bgrp.append(edge[i, :])
 
         # right boundary
-        i = np.abs((vxy_mid[:, 0] - right)) < tol
+        i = np.abs((vxy_mid[:, 0] - bR)) < tol
         bgrp.append(edge[i, :])
 
         # bottom boundary
-        i = np.abs(vxy_mid[:, 1] - bottom) < tol
+        i = np.abs(vxy_mid[:, 1] - bB) < tol
         bgrp.append(edge[i, :])
 
         # top boundary
-        i = np.abs(vxy_mid[:, 1] - top) < tol
+        i = np.abs(vxy_mid[:, 1] - bT) < tol
         bgrp.append(edge[i, :])
 
         return bgrp

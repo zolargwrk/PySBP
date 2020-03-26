@@ -294,11 +294,11 @@ class Assembler:
         baryf = sbpref.baryf
         xf, yf = MeshTools2D.affine_map_facet_sbp_2d(vx, vy, rf, sf, etov, baryf)
 
-        # obtain the nodes on the edges of the triangles on the physical element
-        mask = Ref2D_DG.fmask_2d(r, s, x, y)
-        fx = mask['fx']
-        fy = mask['fy']
-        fmask = mask['fmask']
+        # # # obtain the nodes on the edges of the triangles on the physical element
+        # mask = Ref2D_DG.fmask_2d(r, s, x, y)
+        # fx = mask['fx']
+        # fy = mask['fy']
+        # fmask = mask['fmask']
 
         # get directional operators
         Dr = sbpref.Dr
@@ -334,11 +334,12 @@ class Assembler:
         # #------------------------------------
 
         # get normals and surface scaling factor
-        norm = MeshTools2D.normals_sbp_2d(nfp, vx, vy, etov)
+        # norm = MeshTools2D.normals_sbp_2d(nfp, vx, vy, etov)
+        norm = MeshTools2D.normals_sbp_2d(rx, ry, sx, sy, jac, R1, R2, R3)
         nx = norm['nx']
         ny = norm['ny']
         surf_jac = norm['surf_jac']
-        fscale = surf_jac / jac[fmask.reshape((fmask.shape[0] * fmask.shape[1], 1), order='F'), :].reshape(surf_jac.shape)
+        # fscale = surf_jac / jac[fmask.reshape((fmask.shape[0] * fmask.shape[1], 1), order='F'), :].reshape(surf_jac.shape)
 
         # norm = MeshTools2D.normals_2d(p, x, y, Dr, Ds, fmask)
         # nx = norm['nx']
@@ -351,20 +352,20 @@ class Assembler:
         etoe = connect['etoe']
         etof = connect['etof']
 
-        # build connectivity maps
-        maps = MeshTools2D.buildmaps_2d(p, nnodes, x, y, etov, etoe, etof, fmask)
-        mapM = maps['mapM']
-        mapP = maps['mapP']
-        vmapM = maps['vmapM']
-        vmapP = maps['vmapP']
-        vmapB = maps['vmapB']
-        mapB = maps['mapB']
+        # # build connectivity maps
+        # maps = MeshTools2D.buildmaps_2d(p, nnodes, x, y, etov, etoe, etof, fmask)
+        # mapM = maps['mapM']
+        # mapP = maps['mapP']
+        # vmapM = maps['vmapM']
+        # vmapP = maps['vmapP']
+        # vmapB = maps['vmapB']
+        # mapB = maps['mapB']
 
         # boundary groups and boundary nodes
         bgrp0 = mesh['bgrp']
         edge = mesh['edge']
         bgrp = MeshTools2D.mesh_bgrp_sbp(nelem, bgrp0, edge)
-        bnodes, bnodesB = MeshTools2D.boundary_nodes(p, nelem, bgrp, vmapB, vmapM, mapB, mapM)
+        # bnodes, bnodesB = MeshTools2D.boundary_nodes(p, nelem, bgrp, vmapB, vmapM, mapB, mapM)
 
         # get boundary groups by type
         bgrp_type = MeshTools2D.bgrp_by_type(btype, bgrp)
@@ -373,10 +374,9 @@ class Assembler:
 
         return {'nfp': nfp, 'ns': ns, 'nface': nface, 'nelem': nelem, 'Dr': Dr, 'Ds': Ds, 'H': H, 'B1': B1, 'B2': B2,
                 'B3': B3, 'R1': R1, 'R2': R2, 'R3': R3, 'Er': Er, 'Es': Es, 'rx': rx, 'ry': ry, 'sx': sx, 'sy': sy,
-                'jac': jac, 'nx': nx, 'ny': ny, 'surf_jac': surf_jac, 'fscale': fscale, 'mapM': mapM, 'mapP': mapP,
-                'vmapM': vmapM, 'vmapP': vmapP, 'vmapB': vmapB, 'mapB': mapB, 'bgrp': bgrp, 'bnodes': bnodes,
-                'bnodesB': bnodesB, 'x': x, 'y': y, 'fx': fx, 'fy': fy, 'etov': etov, 'r': r, 's': s, 'etoe': etoe,
-                'etof': etof, 'vx': vx, 'vy': vy, 'bgrpD': bgrpD, 'bgrpN': bgrpN, 'xf': xf, 'yf': yf, 'nnodes': nnodes}
+                'jac': jac, 'nx': nx, 'ny': ny, 'surf_jac': surf_jac, 'bgrp': bgrp, 'x': x, 'y': y, 'etov': etov,
+                'r': r, 's': s, 'etoe': etoe, 'etof': etof, 'vx': vx, 'vy': vy, 'bgrpD': bgrpD, 'bgrpN': bgrpN,
+                'xf': xf, 'yf': yf, 'nnodes': nnodes, 'fscale': None}
 
 
 # mesh = MeshGenerator2D.rectangle_mesh(0.25)

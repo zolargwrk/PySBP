@@ -8,8 +8,8 @@ class TestRef2D_SBP(unittest.TestCase):
 
     def test_make_sbp_operators2D(self):
         tol = 1e-12
-        p = 1
-        sbp_family = "diagE"
+        p = 3
+        sbp_family = "omega"
         oper_data = Ref2D_SBP.make_sbp_operators2D(p, sbp_family)
         oper = SimpleNamespace(**oper_data)
 
@@ -43,7 +43,7 @@ class TestRef2D_SBP(unittest.TestCase):
         # to obtain the analytical surface integral use the fact that: int(v*du) + int(u*dv) = int_surface(uv)
         # setting v = 1 gives int(du) = int_surface(uv)
         q = 2*p
-        u = oper.r
+        u = oper.s
         surf_integral = ((u**p).T @ (oper.Er + oper.Es) @ (u ** p))[0]
         analytical_surf_integral = -q/(q+1) + 1 + (-1)**(q+1)*q/(q+1) - (-1)**q
         errE = np.abs(surf_integral - analytical_surf_integral)
@@ -66,11 +66,20 @@ class TestRef2D_SBP(unittest.TestCase):
         H_test = lambda pL, pR: ((u**pL).T @ oper.H @ (pR * u**(pR-1))).flatten()[0]
         errH = np.abs(H_test(0, q) - analytical_surf_integral)
 
-        H_test2 = ((u ** p).T @ oper.H @ (oper.Dr @ (u ** (p)))).flatten()[0]
+        H_test2 = ((u ** p).T @ oper.H @ (oper.Ds @ (u ** (p)))).flatten()[0]
         errH2 = np.abs(H_test2 - H_test(p, p))
 
         # test compatibility: v^T@H@du + u^T@ H @v = u^T @ E @ v
         errComp = np.abs(H_test(p, p) + H_test(p, p) - surf_integral)[0]
+
+        # check the decomposition of the E matrix
+        Er_decomp = oper.nx[0] * oper.R1.T @ oper.B1 @ oper.R1 + oper.nx[1] * oper.R2.T @ oper.B2 @ oper.R2 \
+                    + oper.nx[2] * oper.R3.T @ oper.B3 @ oper.R3
+        Es_decomp = oper.ny[0] * oper.R1.T @ oper.B1 @ oper.R1 + oper.ny[1] * oper.R2.T @ oper.B2 @ oper.R2 \
+                    + oper.ny[2] * oper.R3.T @ oper.B3 @ oper.R3
+
+        Er_decomp_err = np.max(np.abs(Er_decomp - oper.Er)) - tol
+        Es_decomp_err = np.max(np.abs(Es_decomp - oper.Es)) - tol
 
         # self.assertEqual(True, False)
         self.assertLessEqual(errDr, tol)
@@ -87,6 +96,8 @@ class TestRef2D_SBP(unittest.TestCase):
         self.assertLessEqual(errH2, tol)
         self.assertLessEqual(errE, tol)
         self.assertLessEqual(errComp, tol)
+        self.assertLessEqual(Er_decomp_err, tol)
+        self.assertLessEqual(Es_decomp_err, tol)
 
 
 if __name__ == '__main__':

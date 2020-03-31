@@ -283,7 +283,7 @@ class RHSCalculator:
 
         # compute difference in u at interfaces
         du = u[vmapM] - u[vmapP]
-        du[mapD] = 2*u[vmapD]
+        du[mapD] = u[vmapD]
 
         # compute qx and qy
         dudx, dudy = Ref2D_DG.gradient_2d(x, y, Dr, Ds, u0)
@@ -426,7 +426,222 @@ class RHSCalculator:
                 'LyyB': LyyB, 'LB': LB, 'uD': uD, 'uN': uN}
 
 
+    @staticmethod
+    def rhs_diffusion_flux_formulation_sbp_2d(p, u, x, y, r, s, xf, yf, Dr, Ds, H, B1, B2, B3, R1, R2, R3, nx, ny, rx,
+                                              ry, sx, sy, etoe, etof, bgrp, bgrpD, bgrpN, nelem, surf_jac, jac,
+                                              flux_type='BR2', uDL_fun=None, uNL_fun=None, uDR_fun=None, uNR_fun=None,
+                                              uDB_fun=None, uNB_fun=None, uDT_fun=None, uNT_fun=None, bL=None, bR=None,
+                                              bB=None, bT=None, LB=None, fscale=None):
 
+        # get important variables
+        nnodes = u.shape[0]
+        nelem = u.shape[1]
+        nface = 3
+        nfp = p+1
+        fid1 = np.arange(0, nfp)
+        fid2 = np.arange(nfp, 2*nfp)
+        fid3 = np.arange(2*nfp, 3*nfp)
+        fid = [fid1, fid2, fid3]
+        R = [R1, R2, R3]
+
+        u0 = u.copy()
+        # get solution at the facets
+        uf = np.zeros((nfp*nface, nelem))
+        uf[fid1, :] = R1 @ u
+        uf[fid2, :] = R2 @ u
+        uf[fid3, :] = R3 @ u
+
+        # get the mapping between facets of neighboring elements
+        uf_nbr = uf.copy()
+        etof1 = np.zeros((nfp, nelem), dtype=np.int64)
+        etof2 = np.zeros((nfp, nelem), dtype=np.int64)
+        etof3 = np.zeros((nfp, nelem), dtype=np.int64)
+        for elem in range(0, nelem):
+            etof1[:, elem] = fid[etof[elem, 0]]
+            etof2[:, elem] = fid[etof[elem, 1]]
+            etof3[:, elem] = fid[etof[elem, 2]]
+
+        # set boundary conditions
+        uD, uN = MeshTools2D.set_bndry_sbp_2D(xf, yf, bgrpD, bgrpN, bL, bR, bB, bT, uDL_fun, uNL_fun, uDR_fun, uNR_fun,
+                                              uDB_fun, uNB_fun, uDT_fun, uNT_fun)
+
+        # Dirichlet boundary groups by facet
+        bgrpD1=bgrpD2=bgrpD3=[]
+        if len(bgrpD) != 0:
+            bgrpD1 = bgrpD[bgrpD[:, 1] == 0, :]
+            bgrpD2 = bgrpD[bgrpD[:, 1] == 1, :]
+            bgrpD3 = bgrpD[bgrpD[:, 1] == 2, :]
+
+        # Neumann boundary groups by facet
+        bgrpN1 = bgrpN2 = bgrpN3 = []
+        if len(bgrpN) != 0:
+            bgrpN1 = bgrpN[bgrpN[:, 1] == 0, :]
+            bgrpN2 = bgrpN[bgrpN[:, 1] == 1, :]
+            bgrpN3 = bgrpN[bgrpN[:, 1] == 2, :]
+
+        # compute the jump in solution at the interior facets
+        uf_nbr[fid1, :] = uf[etof1, etoe[:, 0]]
+        uf_nbr[fid2, :] = uf[etof2, etoe[:, 1]]
+        uf_nbr[fid3, :] = uf[etof3, etoe[:, 2]]
+        duf = uf - uf_nbr
+
+        # compute the solution flux at the boundaries
+        # Dirichlet boundary
+        for elem in range(0, len(bgrpD1)):
+            duf[fid1, bgrpD1[elem, 0]] = uf[fid1, bgrpD1[elem, 0]] - uD[fid1, bgrpD1[elem, 0]]
+
+        for elem in range(0, len(bgrpD2)):
+            duf[fid2, bgrpD2[elem, 0]] = uf[fid2, bgrpD2[elem, 0]] - uD[fid2, bgrpD2[elem, 0]]
+
+        for elem in range(0, len(bgrpD3)):
+            duf[fid3, bgrpD3[elem, 0]] = uf[fid3, bgrpD3[elem, 0]] - uD[fid3, bgrpD3[elem, 0]]
+
+
+        # get the derivative of the solution at each element
+        dudx = rx*(Dr @ u) + sx*(Ds @ u)
+        dudy = ry*(Dr @ u) + sy*(Ds @ u)
+
+        # compute flux in the solution
+        fluxux = nx*duf/2
+        fluxuy = ny*duf/2
+
+        # calculate the lift
+        Bmat = np.zeros((nfp*nface, nfp*nface))
+        H_inv = np.linalg.inv(H)
+
+        Bmat[fid1, 0:nfp] = B1
+        Bmat[fid2, nfp:2*nfp] = B2
+        Bmat[fid3, 2*nfp:3*nfp] = B3
+
+        lift1 = (H_inv @ R1.T @ B1)
+        lift2 = (H_inv @ R2.T @ B2)
+        lift3 = (H_inv @ R3.T @ B3)
+        fluxux *= surf_jac
+        fluxuy *= surf_jac
+        liftux = 1 / jac * (lift1 @ fluxux[fid1, :] + lift2 @ fluxux[fid2, :] + lift3 @ fluxux[fid3, :])
+        liftuy = 1 / jac * (lift1 @ fluxuy[fid1, :] + lift2 @ fluxuy[fid2, :] + lift3 @ fluxuy[fid3, :])
+
+        # liftx = 1/jac*(H_inv @ (R1.T @ (surf_jac*(Bmat @ fluxux))[fid1, :] + R2.T @ (surf_jac*(Bmat @ fluxux))[fid2, :]
+        #                         + R3.T @ (surf_jac*(Bmat @ fluxux))[fid3, :]))
+        # lifty = 1/jac*(H_inv @ (R1.T @ (surf_jac*(Bmat @ fluxuy))[fid1, :] + R2.T @ (surf_jac*(Bmat @ fluxuy))[fid2, :]
+        #                         + R3.T @ (surf_jac*(Bmat @ fluxuy))[fid3, :]))
+
+
+        # calcualte auxiliary variable, q
+        qx = dudx - liftux
+        qy = dudy - liftuy
+
+        # get qx and qy at the interfaces
+        qxf = np.zeros((nfp * nface, nelem))
+        qxf[fid1, :] = R1 @ qx
+        qxf[fid2, :] = R2 @ qx
+        qxf[fid3, :] = R3 @ qx
+
+        qyf = np.zeros((nfp * nface, nelem))
+        qyf[fid1, :] = R1 @ qy
+        qyf[fid2, :] = R2 @ qy
+        qyf[fid3, :] = R3 @ qy
+
+        # compute the jump in solution at the interior facets
+        qxf_nbr = np.zeros((nfp*nface, nelem))
+        qxf_nbr[fid1, :] = qxf[etof1, etoe[:, 0]]
+        qxf_nbr[fid2, :] = qxf[etof2, etoe[:, 1]]
+        qxf_nbr[fid3, :] = qxf[etof3, etoe[:, 2]]
+        dqxf = qxf - qxf_nbr
+
+        qyf_nbr = np.zeros((nfp * nface, nelem))
+        qyf_nbr[fid1, :] = qyf[etof1, etoe[:, 0]]
+        qyf_nbr[fid2, :] = qyf[etof2, etoe[:, 1]]
+        qyf_nbr[fid3, :] = qyf[etof3, etoe[:, 2]]
+        dqyf = qyf - qyf_nbr
+
+        # Neumann boundary
+        for elem in range(0, len(bgrpN1)):
+            dqxf[fid1, bgrpN1[elem, 0]] = qxf[fid1, bgrpN1[elem, 0]] - uN[fid1, bgrpN1[elem, 0]]
+            dqyf[fid1, bgrpN1[elem, 0]] = qyf[fid1, bgrpN1[elem, 0]] - uN[fid1, bgrpN1[elem, 0]]
+
+        for elem in range(0, len(bgrpN2)):
+            dqxf[fid2, bgrpN2[elem, 0]] = qxf[fid2, bgrpN2[elem, 0]] - uN[fid2, bgrpN2[elem, 0]]
+            dqyf[fid2, bgrpN2[elem, 0]] = qyf[fid2, bgrpN2[elem, 0]] - uN[fid2, bgrpN2[elem, 0]]
+
+        for elem in range(0, len(bgrpN3)):
+            dqxf[fid3, bgrpN3[elem, 0]] = qxf[fid3, bgrpN3[elem, 0]] - uN[fid3, bgrpN3[elem, 0]]
+            dqyf[fid3, bgrpN3[elem, 0]] = qyf[fid3, bgrpN3[elem, 0]] - uN[fid3, bgrpN3[elem, 0]]
+
+        # compute minimum height of abutting elements
+        jac_on_faces = np.zeros((nfp*nface, nelem))
+        jac_on_faces_nbr = np.zeros((nfp * nface, nelem))
+        jac_on_faces[fid1, :] = R1 @ jac
+        jac_on_faces[fid2, :] = R2 @ jac
+        jac_on_faces[fid3, :] = R3 @ jac
+
+        jac_on_faces_nbr[fid1, :] = jac_on_faces[etof1, etoe[:, 0]]
+        jac_on_faces_nbr[fid2, :] = jac_on_faces[etof2, etoe[:, 1]]
+        jac_on_faces_nbr[fid3, :] = jac_on_faces[etof3, etoe[:, 2]]
+
+        hmin = np.min([(2*jac_on_faces/surf_jac).flatten(order='F'), (2*jac_on_faces_nbr/surf_jac).flatten(order='F')], axis=0)
+        tau = (nnodes/hmin).reshape((nfp*nface, nelem), order='F')
+
+        # compute flux in q
+        fluxq = 1/2 * (nx*dqxf + ny*dqyf) + (tau*duf)/2
+
+        # hmin_r = np.zeros(surf_jac.shape)
+        # hmin_r[fid1, :] = (hmin.reshape((nfp * nface, nelem), order='F'))[fid3, :]
+        # hmin_r[fid2, :] = (hmin.reshape((nfp * nface, nelem), order='F'))[fid1, :]
+        # hmin_r[fid3, :] = (hmin.reshape((nfp * nface, nelem), order='F'))[fid2, :]
+
+        # compute the divergence of q
+        divq = rx*(Dr @ qx) + sx*(Ds @ qx) + ry*(Dr @ qy) + sy*(Ds @ qy)
+
+        # calculate the lift for q
+        fluxq *= surf_jac
+        liftq = 1/jac * (lift1 @ fluxq[fid1, :] + lift2 @ fluxq[fid2, :] + lift3 @ fluxq[fid3, :])
+
+        # compute rhs
+        rhs = divq - liftq
+
+        # compute the global norm matrix
+        Hg = jac*(H_inv @ u0)
+
+        return rhs, Hg
+
+    @staticmethod
+    def rhs_poisson_flux_formulation_sbp_2d(p, u, x, y, r, s, xf, yf, Dr, Ds, H, B1, B2, B3, R1, R2, R3, nx, ny, rx,
+                                              ry, sx, sy, etoe, etof, bgrp, bgrpD, bgrpN, nelem, surf_jac, jac,
+                                              flux_type='BR2', uDL_fun=None, uNL_fun=None, uDR_fun=None, uNR_fun=None,
+                                              uDB_fun=None, uNB_fun=None, uDT_fun=None, uNT_fun=None, bL=None, bR=None,
+                                              bB=None, bT=None, LB=None, fscale=None):
+        n = u.shape[0]
+        g = np.zeros((nelem * n, 1))
+        # A = np.zeros((nelem * n, nelem * n))
+        A = sparse.csr_matrix((nelem * n, nelem * n))
+        M = sparse.csr_matrix((nelem * n, nelem * n))
+        for i in range(0, nelem * n):
+            g[i] = 1
+            gmat = g.reshape((n, nelem), order='F')
+            Avec, Mvec = RHSCalculator.rhs_diffusion_flux_formulation_sbp_2d(p, gmat, x, y, r, s, xf, yf, Dr, Ds, H, B1,
+                                                                             B2, B3, R1, R2, R3, nx, ny, rx, ry, sx, sy,
+                                                                             etoe, etof, bgrp, bgrpD, bgrpN, nelem,
+                                                                             surf_jac, jac, flux_type, uDL_fun, uNL_fun,
+                                                                             uDR_fun, uNR_fun, uDB_fun, uNB_fun, uDT_fun,
+                                                                             uNT_fun, bL, bR, bB, bT, LB, fscale)
+            # eliminate very small numbers from the A and M matrices
+            sm = np.abs(Avec.reshape((n * nelem, 1), order='F')) >= 1e-12
+            sm = (sm.reshape((n, nelem), order='F')) * 1
+            Avec = (sm * Avec).reshape((nelem * n, 1), order='F')
+
+            sm = np.abs(Mvec.reshape((n * nelem, 1), order='F')) >= 1e-12
+            sm = (sm.reshape((n, nelem), order='F')) * 1
+            Mvec = (sm * Mvec).reshape((nelem * n, 1), order='F')
+
+            A[:, i] = Avec
+            M[:, i] = Mvec
+            g[i] = 0
+
+        A = sparse.spmatrix.tocsc(A)
+        M = sparse.spmatrix.tocsc(M)
+
+        return A, M
 
 # p = 2
 # mesh = MeshGenerator2D.rectangle_mesh(0.75)

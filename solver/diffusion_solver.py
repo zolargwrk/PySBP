@@ -266,8 +266,13 @@ def poisson_2d(p, h, nrefine=1, flux_type='BR2'):
     errs = list()
     nelems = list()
 
+    bL = 0
+    bR = 1
+    bB = 0
+    bT = 1
+
     # generate mesh
-    mesh = MeshGenerator2D.rectangle_mesh(h, 0, 1, 0, 1)
+    mesh = MeshGenerator2D.rectangle_mesh(h, bL, bR, bB, bT)
 
     # obtain all data necessary for the residual (RHS) calculation
     self_assembler = Assembler(p)
@@ -419,5 +424,64 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_fi
         print(err2)
     return u
 
-poisson_sbp_2d(2, 0.5, 1, 'gamma', 'BR2')
+# poisson_sbp_2d(1, 0.5, 1, 'gamma', 'BR2')
 # poisson_2d(2, 0.25, 1,'BR2')
+
+def diffusion_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_fig=True):
+
+    dim = 2
+    nface = dim + 1
+    nfp = p+1
+    ns = int((p+1)*(p+2)/2)
+    # the rectangular domain
+    bL = 0
+    bR = 1
+    bB = 0
+    bT = 1
+    # generate mesh
+    mesh = MeshGenerator2D.rectangle_mesh(h, bL, bR, bB, bT)
+    btype = ['d', 'd', 'd', 'd']
+    ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family)
+    adata = SimpleNamespace(**ass_data)
+    x = adata.x
+    y = adata.y
+    nelem = adata.nelem
+    nnodes = adata.nnodes
+    u = 0*x
+
+    # boundary conditions on a rectangular domain
+    uDL_fun = lambda x, y: 0
+    uNL_fun = lambda x, y: 0
+    uDR_fun = lambda x, y: 0
+    uNR_fun = lambda x, y: 0
+    uDB_fun = lambda x, y: 0
+    uNB_fun = lambda x, y: 0
+    uDT_fun = lambda x, y: 0 #np.sin(np.pi * x)
+    uNT_fun = lambda x, y: 0
+
+    A, Hg = RHSCalculator.rhs_poisson_flux_formulation_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
+                                             adata.Ds, adata.H, adata.B1,adata.B2, adata.B3, adata.R1, adata.R2, adata.R3,
+                                             adata.nx, adata.ny, adata.rx, adata.ry, adata.sx, adata.sy,
+                                             adata.etoe, adata.etof, adata.bgrp, adata.bgrpD, adata.bgrpN, adata.nelem,
+                                             adata.surf_jac, adata.jac, flux_type, uDL_fun, uNL_fun, uDR_fun, uNR_fun,
+                                             uDB_fun, uNB_fun, uDT_fun, uNT_fun, bL, bR, bB, bT, None, adata.fscale)
+
+    f = ((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y)).flatten(order="F")
+    u = spsolve(A, f)
+    uu = u.reshape((nnodes, nelem), order="F")
+    u_exact = np.sin(np.pi * x) * np.sin(np.pi * y)
+    # u_exact = 1/(np.sinh(np.pi)) * np.sinh(np.pi*y) * np.sin(np.pi*x)
+
+    # error calculation
+    err = np.linalg.norm((uu - u_exact), 2)
+    err2 = np.sqrt((uu - u_exact).flatten(order="F") @ Hg @ (uu - u_exact).flatten(order="F"))\
+           /np.sqrt((u_exact).flatten(order="F") @ Hg @ (u_exact).flatten(order="F"))
+    if plot_fig==True:
+        plot_figure_2d(x, y, u_exact)
+        plot_figure_2d(x, y, uu)
+        # print(err)
+        print(err2)
+    return u
+
+# diffusion_sbp_2d(1, 0.5, 1, 'gamma', 'BR2')
+poisson_2d(1, 0.5, 1,'BR2')

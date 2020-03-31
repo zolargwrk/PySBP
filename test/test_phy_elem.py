@@ -10,11 +10,11 @@ from types import SimpleNamespace
 class TestPhy2D_SBP(unittest.TestCase):
 
     def test_poisson_sbp_2d(self):
-        tol = 1e-10
-        p = 1
+        tol = 1e-9
+        p = 2
         sbp_family = 'gamma'
         flux_type = 'BR2'
-        h = 0.25
+        h = 0.05
         nrefine = 1
         nface = 3
         nfp = p+1

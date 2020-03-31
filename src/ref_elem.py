@@ -437,19 +437,22 @@ class Ref2D_DG:
         # evaluate the vandermonde matrix at face 0
         v_1d = Ref1D.vandermonde_1d(p, r[fmask[:, 0]].flatten())
         # compute mass matrix and E matrix at face 0
-        mass_f0 = np.linalg.inv(v_1d @ v_1d.T)
+        # mass_f0 = np.linalg.inv(v_1d @ v_1d.T)
+        mass_f0 = np.eye(2)
         e_mat[fmask[:, 0].reshape(nfp, 1), np.arange(0, nfp)] = mass_f0
 
         # evaluate the vandermonde matrix at face 1
         v_1d = Ref1D.vandermonde_1d(p, s[fmask[:, 1]].flatten())
         # compute mass matrix and E matrix at face 1
-        mass_f1 = np.linalg.inv(v_1d @ v_1d.T)
+        # mass_f1 = np.linalg.inv(v_1d @ v_1d.T)
+        mass_f1 = np.array([[np.sqrt(2), 0], [0, np.sqrt(2)]])
         e_mat[fmask[:, 1].reshape(nfp, 1), np.arange(nfp, 2*nfp)] = mass_f1
 
         # evaluate the vandermonde matrix at face 2
         v_1d = Ref1D.vandermonde_1d(p, s[fmask[:, 2]].flatten())
         # compute mass matrix and E matrix at face 2
-        mass_f2 = np.linalg.inv(v_1d @ v_1d.T)
+        # mass_f2 = np.linalg.inv(v_1d @ v_1d.T)
+        mass_f2 = np.eye(2)
         e_mat[fmask[:, 2].reshape(nfp, 1), np.arange(2*nfp, 3*nfp)] = mass_f2
 
         # compute the 2D vandermonde matrix
@@ -744,6 +747,7 @@ class Ref2D_SBP:
             vert = np.array([[-1], [1]])
         elif dim == 2:
             vert = np.array([[-1, -1], [1, -1], [-1, 1]])
+            # vert = np.array([[1, -1], [-1, 1], [-1, -1]])
             # vert = np.array([[0, 0], [1, 0], [0, 1]]) # this doesn't work probably due to the orthogonal
                                                         # polynomial used to construct the Vandermonde matrix
 
@@ -954,10 +958,11 @@ class Ref2D_SBP:
         """
         f2v = 0
         if dim == 1:
-            f2v = np.array([0,1])
+            f2v = np.array([0, 1])
         elif dim ==2:
-            f2v = np.array([[1, 2, 0], [2, 0, 1]])
-
+            # f2v = np.array([[1, 2, 0], [2, 0, 1]])
+            # to change facet numbering as in Hesthaven and Warburton's book uncomment the line below
+            f2v = np.array([[0, 1, 2], [1, 2, 0]])
         if f2v is 0:
             raise ValueError("Dimension entered not implemented.")
 
@@ -1010,14 +1015,20 @@ class Ref2D_SBP:
         tol = 1e-10
         fmask_q = None
 
-        fmask1_unsorted = ((np.abs(r + s - (vert[1,0]+vert[1,1])) < tol).nonzero())[0]       # nodes on face 1
-        fmask2_unsorted = ((np.abs(r - vert[0, 0]) < tol).nonzero())[0]                      # nodes on face 2
-        fmask3_unsorted = ((np.abs(s - vert[0, 1]) < tol).nonzero())[0]                      # nodes on face 3
+        # fmask1_unsorted = ((np.abs(r + s - (vert[1,0]+vert[1,1])) < tol).nonzero())[0]       # nodes on face 1
+        # fmask2_unsorted = ((np.abs(r - vert[0, 0]) < tol).nonzero())[0]                      # nodes on face 2
+        # fmask3_unsorted = ((np.abs(s - vert[0, 1]) < tol).nonzero())[0]                      # nodes on face 3
+        fmask2_unsorted = ((np.abs(r + s - (vert[1, 0] + vert[1, 1])) < tol).nonzero())[0]  # nodes on face 1
+        fmask3_unsorted = ((np.abs(r - vert[0, 0]) < tol).nonzero())[0]  # nodes on face 2
+        fmask1_unsorted = ((np.abs(s - vert[0, 1]) < tol).nonzero())[0]  # nodes on face 3
 
         # sort to read nodes counterclockwise on facets
-        fmask1 = fmask1_unsorted[np.argsort(s[fmask1_unsorted].flatten())]
-        fmask2 = fmask2_unsorted[np.argsort(-s[fmask2_unsorted].flatten())]
-        fmask3 = fmask3_unsorted[np.argsort(r[fmask3_unsorted].flatten())]
+        # fmask1 = fmask1_unsorted[np.argsort(s[fmask1_unsorted].flatten())]
+        # fmask2 = fmask2_unsorted[np.argsort(-s[fmask2_unsorted].flatten())]
+        # fmask3 = fmask3_unsorted[np.argsort(r[fmask3_unsorted].flatten())]
+        fmask1 = fmask1_unsorted[np.argsort(r[fmask1_unsorted].flatten())]
+        fmask2 = fmask2_unsorted[np.argsort(s[fmask2_unsorted].flatten())]
+        fmask3 = fmask3_unsorted[np.argsort(-s[fmask3_unsorted].flatten())]
         fmask = np.array([fmask1, fmask2, fmask3]).T
 
         if rsf is not None:
@@ -1142,7 +1153,7 @@ class Ref2D_SBP:
         # sym_grp = sym_grps['sym_grp']
 
         # get the cubature rule for the facets and find the symmetry group of the facet quadrature nodes
-        xqf, wqf = CubatureRules.quad_line_volume(p, "LG")
+        xqf, wqf = CubatureRules.quad_line_volume(p, "LGL")
         sym_grps_xqf = Ref2D_SBP.sym_group_map2D(xqf)
         sym_grp_xqf = sym_grps_xqf['sym_grp']
 
@@ -1150,9 +1161,13 @@ class Ref2D_SBP:
         bf = Ref2D_SBP.cartesian_to_barycentric2D(xqf)
 
         # get the coordinates of the quadrature points on the facets
-        rsf1 = Ref2D_SBP.barycentric_to_cartesian(bf, np.array([vert[1, :], vert[2, :]]))   # facet 1
-        rsf2 = Ref2D_SBP.barycentric_to_cartesian(bf, np.array([vert[2, :], vert[0, :]]))   # facet 2
-        rsf3 = Ref2D_SBP.barycentric_to_cartesian(bf, np.array([vert[0, :], vert[1, :]]))   # facet 3
+        # rsf1 = Ref2D_SBP.barycentric_to_cartesian(bf, np.array([vert[1, :], vert[2, :]]))   # facet 1
+        # rsf2 = Ref2D_SBP.barycentric_to_cartesian(bf, np.array([vert[2, :], vert[0, :]]))   # facet 2
+        # rsf3 = Ref2D_SBP.barycentric_to_cartesian(bf, np.array([vert[0, :], vert[1, :]]))   # facet 3
+        rsf1 = Ref2D_SBP.barycentric_to_cartesian(bf, np.array([vert[0, :], vert[1, :]]))  # facet 1
+        rsf2 = Ref2D_SBP.barycentric_to_cartesian(bf, np.array([vert[1, :], vert[2, :]]))  # facet 2
+        rsf3 = Ref2D_SBP.barycentric_to_cartesian(bf, np.array([vert[2, :], vert[0, :]]))  # facet 3
+
         rsf = np.array([rsf1, rsf2, rsf3])
 
         # calculate the Vandermonde matrix for the facet quadrature nodes (on face 1 - the slant)
@@ -1184,7 +1199,8 @@ class Ref2D_SBP:
         B = np.diag(wqf.flatten())      # unscaled B matrix (i.e., on the 1D reference element [-1, 1])
         B_list =[]                      # containes B scaled by the size of the facets of the reference element
         for i in range(0, dim+1):
-            vertf = np.roll(vert, i)[1:3, :]    # get the vertices of the facets i
+            # vertf = np.roll(vert, i)[1:3, :]    # get the vertices of the facets i
+            vertf = np.roll(vert, i)[0:2, :]
             elem_sizef = Ref2D_SBP.elem_size(vertf)
             B_list.append(np.diag(wqf.flatten()) * (elem_sizef/np.sum(wqf)))
 

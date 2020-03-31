@@ -556,14 +556,23 @@ class MeshTools2D:
 
         # calculate normals at the facets
         jac_all_face = np.repeat(jac[0, :], nfp).reshape((nfp, -1), order="F")
-        nx1 = (rxf1 + sxf1)*jac_all_face
-        ny1 = (ryf1 + syf1)*jac_all_face
+        # nx1 = (rxf1 + sxf1)*jac_all_face
+        # ny1 = (ryf1 + syf1)*jac_all_face
+        #
+        # nx2 = -rxf2*jac_all_face
+        # ny2 = -ryf2*jac_all_face
+        #
+        # nx3 = -sxf3*jac_all_face
+        # ny3 = -syf3*jac_all_face
 
-        nx2 = -rxf2*jac_all_face
-        ny2 = -ryf2*jac_all_face
+        nx2 = (rxf2 + sxf2)*jac_all_face
+        ny2 = (ryf2 + syf2)*jac_all_face
 
-        nx3 = -sxf3*jac_all_face
-        ny3 = -syf3*jac_all_face
+        nx3 = -rxf3*jac_all_face
+        ny3 = -ryf3*jac_all_face
+
+        nx1 = -sxf1*jac_all_face
+        ny1 = -syf1*jac_all_face
 
         # get the normals into one matrix
         nx = np.vstack([nx1, nx2, nx3])

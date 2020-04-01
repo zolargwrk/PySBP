@@ -275,7 +275,8 @@ class MeshTools2D:
         nvert = np.max(np.max(etov))+1
 
         # create list of faces 1, 2 and 3
-        fnodes = np.array([etov[:, [1, 2]], etov[:, [2, 0]], etov[:, [0, 1]]])
+        # fnodes = np.array([etov[:, [1, 2]], etov[:, [2, 0]], etov[:, [0, 1]]])
+        fnodes = np.array([etov[:, [0, 1]], etov[:, [1, 2]], etov[:, [2, 0]]])
         fnodes = np.sort(fnodes.reshape(3*nelem, 2), 1)
         fnodes = np.sort(fnodes[:], 1)
 
@@ -686,15 +687,15 @@ class MeshTools2D:
             # (see ow the edge matrix is constructed in "mid_edge" method in mesh_generator.py). Therefore,
             # if index is below nelem, the element number doesn't change and the local face number is 0
             belem.append(ind_edge[np.where(ind_edge < nelem)])
-            bface[np.where(ind_edge < nelem)] = 0
+            bface[np.where(ind_edge < nelem)] = 1 #0
 
             # if index is >= nelem but < 2*nelem, element number = ind_edge - nelem and local face number is 2
             belem.append(ind_edge[np.where(np.logical_and(nelem <= ind_edge, ind_edge < 2 * nelem))] - nelem)
-            bface[np.where(np.logical_and(nelem <= ind_edge, ind_edge < 2 * nelem))] = 1
+            bface[np.where(np.logical_and(nelem <= ind_edge, ind_edge < 2 * nelem))] = 2 #1
 
             # if index is >= 2*nelem  but < 3*nelem, element number = ind_edge - 2*nelem and local face number is 0
             belem.append(ind_edge[np.where(np.logical_and(2 * nelem <= ind_edge, ind_edge < 3 * nelem))] - 2 * nelem)
-            bface[np.where(np.logical_and(2 * nelem <= ind_edge, ind_edge < 3 * nelem))] = 2
+            bface[np.where(np.logical_and(2 * nelem <= ind_edge, ind_edge < 3 * nelem))] = 0 #2
 
             belem = [i for j in belem for i in j]
             belem = (np.asarray(belem)).reshape(len(belem), 1)

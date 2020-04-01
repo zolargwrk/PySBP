@@ -283,7 +283,7 @@ class RHSCalculator:
 
         # compute difference in u at interfaces
         du = u[vmapM] - u[vmapP]
-        du[mapD] = u[vmapD]
+        du[mapD] = 2*u[vmapD]
 
         # compute qx and qy
         dudx, dudy = Ref2D_DG.gradient_2d(x, y, Dr, Ds, u0)
@@ -422,6 +422,11 @@ class RHSCalculator:
 
         A = (D2B - sdata.sI)
 
+        #-----------
+        u = x*0
+        u[0, 0] = 1
+        Au = A @ u.reshape((-1, 1), order='F')
+
         return {'A': A, 'fB': sdata.fB, 'Hg': sdata.Hg, 'D2B': D2B, 'LxxB': LxxB, 'LxyB': LxyB, 'LyxB': LyxB,
                 'LyyB': LyyB, 'LB': LB, 'uD': uD, 'uN': uN}
 
@@ -442,7 +447,6 @@ class RHSCalculator:
         fid2 = np.arange(nfp, 2*nfp)
         fid3 = np.arange(2*nfp, 3*nfp)
         fid = [fid1, fid2, fid3]
-        R = [R1, R2, R3]
 
         u0 = u.copy()
         # get solution at the facets
@@ -457,9 +461,19 @@ class RHSCalculator:
         etof2 = np.zeros((nfp, nelem), dtype=np.int64)
         etof3 = np.zeros((nfp, nelem), dtype=np.int64)
         for elem in range(0, nelem):
-            etof1[:, elem] = fid[etof[elem, 0]]
-            etof2[:, elem] = fid[etof[elem, 1]]
-            etof3[:, elem] = fid[etof[elem, 2]]
+            etof1[:, elem] = np.flip(fid[etof[elem, 0]])
+            etof2[:, elem] = np.flip(fid[etof[elem, 1]])
+            etof3[:, elem] = np.flip(fid[etof[elem, 2]])
+
+        for i in range(0, len(bgrpD[:, 0])):
+            elem = bgrpD[i, 0]
+            face = bgrpD[i, 1]
+            if face==0:
+                etof1[:, elem] = fid[etof[elem, 0]]
+            elif face==1:
+                etof2[:, elem] = fid[etof[elem, 1]]
+            elif face==2:
+                etof3[:, elem] = fid[etof[elem, 2]]
 
         # set boundary conditions
         uD, uN = MeshTools2D.set_bndry_sbp_2D(xf, yf, bgrpD, bgrpN, bL, bR, bB, bT, uDL_fun, uNL_fun, uDR_fun, uNR_fun,
@@ -488,14 +502,13 @@ class RHSCalculator:
         # compute the solution flux at the boundaries
         # Dirichlet boundary
         for elem in range(0, len(bgrpD1)):
-            duf[fid1, bgrpD1[elem, 0]] = uf[fid1, bgrpD1[elem, 0]] - uD[fid1, bgrpD1[elem, 0]]
+            duf[fid1, bgrpD1[elem, 0]] = 2*uf[fid1, bgrpD1[elem, 0]] #- uD[fid1, bgrpD1[elem, 0]]
 
         for elem in range(0, len(bgrpD2)):
-            duf[fid2, bgrpD2[elem, 0]] = uf[fid2, bgrpD2[elem, 0]] - uD[fid2, bgrpD2[elem, 0]]
+            duf[fid2, bgrpD2[elem, 0]] = 2*uf[fid2, bgrpD2[elem, 0]] #- uD[fid2, bgrpD2[elem, 0]]
 
         for elem in range(0, len(bgrpD3)):
-            duf[fid3, bgrpD3[elem, 0]] = uf[fid3, bgrpD3[elem, 0]] - uD[fid3, bgrpD3[elem, 0]]
-
+            duf[fid3, bgrpD3[elem, 0]] = 2*uf[fid3, bgrpD3[elem, 0]] #- uD[fid3, bgrpD3[elem, 0]]
 
         # get the derivative of the solution at each element
         dudx = rx*(Dr @ u) + sx*(Ds @ u)
@@ -557,16 +570,16 @@ class RHSCalculator:
 
         # Neumann boundary
         for elem in range(0, len(bgrpN1)):
-            dqxf[fid1, bgrpN1[elem, 0]] = qxf[fid1, bgrpN1[elem, 0]] - uN[fid1, bgrpN1[elem, 0]]
-            dqyf[fid1, bgrpN1[elem, 0]] = qyf[fid1, bgrpN1[elem, 0]] - uN[fid1, bgrpN1[elem, 0]]
+            dqxf[fid1, bgrpN1[elem, 0]] = 2*qxf[fid1, bgrpN1[elem, 0]] #- uN[fid1, bgrpN1[elem, 0]]
+            dqyf[fid1, bgrpN1[elem, 0]] = 2*qyf[fid1, bgrpN1[elem, 0]] #- uN[fid1, bgrpN1[elem, 0]]
 
         for elem in range(0, len(bgrpN2)):
-            dqxf[fid2, bgrpN2[elem, 0]] = qxf[fid2, bgrpN2[elem, 0]] - uN[fid2, bgrpN2[elem, 0]]
-            dqyf[fid2, bgrpN2[elem, 0]] = qyf[fid2, bgrpN2[elem, 0]] - uN[fid2, bgrpN2[elem, 0]]
+            dqxf[fid2, bgrpN2[elem, 0]] = 2*qxf[fid2, bgrpN2[elem, 0]] #- uN[fid2, bgrpN2[elem, 0]]
+            dqyf[fid2, bgrpN2[elem, 0]] = 2*qyf[fid2, bgrpN2[elem, 0]] #- uN[fid2, bgrpN2[elem, 0]]
 
         for elem in range(0, len(bgrpN3)):
-            dqxf[fid3, bgrpN3[elem, 0]] = qxf[fid3, bgrpN3[elem, 0]] - uN[fid3, bgrpN3[elem, 0]]
-            dqyf[fid3, bgrpN3[elem, 0]] = qyf[fid3, bgrpN3[elem, 0]] - uN[fid3, bgrpN3[elem, 0]]
+            dqxf[fid3, bgrpN3[elem, 0]] = 2*qxf[fid3, bgrpN3[elem, 0]] #- uN[fid3, bgrpN3[elem, 0]]
+            dqyf[fid3, bgrpN3[elem, 0]] = 2*qyf[fid3, bgrpN3[elem, 0]] #- uN[fid3, bgrpN3[elem, 0]]
 
         # compute minimum height of abutting elements
         jac_on_faces = np.zeros((nfp*nface, nelem))

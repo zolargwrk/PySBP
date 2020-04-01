@@ -790,10 +790,10 @@ class SATs:
         RB = [R1B, R2B, R3B]
 
         # scaled diffusion coefficient
-        JLxxB = jacB * LxxB
-        JLxyB = jacB * LxyB
-        JLyxB = jacB * LyxB
-        JLyyB = jacB * LyyB
+        # JLxxB = jacB * LxxB
+        # JLxyB = jacB * LxyB
+        # JLyxB = jacB * LyxB
+        # JLyyB = jacB * LyyB
 
         # get derivative operator on each facet
         Dgk1B = (nx1B * R1B @ (LxxB @ DxB + LxyB @ DyB) + ny1B * R1B @ (LyxB @ DxB + LyyB @ DyB))
@@ -809,8 +809,8 @@ class SATs:
         HB_inv = np.linalg.inv(HB)
 
         # get surface norm matrix for each facet of each element
-        BB1 = (surf_jac1B/(np.sqrt(2)) * np.block([B1] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
-        BB2 = (surf_jac2B * np.block([B2] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
+        BB1 = (surf_jac1B * np.block([B1] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
+        BB2 = (surf_jac2B/(np.sqrt(2)) * np.block([B2] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
         BB3 = (surf_jac3B * np.block([B3] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
 
         BB = [BB1, BB2, BB3]
@@ -860,18 +860,18 @@ class SATs:
         # Ugk3B = ((nx3B * R3B) @ (HB_inv @ (JLxxB*rxB + JLyyB*ryB)) @ ((nx3B * R3B).transpose(0, 2, 1))
         #         +(ny3B * R3B) @ (HB_inv @ (JLyyB*syB + JLxxB*sxB)) @ ((ny3B * R3B).transpose(0, 2, 1)))
 
-        Ugk1B = ((nx1B * R1B) @ (HB_inv @ (LxxB + LyyB)) @ ((nx1B * R1B).transpose(0, 2, 1))
-                +(ny1B * R1B) @ (HB_inv @ (LyyB + LxxB)) @ ((ny1B * R1B).transpose(0, 2, 1)))
-        Ugk2B = ((nx2B * R2B) @ (HB_inv @ (LxxB + LyyB)) @ ((nx2B * R2B).transpose(0, 2, 1))
-                +(ny2B * R2B) @ (HB_inv @ (LyyB + LxxB)) @ ((ny2B * R2B).transpose(0, 2, 1)))
-        Ugk3B = ((nx3B * R3B) @ (HB_inv @ (LxxB + LyyB)) @ ((nx3B * R3B).transpose(0, 2, 1))
-                +(ny3B * R3B) @ (HB_inv @ (LyyB + LxxB)) @ ((ny3B * R3B).transpose(0, 2, 1)))
+        Ugk1B = ((nx1B * R1B) @ (HB_inv @ LxxB) @ ((nx1B * R1B).transpose(0, 2, 1))
+                +(ny1B * R1B) @ (HB_inv @ LyyB) @ ((ny1B * R1B).transpose(0, 2, 1)))
+        Ugk2B = ((nx2B * R2B) @ (HB_inv @ LxxB) @ ((nx2B * R2B).transpose(0, 2, 1))
+                +(ny2B * R2B) @ (HB_inv @ LyyB) @ ((ny2B * R2B).transpose(0, 2, 1)))
+        Ugk3B = ((nx3B * R3B) @ (HB_inv @ LxxB) @ ((nx3B * R3B).transpose(0, 2, 1))
+                +(ny3B * R3B) @ (HB_inv @ LyyB) @ ((ny3B * R3B).transpose(0, 2, 1)))
 
         Ugk = [Ugk1B, Ugk2B, Ugk3B]
 
         # SAT coefficients for different methods
-        eta = 1; signT2 = -1;  etaD = 1        # BR2 method
-        # eta = 0; signT2 = 1;  etaD = 1        # BO
+        # eta = 1; signT2 = -1;  etaD = 1        # BR2 method
+        eta = 0; signT2 = 1;  etaD = 1        # BO
                           
         # facet 1
         T2gk1B = signT2/2*BB1
@@ -900,13 +900,13 @@ class SATs:
                 nbr_face = etof[elem, face]
                 if face==0:
                     T1gk1B[elem] = eta*face_wtB[face][elem]/4 * (BB[face][elem] @ Ugk[face][elem] @ BB[face][elem]
-                                        + BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem] @ BB[nbr_face][nbr_elem])
+                                 + (BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem] @ BB[nbr_face][nbr_elem]))
                 elif face==1:
                     T1gk2B[elem] = eta*face_wtB[face][elem]/4 * (BB[face][elem] @ Ugk[face][elem] @ BB[face][elem]
-                                        + BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem] @ BB[nbr_face][nbr_elem])
+                                 + (BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem] @ BB[nbr_face][nbr_elem]))
                 elif face==2:
                     T1gk3B[elem] = eta*face_wtB[face][elem]/4 * (BB[face][elem] @ Ugk[face][elem] @ BB[face][elem]
-                                        + BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem] @ BB[nbr_face][nbr_elem])
+                                 + (BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem] @ BB[nbr_face][nbr_elem]))
 
         # calculate the TDg matrix (the SAT coefficient at Dirichlet boundaries)
         TDgk1B = np.block(np.zeros((nelem, nfp, nfp))).reshape((nelem, nfp, nfp))
@@ -917,15 +917,15 @@ class SATs:
             if bgrpD[i, 1] == 0:
                 elem = bgrpD[i, 0]
                 face = bgrpD[i, 1]
-                TDgk1B[elem] = etaD*face_wtB[face][elem]*(BB[face][elem] @ Ugk[face][elem] @ BB[face][elem])
+                TDgk1B[elem] = (etaD*face_wtB[face][elem]*(BB[face][elem] @ Ugk[face][elem] @ BB[face][elem]))
             if bgrpD[i, 1] == 1:
                 elem = bgrpD[i, 0]
                 face = bgrpD[i, 1]
-                TDgk2B[elem] = etaD*face_wtB[face][elem]*(BB[face][elem] @ Ugk[face][elem] @ BB[face][elem])
+                TDgk2B[elem] = (etaD*face_wtB[face][elem]*(BB[face][elem] @ Ugk[face][elem] @ BB[face][elem]))
             if bgrpD[i, 1] == 2:
                 elem = bgrpD[i, 0]
                 face = bgrpD[i, 1]
-                TDgk3B[elem] = etaD*face_wtB[face][elem]*(BB[face][elem] @ Ugk[face][elem] @ BB[face][elem])
+                TDgk3B[elem] = (etaD*face_wtB[face][elem]*(BB[face][elem] @ Ugk[face][elem] @ BB[face][elem]))
 
         # put coefficinets in a list to access them by facet number, i.e., facet 1, 2, 3 --> 0, 1, 2
         T1gk = [T1gk1B, T1gk2B, T1gk3B]
@@ -964,31 +964,31 @@ class SATs:
                 face = 0
                 nbr_elem = etoe[elem, 0]
                 nbr_face = etof[elem, 0]
-                sI[elem, nbr_elem] += HB_inv[elem] @ (np.block([RB[face][elem].T, Dgk[face][elem].T])
+                sI[elem, nbr_elem] += (HB_inv[elem] @ (np.block([RB[face][elem].T, Dgk[face][elem].T])
                                                       @ np.block([[T1gk[face][elem], T3gk[face][elem]],
                                                                   [T2gk[face][elem], T4gk[face][elem]]])
                                                       @ np.block([[-1*RB[nbr_face][nbr_elem]],
-                                                                  [Dgk[nbr_face][nbr_elem]]]))
+                                                                  [Dgk[nbr_face][nbr_elem]]])))
             if elem != etoe[elem, 1]:
                 # facet 2
                 face = 1
                 nbr_elem = etoe[elem, 1]
                 nbr_face = etof[elem, 1]
-                sI[elem, nbr_elem] += HB_inv[elem] @ (np.block([RB[face][elem].T, Dgk[face][elem].T])
+                sI[elem, nbr_elem] += (HB_inv[elem] @ (np.block([RB[face][elem].T, Dgk[face][elem].T])
                                                             @ np.block([[T1gk[face][elem], T3gk[face][elem]],
                                                                         [T2gk[face][elem], T4gk[face][elem]]])
                                                             @ np.block([[-1*RB[nbr_face][nbr_elem]],
-                                                                        [Dgk[nbr_face][nbr_elem]]]))
+                                                                        [Dgk[nbr_face][nbr_elem]]])))
             if elem != etoe[elem, 2]:
                 # facet 3
                 face = 2
                 nbr_elem = etoe[elem, 2]
                 nbr_face = etof[elem, 2]
-                sI[elem, nbr_elem] += HB_inv[elem] @ (np.block([RB[face][elem].T, Dgk[face][elem].T])
+                sI[elem, nbr_elem] += (HB_inv[elem] @ (np.block([RB[face][elem].T, Dgk[face][elem].T])
                                                             @ np.block([[T1gk[face][elem], T3gk[face][elem]],
                                                                         [T2gk[face][elem], T4gk[face][elem]]])
                                                             @ np.block([[-1*RB[nbr_face][nbr_elem]],
-                                                                        [Dgk[nbr_face][nbr_elem]]]))
+                                                                        [Dgk[nbr_face][nbr_elem]]])))
 
         # if not given, construct the forcing terms that go to right hand side
         if uD is None:

@@ -477,11 +477,12 @@ def diffusion_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_
     err2 = np.sqrt((uu - u_exact).flatten(order="F") @ Hg @ (uu - u_exact).flatten(order="F"))\
            /np.sqrt((u_exact).flatten(order="F") @ Hg @ (u_exact).flatten(order="F"))
     if plot_fig==True:
-        plot_figure_2d(x, y, u_exact)
+        # plot_figure_2d(x, y, u_exact)
         plot_figure_2d(x, y, uu)
         # print(err)
         print(err2)
     return u
 
-# diffusion_sbp_2d(1, 0.5, 1, 'gamma', 'BR2')
-poisson_2d(1, 0.5, 1,'BR2')
+poisson_sbp_2d(2, 0.5, 1, 'gamma', 'BR2')
+# diffusion_sbp_2d(1, 0.8, 1, 'gamma', 'BR2')
+# poisson_2d(1, 0.8, 1,'BR2')

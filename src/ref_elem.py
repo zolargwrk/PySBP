@@ -458,7 +458,9 @@ class Ref2D_DG:
         # compute the 2D vandermonde matrix
         v = Ref2D_DG.vandermonde_2d(p, r, s)
         # compute lift
-        lift = (v @ v.T) @ e_mat
+        # lift = (v @ v.T) @ e_mat
+        H_inv = 1.5*np.eye(3)
+        lift = H_inv @ e_mat
 
         return lift
 

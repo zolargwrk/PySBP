@@ -1155,7 +1155,7 @@ class Ref2D_SBP:
         # sym_grp = sym_grps['sym_grp']
 
         # get the cubature rule for the facets and find the symmetry group of the facet quadrature nodes
-        xqf, wqf = CubatureRules.quad_line_volume(p, "LGL")
+        xqf, wqf = CubatureRules.quad_line_volume(p, "LG")
         sym_grps_xqf = Ref2D_SBP.sym_group_map2D(xqf)
         sym_grp_xqf = sym_grps_xqf['sym_grp']
 

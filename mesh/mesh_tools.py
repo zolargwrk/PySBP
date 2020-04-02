@@ -346,11 +346,11 @@ class MeshTools2D:
 
         # we can also use barycentric coordinates as follows (for nodes at the facet that do not coincide with volume nodes)
         # get vertices on each facets
-        vert1 = np.array([[vx[vb], vy[vb]], [vx[vc], vy[vc]]])
+        vert1 = np.array([[vx[va], vy[va]], [vx[vb], vy[vb]]])
         v1 = vert1.transpose(0, 2, 1).reshape(2, 2 * len(va))
-        vert2 = np.array([[vx[vc], vy[vc]], [vx[va], vy[va]]])
+        vert2 = np.array([[vx[vb], vy[vb]], [vx[vc], vy[vc]]])
         v2 = vert2.transpose(0, 2, 1).reshape(2, 2 * len(va))
-        vert3 = np.array([[vx[va], vy[va]], [vx[vb], vy[vb]]])
+        vert3 = np.array([[vx[vc], vy[vc]], [vx[va], vy[va]]])
         v3 = vert3.transpose(0, 2, 1).reshape(2, 2 * len(va))
 
         # calculate the coordinates of nodes on the facets
@@ -907,7 +907,7 @@ class MeshTools2D:
         nface = dim + 1
         nfp = int(xf.shape[0]/nface)
         nelem = xf.shape[1]
-        tol = 1e-12
+        tol = 1e-10
 
         # boundary facet nodes by facet number
         fid1 = np.arange(0, nfp)

@@ -372,7 +372,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_fi
     uNR_fun = lambda x, y: 0
     uDB_fun = lambda x, y: 0
     uNB_fun = lambda x, y: 0
-    uDT_fun = lambda x, y: 0 #np.sin(np.pi * x)
+    uDT_fun = lambda x, y: np.sin(np.pi * x)
     uNT_fun = lambda x, y: 0
 
     rhs_data = RHSCalculator.rhs_poisson_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
@@ -386,42 +386,24 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_fi
     A = rdata.A
     Hg = rdata.Hg
 
-    f = ((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y) + fB.reshape(nelem, nnodes).T).flatten(order="F")
-    # f = (fB.reshape(nelem, nnodes).T).flatten(order="F")
+    # f = ((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y) + fB.reshape(nelem, nnodes).T).flatten(order="F")
+    f = (fB.reshape(nelem, nnodes).T).flatten(order="F")
     u = spsolve(A, f)
     uu = u.reshape((nnodes, nelem), order="F")
-    u_exact = np.sin(np.pi * x) * np.sin(np.pi * y)
-    # u_exact = 1/(np.sinh(np.pi)) * np.sinh(np.pi*y) * np.sin(np.pi*x)
-
-    # --------------
-    # perm = (np.array([0, 2, 2, 2, 1, 1, 0, 1, 2, 0, 1, 0, 3, 4, 5, 4, 4, 3, 3, 3, 5, 5, 4, 5, 6, 6, 6, 6]).reshape(-1, nelem)).flatten(order="F").reshape(-1,1)
-    # add_perm = np.repeat(np.array([0, 7, 14, 21]), 7).reshape((-1, 1), order='F')
-    # perm2 = perm + add_perm
-    # u_perm = (u[perm2]).reshape((-1, nelem), order = 'F')
-    # # -------------- test boundary condition-----------
-    # bgrpD = adata.bgrpD
-    # fid1 = np.arange(0, nfp)
-    # fid2 = np.arange(nfp, 2*nfp)
-    # fid3 = np.arange(2*nfp, 3*nfp)
-    # fid = [fid1, fid2, fid3]
-    # u_bndry = np.zeros((3*nfp, nelem))
-    # uD, uN = MeshTools2D.set_bndry_sbp_2D(adata.xf, adata.yf, adata.bgrpD, adata.bgrpN, bL, bR, bB, bT, uDL_fun,
-    #                                       uNL_fun, uDR_fun, uNR_fun, uDB_fun, uNB_fun, uDT_fun, uNT_fun)
-    # for k in range(0, len(bgrpD)):
-    #     u_bndry[fid[bgrpD[k, 1]], bgrpD[k, 0]] = uu[fid[bgrpD[k, 1]], bgrpD[k, 0]]
-    # uB = uD + uN
-    # u_bndry_err = uB - u_bndry
-    # #--------------------------------------------------
+    # u_exact = np.sin(np.pi * x) * np.sin(np.pi * y)
+    u_exact = 1/(np.sinh(np.pi)) * np.sinh(np.pi*y) * np.sin(np.pi*x)
 
     # error calculation
-    err = np.linalg.norm((uu - u_exact), 2)
-    err2 = np.sqrt((uu - u_exact).flatten(order="F") @ Hg @ (uu - u_exact).flatten(order="F"))\
+    # err = np.linalg.norm((uu - u_exact), 2)
+    err = np.sqrt((uu - u_exact).flatten(order="F") @ Hg @ (uu - u_exact).flatten(order="F"))\
            /np.sqrt((u_exact).flatten(order="F") @ Hg @ (u_exact).flatten(order="F"))
+
+    print("error =", "{:.4e}".format(err), "; nelem =", nelem, "; h =", "{:.4f}".format(1 / np.sqrt(nelem / 2)))
+
     if plot_fig==True:
         # plot_figure_2d(x, y, u_exact)
         plot_figure_2d(x, y, uu)
-        # print(err)
-        print(err2)
+
     return u
 
 # poisson_sbp_2d(1, 0.5, 1, 'gamma', 'BR2')
@@ -456,7 +438,7 @@ def diffusion_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_
     uNR_fun = lambda x, y: 0
     uDB_fun = lambda x, y: 0
     uNB_fun = lambda x, y: 0
-    uDT_fun = lambda x, y: 0 #np.sin(np.pi * x)
+    uDT_fun = lambda x, y: 0 # np.sin(np.pi * x)
     uNT_fun = lambda x, y: 0
 
     A, Hg = RHSCalculator.rhs_poisson_flux_formulation_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
@@ -478,11 +460,13 @@ def diffusion_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_
            /np.sqrt((u_exact).flatten(order="F") @ Hg @ (u_exact).flatten(order="F"))
     if plot_fig==True:
         # plot_figure_2d(x, y, u_exact)
-        plot_figure_2d(x, y, uu)
+        # plot_figure_2d(x, y, uu)
         # print(err)
         print(err2)
+        print(nelem)
+        print(1/np.sqrt(nelem/2))
     return u
 
-poisson_sbp_2d(2, 0.5, 1, 'gamma', 'BR2')
-# diffusion_sbp_2d(1, 0.8, 1, 'gamma', 'BR2')
-# poisson_2d(1, 0.8, 1,'BR2')
+poisson_sbp_2d(4, 0.5, 1, 'omega', 'BR2', plot_fig=False)
+# diffusion_sbp_2d(1, 0.5, 1, 'gamma', 'BR2')
+# poisson_2d(1, 0.5, 1,'BR2')

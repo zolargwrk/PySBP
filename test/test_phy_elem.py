@@ -11,10 +11,10 @@ class TestPhy2D_SBP(unittest.TestCase):
 
     def test_poisson_sbp_2d(self):
         tol = 1e-9
-        p = 2
+        p = 1
         sbp_family = 'gamma'
         flux_type = 'BR2'
-        h = 0.05
+        h = 0.5
         nrefine = 1
         nface = 3
         nfp = p+1
@@ -79,12 +79,12 @@ class TestPhy2D_SBP(unittest.TestCase):
 
         # ---test the surface norm matrix (its sum should be equal to the length of the facets)
         # get the length of each facet of the physical elements
-        lenf1 = np.array([np.sqrt((adata.vx[adata.etov[:, 2]] - adata.vx[adata.etov[:, 1]])**2
-                         + (adata.vy[adata.etov[:, 2]] - adata.vy[adata.etov[:, 1]])**2)]).reshape((-1, 1), order="F")
-        lenf2 = np.array([np.sqrt((adata.vx[adata.etov[:, 0]] - adata.vx[adata.etov[:, 2]])**2
-                         + (adata.vy[adata.etov[:, 0]] - adata.vy[adata.etov[:, 2]])**2)]).reshape((-1, 1), order="F")
-        lenf3 = np.array([np.sqrt((adata.vx[adata.etov[:, 1]] - adata.vx[adata.etov[:, 0]])**2
-                         + (adata.vy[adata.etov[:, 1]] - adata.vy[adata.etov[:, 0]])**2)]).reshape((-1, 1), order="F")
+        lenf1 = np.array([np.sqrt((adata.vx[adata.etov[:, 0]] - adata.vx[adata.etov[:, 1]])**2
+                         + (adata.vy[adata.etov[:, 0]] - adata.vy[adata.etov[:, 1]])**2)]).reshape((-1, 1), order="F")
+        lenf2 = np.array([np.sqrt((adata.vx[adata.etov[:, 1]] - adata.vx[adata.etov[:, 2]])**2
+                         + (adata.vy[adata.etov[:, 1]] - adata.vy[adata.etov[:, 2]])**2)]).reshape((-1, 1), order="F")
+        lenf3 = np.array([np.sqrt((adata.vx[adata.etov[:, 2]] - adata.vx[adata.etov[:, 0]])**2
+                         + (adata.vy[adata.etov[:, 2]] - adata.vy[adata.etov[:, 0]])**2)]).reshape((-1, 1), order="F")
         lenf_exact = [lenf1, lenf2, lenf3]
 
         # get the sum of the diagonals of the B matrix at each facet (should be equal to the length of the facet)

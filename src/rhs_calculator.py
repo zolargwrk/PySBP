@@ -422,11 +422,6 @@ class RHSCalculator:
 
         A = (D2B - sdata.sI)
 
-        #-----------
-        u = x*0
-        u[0, 0] = 1
-        Au = A @ u.reshape((-1, 1), order='F')
-
         return {'A': A, 'fB': sdata.fB, 'Hg': sdata.Hg, 'D2B': D2B, 'LxxB': LxxB, 'LxyB': LxyB, 'LyxB': LyxB,
                 'LyyB': LyyB, 'LB': LB, 'uD': uD, 'uN': uN}
 

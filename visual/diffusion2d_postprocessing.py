@@ -186,7 +186,7 @@ def analyze_results():
                 plt.xlabel(r'$h$')
                 plt.ylabel(r'error in solution')
                 plt.legend()
-                plt.savefig(path + 'errs_soln_VarOper_{}_p{}.pdf'.format(sats[sat], p), format='pdf')
+                plt.savefig(path + '\\soln_conv_rates\\errs_soln_VarOper_{}_p{}.pdf'.format(sats[sat], p), format='pdf')
         plt.show()
         # plt.close()
 

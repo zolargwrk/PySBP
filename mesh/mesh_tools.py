@@ -798,7 +798,7 @@ class MeshTools2D:
         return {'mapD': mapD, 'vmapD': vmapD, 'mapN': mapN, 'vmapN': vmapN}
 
     @staticmethod
-    def hrefine_uniform_2d(rhs_data):
+    def hrefine_uniform_2d(rhs_data, bL, bR, bB, bT):
         # unpack data
         rdata = SimpleNamespace(**rhs_data)
         etov = rdata.etov
@@ -887,9 +887,9 @@ class MeshTools2D:
         vxy_mid, edge = MeshGenerator2D.mid_edge(vxy, etov)
 
         # get boundary group
-        bgrp = MeshGenerator2D.get_bgrp(vxy_mid, edge, )
+        bgrp = MeshGenerator2D.get_bgrp(vxy_mid, edge, bL, bR, bB, bT)
 
-        # update number of elments and number of vertex
+        # update number of elements and number of vertices
         nelem = etov.shape[0]
         nvert = vxy.shape[0]
         vx = vx.flatten()

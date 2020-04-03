@@ -1,7 +1,6 @@
 import sys
 import numpy as np
 from math import *
-from src.accuracy_test_1d import operator_test_1d
 
 
 class CSBPTypeOperators:

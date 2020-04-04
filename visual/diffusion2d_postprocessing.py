@@ -15,13 +15,13 @@ class Node(object):
     Node level 2                                      gamma         omega        diagE ....
                                                       /               |              \
                                             _____________       _____________        ______________
-                                          |    |   |   |       |    |   |   |        |    |   |    |
-    Node level 3                        BR1  BR2  LDG  BO...  BR1  BR2  LDG BO...   BR1  BR2  LDG  BO ...
-                                        /     |    |   |      |    |    |   |       |    |    |    |
-                                 __________  ___
-                               /  /   /   /   |
+                                          |     |   |   |       |    |   |   |        |    |   |    |
+    Node level 3                        BR1   BR2  LDG  BO...  BR1  BR2  LDG BO...   BR1  BR2  LDG  BO ...
+                                        /      |   |   |       |    |    |   |       |    |    |    |
+                                 __________   ___
+                               /  /   /   /    |
     Node level 4             p1  p2  p3  p4   ps....
-                             /   /    /  /    |
+                             /   /   /  /     |
                           data   ...
                      in dictionary
 
@@ -72,25 +72,25 @@ class Node(object):
 
     def find_node(self, value):
         """Find node by value in the current node level"""
-        if self.data0.value == value:
+        if self.data0 is not None and self.data0.value == value:
             return self.data0
-        elif self.data1.value == value:
+        elif self.data1 is not None and self.data1.value == value:
             return self.data1
-        elif self.data2.value == value:
+        elif self.data2 is not None and self.data2.value == value:
             return self.data2
-        elif self.data3.value == value:
+        elif self.data3 is not None and self.data3.value == value:
             return self.data3
-        elif self.data4.value == value:
+        elif self.data4 is not None and self.data4.value == value:
             return self.data4
-        elif self.data5.value == value:
+        elif self.data5 is not None and self.data5.value == value:
             return self.data5
-        elif self.data6.value == value:
+        elif self.data6 is not None and self.data6.value == value:
             return self.data6
-        elif self.data7.value == value:
+        elif self.data7 is not None and self.data7.value == value:
             return self.data7
-        elif self.data8.value == value:
+        elif self.data8 is not None and self.data8.value == value:
             return self.data8
-        elif self.data9.value == value:
+        elif self.data9 is not None and self.data9.value == value:
             return self.data9
 
 
@@ -100,10 +100,19 @@ class DataTree(object):
         self.root = Node(value)
 
 
-def save_results(h=0.8, nrefine=2):
-    sbp_families = ['gamma', 'omega', 'diagE']
-    sats = ['BR2']
-    ps = ['p1', 'p2', 'p3', 'p4']
+def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None):
+
+    if sbp_families is None:
+        sbp_families = ['gamma', 'omega', 'diagE']
+        # sbp_fam = ['$\Gamma$', '$\Omega$', 'E']
+    if sats is None:
+        sats = ['BR2']
+    if ps is None:
+        ps = ['p1', 'p2', 'p3', 'p4']
+
+    sbp_families = [x.lower() for x in sbp_families]
+    sats = [x.upper() for x in sats]
+
     # create a data tree
     results = DataTree('sbp_family')
 
@@ -136,16 +145,30 @@ def save_results(h=0.8, nrefine=2):
     return results
 
 
-def analyze_results():
+def analyze_results(sbp_families=None, sats=None, ps=None):
     # solve and obtain results or open saved from file
     path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\visual\\poisson2d_results\\'
     with open(path+'results_poisson2D.pickle', 'rb') as infile:
         results = pickle.load(infile)
 
-    sbp_families = ['gamma', 'omega', 'diagE']
-    sbp_fam = ['$\Gamma$', '$\Omega$', 'E']
-    sats = ['BR2']
-    ps = ['p1', 'p2', 'p3', 'p4']
+    if sbp_families is None:
+        sbp_families = ['gamma', 'omega', 'diagE']
+        # sbp_fam = ['$\Gamma$', '$\Omega$', 'E']
+    if sats is None:
+        sats = ['BR2']
+    if ps is None:
+        ps = ['p1', 'p2', 'p3', 'p4']
+
+    sbp_families = [x.lower() for x in sbp_families]
+    sats = [x.upper() for x in sats]
+
+    sbp_fam =[]
+    if 'gamma' in sbp_families:
+        sbp_fam.append('$\Gamma$')
+    if 'omega' in sbp_families:
+        sbp_fam.append('$\Omega$')
+    if 'diage' in sbp_families:
+        sbp_fam.append('E')
 
     # set plot parameters
     params = {'axes.labelsize': 25,
@@ -190,6 +213,6 @@ def analyze_results():
         plt.show()
         # plt.close()
 
-# soln = save_results(h=0.8, nrefine=5)
-analyze_results()
+# soln = save_results(h=0.8, nrefine=5, sats=['CDG'], sbp_families=['gamma', 'omega'])
+analyze_results(sats=['CDG'], sbp_families=['gamma', 'omega'])
 

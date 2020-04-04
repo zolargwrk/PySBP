@@ -952,6 +952,95 @@ class MeshTools2D:
 
         return uD, uN
 
+    @staticmethod
+    def connectivity_etoe2(etoe, etof):
+        """Finds the neighbor of the neighbor for each element, the facets the element shares with the neighbor,
+        and the facets the neighbor shares with the second neighbor"""
+
+        # construct element to element connection with extended neighbors included (traversing counterclockwise)
+        # we refer the elements as follows
+        #     ek -- current element
+        #     ev# -- first neighbor connected to # facet of ek
+        #     eq# -- second neighbor connected to # facet of ev
+
+        nface = 3
+        nelem = etoe.shape[0]
+        etoe2 = np.zeros((nelem, 9))
+        etof_nbr = np.zeros((nelem, 9))
+        etof_nbr2 = np.zeros((nelem, 9))
+
+        face = 0
+        for i in range(0, nface):
+            # find ev connected to facet f of ek
+            evf = etoe[:, i]
+            etoe2[:, face] = evf
+
+            # get facet numbers of evf
+            evfn1 = etof[:, i]
+
+            # get the remaining facet numbers
+            evfn2_temp = evfn1 - 1
+            evfn2 = np.where(evfn2_temp>-1, evfn2_temp, evfn2_temp+3)
+            evfn3_temp = evfn1 + 1
+            evfn3 = np.where(evfn3_temp<3, evfn3_temp, 0*evfn3_temp)
+
+            # get the second neighbor elements
+            etoe2[:, face+1] = etoe[evf, evfn2]
+            etoe2[:, face+2] = etoe[evf, evfn3]
+
+            face += 3
+
+        # check for boundary faces and amend connectivity matrix
+        for elem in range(0, nelem):
+            if etoe2[elem, 0] == elem:
+                etoe2[elem, 1] = elem
+                etoe2[elem, 2] = elem
+            if etoe2[elem, 3] == elem:
+                etoe2[elem, 4] = elem
+                etoe2[elem, 5] = elem
+            if etoe2[elem, 6] == elem:
+                etoe2[elem, 7] = elem
+                etoe2[elem, 8] = elem
+
+        etoe2 = etoe2.astype(int)
+
+        etof_nbr[:, 0] = etof[:, 0]
+        etof_nbr[:, 3] = etof[:, 1]
+        etof_nbr[:, 6] = etof[:, 2]
+
+        etof_nbr[:, 1] = np.where(etoe[etoe2[:, 0], 0] != etoe2[:, 1], etof_nbr[:, 1], 0)
+        etof_nbr[:, 1] = np.where(etoe[etoe2[:, 0], 1] != etoe2[:, 1], etof_nbr[:, 1], 1)
+        etof_nbr[:, 1] = np.where(etoe[etoe2[:, 0], 2] != etoe2[:, 1], etof_nbr[:, 1], 2)
+
+        etof_nbr[:, 2] = np.where(etoe[etoe2[:, 0], 0] != etoe2[:, 2], etof_nbr[:, 2], 0)
+        etof_nbr[:, 2] = np.where(etoe[etoe2[:, 0], 1] != etoe2[:, 2], etof_nbr[:, 2], 1)
+        etof_nbr[:, 2] = np.where(etoe[etoe2[:, 0], 2] != etoe2[:, 2], etof_nbr[:, 2], 2)
+
+        etof_nbr[:, 4] = np.where(etoe[etoe2[:, 3], 0] != etoe2[:, 4], etof_nbr[:, 4], 0)
+        etof_nbr[:, 4] = np.where(etoe[etoe2[:, 3], 1] != etoe2[:, 4], etof_nbr[:, 4], 1)
+        etof_nbr[:, 4] = np.where(etoe[etoe2[:, 3], 2] != etoe2[:, 4], etof_nbr[:, 4], 2)
+
+        etof_nbr[:, 5] = np.where(etoe[etoe2[:, 3], 0] != etoe2[:, 5], etof_nbr[:, 5], 0)
+        etof_nbr[:, 5] = np.where(etoe[etoe2[:, 3], 1] != etoe2[:, 5], etof_nbr[:, 5], 1)
+        etof_nbr[:, 5] = np.where(etoe[etoe2[:, 3], 2] != etoe2[:, 5], etof_nbr[:, 5], 2)
+
+        etof_nbr[:, 7] = np.where(etoe[etoe2[:, 6], 0] != etoe2[:, 7], etof_nbr[:, 7], 0)
+        etof_nbr[:, 7] = np.where(etoe[etoe2[:, 6], 1] != etoe2[:, 7], etof_nbr[:, 7], 1)
+        etof_nbr[:, 7] = np.where(etoe[etoe2[:, 6], 2] != etoe2[:, 7], etof_nbr[:, 7], 2)
+
+        etof_nbr[:, 8] = np.where(etoe[etoe2[:, 6], 0] != etoe2[:, 8], etof_nbr[:, 8], 0)
+        etof_nbr[:, 8] = np.where(etoe[etoe2[:, 6], 1] != etoe2[:, 8], etof_nbr[:, 8], 1)
+        etof_nbr[:, 8] = np.where(etoe[etoe2[:, 6], 2] != etoe2[:, 8], etof_nbr[:, 8], 2)
+
+        etof_nbr = etof_nbr.astype(int)
+
+        etof2 = None
+        # TODO: element to facet connectivity for the neighbor element, first determine the facets of the neighbor
+        #  elment and then the facets
+
+        return {'etoe2': etoe2, 'etof2': etof2}
+
+
 # mesh = MeshGenerator2D.rectangle_mesh(0.5)
 #
 #

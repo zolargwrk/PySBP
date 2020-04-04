@@ -352,14 +352,10 @@ class Assembler:
         etoe = connect['etoe']
         etof = connect['etof']
 
-        # # build connectivity maps
-        # maps = MeshTools2D.buildmaps_2d(p, nnodes, x, y, etov, etoe, etof, fmask)
-        # mapM = maps['mapM']
-        # mapP = maps['mapP']
-        # vmapM = maps['vmapM']
-        # vmapP = maps['vmapP']
-        # vmapB = maps['vmapB']
-        # mapB = maps['mapB']
+        # build connectivity maps to extended stencil
+        connect2nbr = MeshTools2D.connectivity_etoe2(etoe, etof)
+        etoe2 = connect2nbr['etoe2']
+        etof2 = connect2nbr['etof2']
 
         # boundary groups and boundary nodes
         bgrp0 = mesh['bgrp']

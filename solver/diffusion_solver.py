@@ -501,13 +501,13 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_fi
 
         # visualize result
         print("error =", "{:.4e}".format(err_soln), "; nelem =", nelem, "; h =", "{:.4f}".format(h),
-              "; ", sbp_family, "; ", flux_type, "; p =", p)
+              "; ", sbp_family, "; ", flux_type, "; p =", p, "; nnz_elem =", nnz_elem)
         if plot_fig==True:
             # plot_figure_2d(x, y, u_exact)
             plot_figure_2d(x, y, u)
 
     return {'nelems': nelems, 'hs': hs, 'errs_soln': errs_soln, 'eig_vals': eig_vals, 'nnz_elems': nnz_elems}
 
-# poisson_sbp_2d(4, 0.8, 5, 'omega', 'BR2', plot_fig=True)
+poisson_sbp_2d(1, 0.5, 4, 'gamma', 'CDG', plot_fig=True)
 # diffusion_sbp_2d(1, 0.5, 1, 'gamma', 'BR2')
 # poisson_2d(1, 0.5, 1,'BR2')

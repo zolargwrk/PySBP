@@ -417,7 +417,7 @@ class RHSCalculator:
         # get the SATs
         sat_data = SATs.diffusion_sbp_sat_2d_steady(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, Ds, Dr, H, B1, B2, B3,
                                                   R1, R2, R3, rx, ry, sx, sy, jac, surf_jac, nx, ny, etoe, etof, bgrp,
-                                                  bgrpD, bgrpN, 'BR2', uD, uN)
+                                                  bgrpD, bgrpN, flux_type, uD, uN)
         sdata = SimpleNamespace(**sat_data)
 
         A = (D2B - sdata.sI)

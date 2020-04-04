@@ -1045,6 +1045,7 @@ class SATs:
         fid1 = np.arange(0, nfp)
         fid2 = np.arange(nfp, 2 * nfp)
         fid3 = np.arange(2 * nfp, 3 * nfp)
+        flux_type = flux_type.upper()
 
         # boundary group (obtain element number and facet number only)
         bgrp = np.vstack(bgrp)[:, 2:4]
@@ -1160,47 +1161,159 @@ class SATs:
 
         Ugk = [Ugk1B, Ugk2B, Ugk3B]
 
+        # calculate beta_gammak and beta_gammav for CDG and LDG implementations
+        # define arbitrary unit vector gv=[gvx, gvy]
+        gvx = 1
+        gvy = 1
+        # calculate beta, betak = 1 if dot(nk, g)>=0 and betak+betav=1. At the boundaries betak = 1.
+        betak1B = nx1B * 0
+        betak2B = nx2B * 0
+        betak3B = nx3B * 0
+
+        betav1B = nx1B * 0
+        betav2B = nx2B * 0
+        betav3B = nx3B * 0
+
+        for elem in range(0, nelem):
+            if ((nx1B[elem]*gvx + ny1B[elem]*gvy)+0.0)[0] > 0:
+                betak1B[elem] += 1
+            else:
+                betav1B[elem] += 1
+
+            if ((nx2B[elem]*gvx + ny2B[elem]*gvy)+0.0)[0] > 0:
+                betak2B[elem] += 1
+            else:
+                betav2B[elem] += 1
+
+            if ((nx3B[elem]*gvx + ny3B[elem]*gvy)+0.0)[0] > 0:
+                betak3B[elem] += 1
+            else:
+                betav3B[elem] += 1
+
+        betak = [betak1B, betak2B, betak3B]
+        betav = [betav1B, betav2B, betav3B]
+
+        for i in range(0, len(bgrpD)):
+            elem = bgrpD[i, 0]
+            face = bgrpD[i, 1]
+            betak[face][elem][:] = 1
+            betav[face][elem][:] = 0
+
+        for i in range(0, len(bgrpN)):
+            elem = bgrpN[i, 0]
+            face = bgrpN[i, 1]
+            betak[face][elem][:] = 1
+            betav[face][elem][:] = 0
+
+        # calculate the characteristic mesh size
+        hk = 2*jac
+        hc = np.max(hk)
+
         # SAT coefficients for different methods
-        eta = 1;  signT2 = -1;  etaD = 1  # BR2 method
-        # eta = 0; signT2 = 1;  etaD = 1        # BO
+        eta = 1/4; coefT2 = -1/2; coefT3 = 1/2; coefT4 = 0; etaD = 1
+        if flux_type == 'BR2':
+            eta = 1/4;  coefT2 = -1/2; coefT3 = 1/2; etaD = 1
+        elif flux_type == 'BO':
+            eta = 0; coefT2 = 1/2; coefT3 = 1/2; etaD = 1
+        elif flux_type == 'NIPG':
+            eta = 1; coefT2 = 1/2; coefT3 = 1/2; etaD = 1
+        elif flux_type == 'CNG':
+            eta = 1; coefT2 = 0; coefT3 = 1/2; etaD = 1
+        elif flux_type == 'IP':
+            NotImplemented('The IP method is not implemented yet.')
+        elif flux_type == 'CDG':
+            eta = 1/2; coefT2 = -1/2; coefT3 = -1/2; etaD = 1
+        elif flux_type == 'LDG':
+            NotImplemented('The IP method is not implemented yet.')
+        elif flux_type == 'BR1':
+            NotImplemented('The IP method is not implemented yet.')
 
-        # facet 1
-        T2gk1B = signT2 / 2 * BB1
-        T3gk1B = 1 / 2 * BB1
-        T4gk1B = 0 * BB1
+        # T4 coefficient
+        T4gk1B = coefT4 * BB1
+        T4gk2B = coefT4 * BB2
+        T4gk3B = coefT4 * BB3
 
-        # facet 2
-        T2gk2B = signT2 / 2 * BB2
-        T3gk2B = 1 / 2 * BB2
-        T4gk2B = 0 * BB2
+        # calculate the T2 and T3 matrices
+        if flux_type != 'LDG' or flux_type != 'CDG':
+            # facet 1
+            T2gk1B = coefT2 * BB1
+            T3gk1B = coefT3 * BB1
 
-        # facet 3
-        T2gk3B = signT2 / 2 * BB3
-        T3gk3B = 1 / 2 * BB3
-        T4gk3B = 0 * BB3
+            # facet 2
+            T2gk2B = coefT2 * BB2
+            T3gk2B = coefT3 * BB2
+
+            # facet 3
+            T2gk3B = coefT2 * BB3
+            T3gk3B = coefT3 * BB3
+
+        if flux_type=='LDG' or flux_type=='CDG':
+            T2gk = [BB1*0, BB2*0, BB3*0]
+            T3gk = [BB1*0, BB2*0, BB3*0]
+            for elem in range(0, nelem):
+                for face in range(0, nface):
+                    nbr_elem = etoe[elem, face]
+                    if nbr_elem != elem:
+                        nbr_face = etof[elem, face]
+                        T2gk[face][elem][:] = coefT2 * (betak[face][elem] - betav[nbr_face][nbr_elem] + 1) * BB[face][elem]
+                        T3gk[face][elem][:] = coefT3 * (betak[face][elem] - betav[nbr_face][nbr_elem] - 1) * BB[face][elem]
+
+            T2gk1B = T2gk[0]
+            T2gk2B = T2gk[1]
+            T2gk3B = T2gk[2]
+            T3gk1B = T3gk[0]
+            T3gk2B = T3gk[1]
+            T3gk3B = T3gk[2]
 
         # calcualte the T1gk matrix
         T1gk1B = np.block(np.zeros((nelem, nfp, nfp))).reshape((nelem, nfp, nfp))  # T1gk at facet 1
         T1gk2B = np.block(np.zeros((nelem, nfp, nfp))).reshape((nelem, nfp, nfp))  # T1gk at facet 2
         T1gk3B = np.block(np.zeros((nelem, nfp, nfp))).reshape((nelem, nfp, nfp))  # T1gk at facet 3
 
-        # T1gk for BR2 method
-        for elem in range(0, nelem):
-            for face in range(0, nface):
-                nbr_elem = etoe[elem, face]
-                nbr_face = etof[elem, face]
-                if face == 0:
-                    T1gk1B[elem] = eta * face_wtB[face][elem] / 4 * (BB[face][elem] @ Ugk[face][elem] @ BB[face][elem]
-                                                                     +(BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem] @
-                                                                        BB[nbr_face][nbr_elem]))
-                elif face == 1:
-                    T1gk2B[elem] = eta * face_wtB[face][elem] / 4 * (BB[face][elem] @ Ugk[face][elem] @ BB[face][elem]
-                                                                     +(BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem] @
-                                                                        BB[nbr_face][nbr_elem]))
-                elif face == 2:
-                    T1gk3B[elem] = eta * face_wtB[face][elem] / 4 * (BB[face][elem] @ Ugk[face][elem] @ BB[face][elem]
-                                                                     +(BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem] @
-                                                                        BB[nbr_face][nbr_elem]))
+        # T1gk for all SATs except SIPG and NIPG methods
+        if flux_type=='BR1' or flux_type=='BR2':
+            for elem in range(0, nelem):
+                for face in range(0, nface):
+                    nbr_elem = etoe[elem, face]
+                    nbr_face = etof[elem, face]
+                    if face == 0:
+                        T1gk1B[elem] = eta * face_wtB[face][elem] * (BB[face][elem] @ Ugk[face][elem] @ BB[face][elem]
+                                        +(BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem] @ BB[nbr_face][nbr_elem]))
+                    elif face == 1:
+                        T1gk2B[elem] = eta * face_wtB[face][elem] * (BB[face][elem] @ Ugk[face][elem] @ BB[face][elem]
+                                        +(BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem] @ BB[nbr_face][nbr_elem]))
+                    elif face == 2:
+                        T1gk3B[elem] = eta * face_wtB[face][elem] * (BB[face][elem] @ Ugk[face][elem] @ BB[face][elem]
+                                        +(BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem] @ BB[nbr_face][nbr_elem]))
+
+        if flux_type=='NIPG' or flux_type=='CNG':
+            T1gk1B = (eta / hc) * BB1
+            T1gk2B = (eta / hc) * BB2
+            T1gk3B = (eta / hc) * BB3
+
+        if flux_type=='LDG' or flux_type=='CDG':
+            for elem in range(0, nelem):
+                for face in range(0, nface):
+                    nbr_elem = etoe[elem, face]
+                    nbr_face = etof[elem, face]
+                    if face == 0:
+                        T1gk1B[elem] = eta * face_wtB[face][elem] * ((BB[face][elem] @ Ugk[face][elem] @ BB[face][elem]
+                                        + BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem] @ BB[nbr_face][nbr_elem])
+                                        + (betak[face][elem] - betav[face][elem]) * (BB[face][elem] @ Ugk[face][elem]
+                                        @ BB[face][elem] - BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem]
+                                        @ BB[nbr_face][nbr_elem]))
+                    elif face == 1:
+                        T1gk2B[elem] = eta * face_wtB[face][elem] * ((BB[face][elem] @ Ugk[face][elem] @ BB[face][elem]
+                                        + BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem] @ BB[nbr_face][nbr_elem])
+                                        + (betak[face][elem] - betav[face][elem]) * (BB[face][elem] @ Ugk[face][elem]
+                                        @ BB[face][elem] - BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem]
+                                        @ BB[nbr_face][nbr_elem]))
+                    elif face == 2:
+                        T1gk3B[elem] = eta * face_wtB[face][elem] * ((BB[face][elem] @ Ugk[face][elem] @ BB[face][elem]
+                                        + BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem] @ BB[nbr_face][nbr_elem])
+                                        + (betak[face][elem] - betav[face][elem]) * (BB[face][elem] @ Ugk[face][elem]
+                                        @ BB[face][elem] - BB[nbr_face][nbr_elem] @ Ugk[nbr_face][nbr_elem]
+                                        @ BB[nbr_face][nbr_elem]))
 
         # calculate the TDg matrix (the SAT coefficient at Dirichlet boundaries)
         TDgk1B = np.block(np.zeros((nelem, nfp, nfp))).reshape((nelem, nfp, nfp))

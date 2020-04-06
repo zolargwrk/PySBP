@@ -967,7 +967,7 @@ class MeshTools2D:
         nelem = etoe.shape[0]
         etoe2 = np.zeros((nelem, 9))
         etof_nbr = np.zeros((nelem, 9))
-        etof_nbr2 = np.zeros((nelem, 9))
+        etof2 = np.zeros((nelem, 9))
 
         face = 0
         for i in range(0, nface):
@@ -1034,11 +1034,16 @@ class MeshTools2D:
 
         etof_nbr = etof_nbr.astype(int)
 
-        etof2 = None
-        # TODO: element to facet connectivity for the neighbor element, first determine the facets of the neighbor
-        #  elment and then the facets
+        # get the facet number with which the neighbor of the neighbor is connected with the neighbor
+        # etoe2[:, i] -- gives the element numbers that the neighbor element is connected to
+        # etof_nbr[:, i] -- gives the facet number with which the neighbor is connected to its neighbors
+        # etof[e, f] -- gives the facet number f used by a neighbor to connected to element e
+        for i in range(0, nface*nface):
+            etof2[:, i] = etof[etoe2[:, i], etof_nbr[:, i]]
 
-        return {'etoe2': etoe2, 'etof2': etof2}
+        etof2 = etof2.astype(int)
+
+        return {'etoe2': etoe2, 'etof2': etof2, 'etof_nbr': etof_nbr}
 
 
 # mesh = MeshGenerator2D.rectangle_mesh(0.5)

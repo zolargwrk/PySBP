@@ -361,7 +361,8 @@ class RHSCalculator:
     def rhs_poisson_sbp_2d(p, u, x, y, r, s, xf, yf, Dr, Ds, H, B1, B2, B3, R1, R2, R3, nx, ny, rx, ry, sx, sy,
                            etoe, etof, bgrp, bgrpD, bgrpN, nelem, surf_jac, jac, flux_type='BR2', uDL_fun=None,
                            uNL_fun=None, uDR_fun=None, uNR_fun=None, uDB_fun=None, uNB_fun=None, uDT_fun=None,
-                           uNT_fun=None, bL=None, bR=None, bB=None, bT=None, LB=None, fscale=None):
+                           uNT_fun=None, bL=None, bR=None, bB=None, bT=None, LB=None, etoe2=None, etof2=None,
+                           etof_nbr=None):
 
         # define and set important variables
         ns = (p+1)*(p+2)/2      # number of shape functions (cardinality)
@@ -416,8 +417,8 @@ class RHSCalculator:
 
         # get the SATs
         sat_data = SATs.diffusion_sbp_sat_2d_steady(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, Ds, Dr, H, B1, B2, B3,
-                                                  R1, R2, R3, rx, ry, sx, sy, jac, surf_jac, nx, ny, etoe, etof, bgrp,
-                                                  bgrpD, bgrpN, flux_type, uD, uN)
+                                                  R1, R2, R3, rx, ry, sx, sy, jac, surf_jac, nx, ny, etoe, etof,
+                                                  bgrp, bgrpD, bgrpN, flux_type, uD, uN, etoe2, etof2, etof_nbr)
         sdata = SimpleNamespace(**sat_data)
 
         A = (D2B - sdata.sI)

@@ -213,6 +213,6 @@ def analyze_results(sbp_families=None, sats=None, ps=None):
         plt.show()
         # plt.close()
 
-# soln = save_results(h=0.8, nrefine=5, sats=['CDG'], sbp_families=['gamma', 'omega'])
-analyze_results(sats=['CDG'], sbp_families=['gamma', 'omega'])
+soln = save_results(h=0.5, nrefine=5, sats=['BR1'], sbp_families=['gamma'])
+analyze_results(sats=['BR1'], sbp_families=['gamma'])
 

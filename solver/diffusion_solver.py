@@ -371,7 +371,7 @@ def diffusion_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_
     uNR_fun = lambda x, y: 0
     uDB_fun = lambda x, y: 0
     uNB_fun = lambda x, y: 0
-    uDT_fun = lambda x, y: 0 # np.sin(np.pi * x)
+    uDT_fun = lambda x, y: 0 #np.sin(np.pi * x)
     uNT_fun = lambda x, y: 0
 
     A, Hg = RHSCalculator.rhs_poisson_flux_formulation_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
@@ -388,16 +388,17 @@ def diffusion_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_
     # u_exact = 1/(np.sinh(np.pi)) * np.sinh(np.pi*y) * np.sin(np.pi*x)
 
     # error calculation
-    err = np.linalg.norm((uu - u_exact), 2)
+    # err = np.linalg.norm((uu - u_exact), 2)
     err2 = np.sqrt((uu - u_exact).flatten(order="F") @ Hg @ (uu - u_exact).flatten(order="F"))\
            /np.sqrt((u_exact).flatten(order="F") @ Hg @ (u_exact).flatten(order="F"))
     if plot_fig==True:
         # plot_figure_2d(x, y, u_exact)
-        # plot_figure_2d(x, y, uu)
+        plot_figure_2d(x, y, uu)
         # print(err)
         print(err2)
         print(nelem)
-        print(1/np.sqrt(nelem/2))
+        print(A.count_nonzero())
+        # print(1/np.sqrt(nelem/2))
     return u
 
 
@@ -452,30 +453,31 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_fi
         uNR_fun = lambda x, y: 0
         uDB_fun = lambda x, y: 0
         uNB_fun = lambda x, y: 0
-        uDT_fun = lambda x, y: np.sin(np.pi * x)
+        uDT_fun = lambda x, y: 0 #np.sin(np.pi * x)
         uNT_fun = lambda x, y: 0
 
         rhs_data = RHSCalculator.rhs_poisson_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
                                                  adata.Ds, adata.H, adata.B1,adata.B2, adata.B3, adata.R1, adata.R2, adata.R3,
                                                  adata.nx, adata.ny, adata.rx, adata.ry, adata.sx, adata.sy,
-                                                 adata.etoe, adata.etof, adata.bgrp, adata.bgrpD, adata.bgrpN, adata.nelem,
-                                                 adata.surf_jac, adata.jac, flux_type, uDL_fun, uNL_fun, uDR_fun, uNR_fun,
-                                                 uDB_fun, uNB_fun, uDT_fun, uNT_fun, bL, bR, bB, bT, None, adata.fscale)
+                                                 adata.etoe, adata.etof,  adata.bgrp, adata.bgrpD, adata.bgrpN,
+                                                 adata.nelem, adata.surf_jac, adata.jac, flux_type, uDL_fun, uNL_fun,
+                                                 uDR_fun, uNR_fun, uDB_fun, uNB_fun, uDT_fun, uNT_fun, bL, bR, bB, bT,
+                                                 None, adata.etoe2, adata.etof2, adata.etof_nbr)
         rdata = SimpleNamespace(**rhs_data)
         fB = rdata.fB
         A = rdata.A
         Hg = rdata.Hg
 
         # get the source term
-        # f = ((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y) + fB.reshape(nelem, nnodes).T).flatten(order="F")
-        f = (fB.reshape(nelem, nnodes).T).flatten(order="F")
+        f = ((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y) + fB.reshape(nelem, nnodes).T).flatten(order="F")
+        # f = (fB.reshape(nelem, nnodes).T).flatten(order="F")
 
         # solve the linear system
         u = (spsolve(A, f)).reshape((nnodes, nelem), order="F")
 
         # exact solution
-        # u_exact = np.sin(np.pi * x) * np.sin(np.pi * y)
-        u_exact = 1/(np.sinh(np.pi)) * np.sinh(np.pi*y) * np.sin(np.pi*x)
+        u_exact = np.sin(np.pi * x) * np.sin(np.pi * y)
+        # u_exact = 1/(np.sinh(np.pi)) * np.sinh(np.pi*y) * np.sin(np.pi*x)
 
         # error calculation
         # err = np.linalg.norm((u - u_exact), 2)
@@ -506,8 +508,14 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_fi
             # plot_figure_2d(x, y, u_exact)
             plot_figure_2d(x, y, u)
 
+            # path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\pysbp_results\\advec_diff_results\\figures\\'
+            plt.spy(A, marker='o', markeredgewidth=0, markeredgecolor='y', markersize=5, markerfacecolor='r')
+            # plt.savefig(path + 'sparsity_{}.pdf'.format(flux_type), format='pdf')
+            # plt.close()
+            plt.show()
+
     return {'nelems': nelems, 'hs': hs, 'errs_soln': errs_soln, 'eig_vals': eig_vals, 'nnz_elems': nnz_elems}
 
-poisson_sbp_2d(1, 0.5, 4, 'gamma', 'CDG', plot_fig=True)
-# diffusion_sbp_2d(1, 0.5, 1, 'gamma', 'BR2')
+poisson_sbp_2d(1, 0.125, 4, 'gamma', 'BR1', plot_fig=True)
+# diffusion_sbp_2d(1, 0.125, 1, 'gamma', 'BR2', plot_fig=True)
 # poisson_2d(1, 0.5, 1,'BR2')

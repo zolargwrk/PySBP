@@ -356,6 +356,7 @@ class Assembler:
         connect2nbr = MeshTools2D.connectivity_etoe2(etoe, etof)
         etoe2 = connect2nbr['etoe2']
         etof2 = connect2nbr['etof2']
+        etof_nbr = connect2nbr['etof_nbr']
 
         # boundary groups and boundary nodes
         bgrp0 = mesh['bgrp']
@@ -372,7 +373,8 @@ class Assembler:
                 'B3': B3, 'R1': R1, 'R2': R2, 'R3': R3, 'Er': Er, 'Es': Es, 'rx': rx, 'ry': ry, 'sx': sx, 'sy': sy,
                 'jac': jac, 'nx': nx, 'ny': ny, 'surf_jac': surf_jac, 'bgrp': bgrp, 'x': x, 'y': y, 'etov': etov,
                 'r': r, 's': s, 'etoe': etoe, 'etof': etof, 'vx': vx, 'vy': vy, 'bgrpD': bgrpD, 'bgrpN': bgrpN,
-                'xf': xf, 'yf': yf, 'nnodes': nnodes, 'fscale': None}
+                'xf': xf, 'yf': yf, 'nnodes': nnodes, 'etoe2': etoe2, 'etof2': etof2, 'etof_nbr': etof_nbr,
+                'fscale': None}
 
 
 # mesh = MeshGenerator2D.rectangle_mesh(0.25)

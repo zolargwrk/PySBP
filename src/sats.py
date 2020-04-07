@@ -1154,11 +1154,17 @@ class SATs:
 
         # calculate Upsilon in Eq.(74) in my notes
         Ugk1B = ((nx1B * R1B) @ (HB_inv @ LxxB) @ ((nx1B * R1B).transpose(0, 2, 1))
-               + (ny1B * R1B) @ (HB_inv @ LyyB) @ ((ny1B * R1B).transpose(0, 2, 1)))
+                 + (nx1B * R1B) @ (HB_inv @ LxyB) @ ((ny1B * R1B).transpose(0, 2, 1))
+                 + (ny1B * R1B) @ (HB_inv @ LxxB) @ ((nx1B * R1B).transpose(0, 2, 1))
+                 + (ny1B * R1B) @ (HB_inv @ LyyB) @ ((ny1B * R1B).transpose(0, 2, 1)))
         Ugk2B = ((nx2B * R2B) @ (HB_inv @ LxxB) @ ((nx2B * R2B).transpose(0, 2, 1))
-               + (ny2B * R2B) @ (HB_inv @ LyyB) @ ((ny2B * R2B).transpose(0, 2, 1)))
+                 + (nx2B * R2B) @ (HB_inv @ LxyB) @ ((ny2B * R2B).transpose(0, 2, 1))
+                 + (ny2B * R2B) @ (HB_inv @ LyxB) @ ((nx2B * R2B).transpose(0, 2, 1))
+                 + (ny2B * R2B) @ (HB_inv @ LyyB) @ ((ny2B * R2B).transpose(0, 2, 1)))
         Ugk3B = ((nx3B * R3B) @ (HB_inv @ LxxB) @ ((nx3B * R3B).transpose(0, 2, 1))
-               + (ny3B * R3B) @ (HB_inv @ LyyB) @ ((ny3B * R3B).transpose(0, 2, 1)))
+                 + (nx3B * R3B) @ (HB_inv @ LxyB) @ ((ny3B * R3B).transpose(0, 2, 1))
+                 + (ny3B * R3B) @ (HB_inv @ LyxB) @ ((nx3B * R3B).transpose(0, 2, 1))
+                 + (ny3B * R3B) @ (HB_inv @ LyyB) @ ((ny3B * R3B).transpose(0, 2, 1)))
 
         Ugk = [Ugk1B, Ugk2B, Ugk3B]
 
@@ -1358,33 +1364,52 @@ class SATs:
                     if flux_type == 'BR1':
                         face_other = np.asarray(list({0, 1, 2}.difference({face})))
                         for i in range(0, nface-1):
-                            if not any(np.array_equal(np.array([elem, face_other[i]]), rowD) for rowD in bgrpD):
+                            if (etoe[elem, face_other[i]] != elem):
                                 sI[elem * nnodes:(elem + 1) * nnodes, elem * nnodes:(elem + 1) * nnodes] += HB_inv[elem] @ \
-                                    (coefT5*RB[face][elem].T @ (BB[face][elem] @ Ugk[face_other[i]][elem] @ BB[face_other[i]][elem])
-                                     @ RB[face_other[i]][elem])
+                                    (coefT5*RB[face][elem].T @ (BB[face][elem]
+                                    @ (nxB[face][elem] * RB[face][elem] @ HB_inv[elem] @ LxxB[elem] @ RB[face_other[i]][elem].T * nxB[face_other[i]][elem]
+                                       + nxB[face][elem] * RB[face][elem] @ HB_inv[elem] @ LxyB[elem] @ RB[face_other[i]][elem].T * nyB[face_other[i]][elem]
+                                       + nyB[face][elem] * RB[face][elem] @ HB_inv[elem] @ LyxB[elem] @ RB[face_other[i]][elem].T * nxB[face_other[i]][elem]
+                                       + nyB[face][elem] * RB[face][elem] @ HB_inv[elem] @ LyyB[elem] @ RB[face_other[i]][elem].T * nyB[face_other[i]][elem])
+                                        @ BB[face_other[i]][elem]) @ RB[face_other[i]][elem])
 
                         elem_nbr1 = etoe[elem, face]
-                        face_nbr1 = np.asarray(list({0, 1, 2}.difference({etof[elem, face]})))
+                        face_gamma_nbr1 = etof[elem, face]
+                        face_nbr1 = np.asarray(list({0, 1, 2}.difference({face_gamma_nbr1})))
                         elem_nbr2 = etoe[elem, face_other[0]]
-                        face_nbr2 = np.asarray(list({0, 1, 2}.difference({etof[elem, face_other[0]]})))
+                        face_gamma_nbr2 = etof[elem, face_other[0]]
+                        face_nbr2 = np.asarray(list({0, 1, 2}.difference({face_gamma_nbr2 })))
                         elem_nbr3 = etoe[elem, face_other[1]]
-                        face_nbr3 = np.asarray(list({0, 1, 2}.difference({etof[elem, face_other[1]]})))
+                        face_gamma_nbr3 = etof[elem, face_other[1]]
+                        face_nbr3 = np.asarray(list({0, 1, 2}.difference({face_gamma_nbr3})))
 
                         for i in range(0, nface-1):
                             if not any(np.array_equal(np.array([elem_nbr1, face_nbr1[i]]), rowD) for rowD in bgrpD):
-                                sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr1 * nnodes:(elem_nbr1 + 1) * nnodes] += HB_inv[elem] @ \
-                                    (coefT6*RB[face][elem].T @ (BB[face][elem] @ Ugk[face_nbr1[i]][elem_nbr1] @ BB[face_nbr1[i]][elem_nbr1])
-                                     @ RB[face_nbr1[i]][elem_nbr1])
+                                sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr1 * nnodes:(elem_nbr1 + 1) * nnodes] += HB_inv[elem]\
+                                @ (coefT6*RB[face][elem].T @ (BB[face][elem]
+                                @ (nxB[face_gamma_nbr1][elem_nbr1] * RB[face_gamma_nbr1][elem_nbr1] @ HB_inv[elem_nbr1] @ LxxB[elem_nbr1] @ RB[face_nbr1[i]][elem_nbr1].T * nxB[face_nbr1[i]][elem_nbr1]
+                                       + nxB[face_gamma_nbr1][elem_nbr1] * RB[face_gamma_nbr1][elem_nbr1] @ HB_inv[elem_nbr1] @ LxyB[elem_nbr1] @ RB[face_nbr1[i]][elem_nbr1].T * nyB[face_nbr1[i]][elem_nbr1]
+                                       + nyB[face_gamma_nbr1][elem_nbr1] * RB[face_gamma_nbr1][elem_nbr1] @ HB_inv[elem_nbr1] @ LyxB[elem_nbr1] @ RB[face_nbr1[i]][elem_nbr1].T * nxB[face_nbr1[i]][elem_nbr1]
+                                       + nyB[face_gamma_nbr1][elem_nbr1] * RB[face_gamma_nbr1][elem_nbr1] @ HB_inv[elem_nbr1] @ LyyB[elem_nbr1] @ RB[face_nbr1[i]][elem_nbr1].T * nyB[face_nbr1[i]][elem_nbr1])
+                                @ BB[face_nbr1[i]][elem_nbr1]) @ RB[face_nbr1[i]][elem_nbr1])
 
-                            if not any(np.array_equal(np.array([elem_nbr2, face_nbr2[i]]), rowD) for rowD in bgrpD):
-                                sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr2 * nnodes:(elem_nbr2 + 1) * nnodes] += HB_inv[elem] @ \
-                                    (coefT6*RB[face][elem].T @ (BB[face][elem] @ Ugk[face_nbr2[i]][elem_nbr2] @ BB[face_nbr2[i]][elem_nbr2])
-                                     @ RB[face_nbr2[i]][elem_nbr2])
-
-                            if not any(np.array_equal(np.array([elem_nbr3, face_nbr3[i]]), rowD) for rowD in bgrpD):
-                                sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr3 * nnodes:(elem_nbr3 + 1) * nnodes] += HB_inv[elem] @ \
-                                    (coefT6*RB[face][elem].T @ (BB[face][elem] @ Ugk[face_nbr3[i]][elem_nbr3] @ BB[face_nbr3[i]][elem_nbr3])
-                                     @ RB[face_nbr3[i]][elem_nbr3])
+                            # if not any(np.array_equal(np.array([elem_nbr2, face_nbr2[i]]), rowD) for rowD in bgrpD):
+                            #     sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr2 * nnodes:(elem_nbr2 + 1) * nnodes] += HB_inv[elem] @ \
+                            #         (coefT6*RB[face][elem].T @ (BB[face][elem]
+                            #         @ (nxB[face_gamma_nbr2][elem_nbr2] * RB[face_gamma_nbr2][elem_nbr2] @ HB_inv[elem_nbr2] @ LxxB[elem_nbr2] @ RB[face_nbr2[i]][elem_nbr2].T * nxB[face_nbr2[i]][elem_nbr2]
+                            #            + nxB[face_gamma_nbr2][elem_nbr2] * RB[face_gamma_nbr2][elem_nbr2] @ HB_inv[elem_nbr2] @ LxyB[elem_nbr2] @ RB[face_nbr2[i]][elem_nbr2].T * nyB[face_nbr2[i]][elem_nbr2]
+                            #            + nyB[face_gamma_nbr2][elem_nbr2] * RB[face_gamma_nbr2][elem_nbr2] @ HB_inv[elem_nbr2] @ LyxB[elem_nbr2] @ RB[face_nbr2[i]][elem_nbr2].T * nxB[face_nbr2[i]][elem_nbr2]
+                            #            + nyB[face_gamma_nbr2][elem_nbr2] * RB[face_gamma_nbr2][elem_nbr2] @ HB_inv[elem_nbr2] @ LyyB[elem_nbr2] @ RB[face_nbr2[i]][elem_nbr2].T * nyB[face_nbr2[i]][elem_nbr2])
+                            #         @ BB[face_nbr2[i]][elem_nbr2]) @ RB[face_nbr2[i]][elem_nbr2])
+                            #
+                            # if not any(np.array_equal(np.array([elem_nbr3, face_nbr3[i]]), rowD) for rowD in bgrpD):
+                            #     sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr3 * nnodes:(elem_nbr3 + 1) * nnodes] += HB_inv[elem] @ \
+                            #         (coefT6*RB[face][elem].T @ (BB[face][elem]
+                            #         @ (nxB[face_gamma_nbr3][elem_nbr3] * RB[face_gamma_nbr3][elem_nbr3] @ HB_inv[elem_nbr3] @ LxxB[elem_nbr3] @ RB[face_nbr3[i]][elem_nbr3].T * nxB[face_nbr3[i]][elem_nbr3]
+                            #            + nxB[face_gamma_nbr3][elem_nbr3] * RB[face_gamma_nbr3][elem_nbr3] @ HB_inv[elem_nbr3] @ LxyB[elem_nbr3] @ RB[face_nbr3[i]][elem_nbr3].T * nyB[face_nbr3[i]][elem_nbr3]
+                            #            + nyB[face_gamma_nbr3][elem_nbr3] * RB[face_gamma_nbr3][elem_nbr3] @ HB_inv[elem_nbr3] @ LyxB[elem_nbr3] @ RB[face_nbr3[i]][elem_nbr3].T * nxB[face_nbr3[i]][elem_nbr3]
+                            #            + nyB[face_gamma_nbr3][elem_nbr3] * RB[face_gamma_nbr3][elem_nbr3] @ HB_inv[elem_nbr3] @ LyyB[elem_nbr3] @ RB[face_nbr3[i]][elem_nbr3].T * nyB[face_nbr3[i]][elem_nbr3])
+                            #         @ BB[face_nbr3[i]][elem_nbr3]) @ RB[face_nbr3[i]][elem_nbr3])
 
         # add Dirichlet boundary condition
         for i in range(0, len(bgrpD)):
@@ -1429,16 +1454,22 @@ class SATs:
                         if (nbr_elem_other != elem) and (not any(np.array_equal(np.array([elem, face]), rowD) for rowD in bgrpD)):
                             nbr_face_other = etof[elem, face_other[i]]
                             sI[elem*nnodes:(elem+1)*nnodes, nbr_elem_other*nnodes:(nbr_elem_other+1)*nnodes] += HB_inv[elem]\
-                                @ (-coefT5*RB[face][elem].T @ (BB[face][elem] @ Ugk[face_other[i]][elem] @ BB[nbr_face_other][nbr_elem_other])
-                                @ np.flipud(RB[nbr_face_other][nbr_elem_other]))
-
+                                @ (-coefT5*RB[face][elem].T @ (BB[face][elem]
+                                @ (nxB[face][elem] * RB[face][elem] @ HB_inv[elem] @ LxxB[elem] @ RB[face_other[i]][elem].T * nxB[face_other[i]][elem]
+                                       + nxB[face][elem] * RB[face][elem] @ HB_inv[elem] @ LxyB[elem] @ RB[face_other[i]][elem].T * nyB[face_other[i]][elem]
+                                       + nyB[face][elem] * RB[face][elem] @ HB_inv[elem] @ LyxB[elem] @ RB[face_other[i]][elem].T * nxB[face_other[i]][elem]
+                                       + nyB[face][elem] * RB[face][elem] @ HB_inv[elem] @ LyyB[elem] @ RB[face_other[i]][elem].T * nyB[face_other[i]][elem])
+                                @ BB[nbr_face_other][nbr_elem_other]) @ np.flipud(RB[nbr_face_other][nbr_elem_other]))
 
                     elem_nbr1 = etoe[elem, face]
-                    face_nbr1 = np.asarray(list({0, 1, 2}.difference({etof[elem, face]})))
+                    face_gamma_nbr1 = etof[elem, face]
+                    face_nbr1 = np.asarray(list({0, 1, 2}.difference({face_gamma_nbr1})))
                     elem_nbr2 = etoe[elem, face_other[0]]
-                    face_nbr2 = np.asarray(list({0, 1, 2}.difference({etof[elem, face_other[0]]})))
+                    face_gamma_nbr2 = etof[elem, face_other[0]]
+                    face_nbr2 = np.asarray(list({0, 1, 2}.difference({face_gamma_nbr2})))
                     elem_nbr3 = etoe[elem, face_other[1]]
-                    face_nbr3 = np.asarray(list({0, 1, 2}.difference({etof[elem, face_other[1]]})))
+                    face_gamma_nbr3 = etof[elem, face_other[1]]
+                    face_nbr3 = np.asarray(list({0, 1, 2}.difference({face_gamma_nbr3})))
 
                     if not any(np.array_equal(np.array([elem, face]), rowD) for rowD in bgrpD):
                         for i in range(0, nface-1):
@@ -1446,24 +1477,34 @@ class SATs:
                                 elem_nbr1_nbr = etoe[elem_nbr1, face_nbr1[i]]
                                 face_nbr1_nbr = etof[elem_nbr1, face_nbr1[i]]
                                 sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr1_nbr*nnodes:(elem_nbr1_nbr + 1) * nnodes] += HB_inv[elem] @ \
-                                    (-coefT6*RB[face][elem].T @ (BB[face][elem] @ Ugk[face_nbr1[i]][elem_nbr1] @ BB[face_nbr1_nbr][elem_nbr1_nbr])
-                                     @ np.flipud(RB[face_nbr1_nbr][elem_nbr1_nbr]))
+                                    (-coefT6*RB[face][elem].T @ (BB[face][elem]
+                                    @ (nxB[face_gamma_nbr1][elem_nbr1] * RB[face_gamma_nbr1][elem_nbr1] @ HB_inv[elem_nbr1] @ LxxB[elem_nbr1] @ RB[face_nbr1[i]][elem_nbr1].T * nxB[face_nbr1[i]][elem_nbr1]
+                                       + nxB[face_gamma_nbr1][elem_nbr1] * RB[face_gamma_nbr1][elem_nbr1] @ HB_inv[elem_nbr1] @ LxyB[elem_nbr1] @ RB[face_nbr1[i]][elem_nbr1].T * nyB[face_nbr1[i]][elem_nbr1]
+                                       + nyB[face_gamma_nbr1][elem_nbr1] * RB[face_gamma_nbr1][elem_nbr1] @ HB_inv[elem_nbr1] @ LyxB[elem_nbr1] @ RB[face_nbr1[i]][elem_nbr1].T * nxB[face_nbr1[i]][elem_nbr1]
+                                       + nyB[face_gamma_nbr1][elem_nbr1] * RB[face_gamma_nbr1][elem_nbr1] @ HB_inv[elem_nbr1] @ LyyB[elem_nbr1] @ RB[face_nbr1[i]][elem_nbr1].T * nyB[face_nbr1[i]][elem_nbr1])
+                                    @ BB[face_nbr1_nbr][elem_nbr1_nbr]) @ np.flipud(RB[face_nbr1_nbr][elem_nbr1_nbr]))
 
-                            if not any(np.array_equal(np.array([elem_nbr2, face_nbr2[i]]), rowD) for rowD in bgrpD):
-                                elem_nbr2_nbr = etoe[elem_nbr2, face_nbr2[i]]
-                                face_nbr2_nbr = etof[elem_nbr2, face_nbr2[i]]
-                                sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr2_nbr*nnodes:(elem_nbr2_nbr + 1) * nnodes] += HB_inv[elem] @ \
-                                    (-coefT6*RB[face][elem].T @ (BB[face][elem] @ Ugk[face_nbr2[i]][elem_nbr2] @ BB[face_nbr2_nbr][elem_nbr2_nbr])
-                                     @ np.flipud(RB[face_nbr2_nbr][elem_nbr2_nbr]))
-
-                            if not any(np.array_equal(np.array([elem_nbr3, face_nbr3[i]]), rowD) for rowD in bgrpD):
-                                elem_nbr3_nbr = etoe[elem_nbr3, face_nbr3[i]]
-                                face_nbr3_nbr = etof[elem_nbr3, face_nbr3[i]]
-                                sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr3_nbr*nnodes:(elem_nbr3_nbr + 1) * nnodes] += HB_inv[elem] @ \
-                                    (-coefT6*RB[face][elem].T @ (BB[face][elem] @ Ugk[face_nbr3[i]][elem_nbr3] @ BB[face_nbr3_nbr][elem_nbr3_nbr])
-                                     @ np.flipud(RB[face_nbr3_nbr][elem_nbr3_nbr]))
-
-        # TODO: change terms like Ugk[face_nbr3[i]][elem_nbr3] for the extended stencils!
+                            # if not any(np.array_equal(np.array([elem_nbr2, face_nbr2[i]]), rowD) for rowD in bgrpD):
+                            #     elem_nbr2_nbr = etoe[elem_nbr2, face_nbr2[i]]
+                            #     face_nbr2_nbr = etof[elem_nbr2, face_nbr2[i]]
+                            #     sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr2_nbr*nnodes:(elem_nbr2_nbr + 1) * nnodes] += HB_inv[elem] @ \
+                            #         (-coefT6*RB[face][elem].T @ (BB[face][elem]
+                            #         @ (nxB[face_gamma_nbr2][elem_nbr2] * RB[face_gamma_nbr2][elem_nbr2] @ HB_inv[elem_nbr2] @ LxxB[elem_nbr2] @ RB[face_nbr2[i]][elem_nbr2].T * nxB[face_nbr2[i]][elem_nbr2]
+                            #            + nxB[face_gamma_nbr2][elem_nbr2] * RB[face_gamma_nbr2][elem_nbr2] @ HB_inv[elem_nbr2] @ LxyB[elem_nbr2] @ RB[face_nbr2[i]][elem_nbr2].T * nyB[face_nbr2[i]][elem_nbr2]
+                            #            + nyB[face_gamma_nbr2][elem_nbr2] * RB[face_gamma_nbr2][elem_nbr2] @ HB_inv[elem_nbr2] @ LyxB[elem_nbr2] @ RB[face_nbr2[i]][elem_nbr2].T * nxB[face_nbr2[i]][elem_nbr2]
+                            #            + nyB[face_gamma_nbr2][elem_nbr2] * RB[face_gamma_nbr2][elem_nbr2] @ HB_inv[elem_nbr2] @ LyyB[elem_nbr2] @ RB[face_nbr2[i]][elem_nbr2].T * nyB[face_nbr2[i]][elem_nbr2])
+                            #         @ BB[face_nbr2_nbr][elem_nbr2_nbr]) @ np.flipud(RB[face_nbr2_nbr][elem_nbr2_nbr]))
+                            #
+                            # if not any(np.array_equal(np.array([elem_nbr3, face_nbr3[i]]), rowD) for rowD in bgrpD):
+                            #     elem_nbr3_nbr = etoe[elem_nbr3, face_nbr3[i]]
+                            #     face_nbr3_nbr = etof[elem_nbr3, face_nbr3[i]]
+                            #     sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr3_nbr*nnodes:(elem_nbr3_nbr + 1) * nnodes] += HB_inv[elem] @ \
+                            #         (-coefT6*RB[face][elem].T @ (BB[face][elem]
+                            #         @ (nxB[face_gamma_nbr3][elem_nbr3] * RB[face_gamma_nbr3][elem_nbr3] @ HB_inv[elem_nbr3] @ LxxB[elem_nbr3] @ RB[face_nbr3[i]][elem_nbr3].T * nxB[face_nbr3[i]][elem_nbr3]
+                            #            + nxB[face_gamma_nbr3][elem_nbr3] * RB[face_gamma_nbr3][elem_nbr3] @ HB_inv[elem_nbr3] @ LxyB[elem_nbr3] @ RB[face_nbr3[i]][elem_nbr3].T * nyB[face_nbr3[i]][elem_nbr3]
+                            #            + nyB[face_gamma_nbr3][elem_nbr3] * RB[face_gamma_nbr3][elem_nbr3] @ HB_inv[elem_nbr3] @ LyxB[elem_nbr3] @ RB[face_nbr3[i]][elem_nbr3].T * nxB[face_nbr3[i]][elem_nbr3]
+                            #            + nyB[face_gamma_nbr3][elem_nbr3] * RB[face_gamma_nbr3][elem_nbr3] @ HB_inv[elem_nbr3] @ LyyB[elem_nbr3] @ RB[face_nbr3[i]][elem_nbr3].T * nyB[face_nbr3[i]][elem_nbr3])
+                            #         @ BB[face_nbr3_nbr][elem_nbr3_nbr]) @ np.flipud(RB[face_nbr3_nbr][elem_nbr3_nbr]))
 
         sI_mat = sI.tocsr()
 

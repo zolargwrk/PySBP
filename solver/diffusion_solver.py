@@ -538,6 +538,6 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_fi
 
     return {'nelems': nelems, 'hs': hs, 'errs_soln': errs_soln, 'eig_vals': eig_vals, 'nnz_elems': nnz_elems}
 
-# poisson_sbp_2d(1, 0.5, 1, 'gamma', 'BR1', plot_fig=True)
+# poisson_sbp_2d(1, 0.5, 4, 'gamma', 'BR2', plot_fig=True)
 # diffusion_sbp_2d(1, 0.5, 4, 'gamma', 'BR1', plot_fig=True)
 # poisson_2d(1, 0.125, 1,'BR2')

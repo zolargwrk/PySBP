@@ -15,7 +15,7 @@ from matplotlib import pyplot as plt
 
 def advection_1d_steady(p, xl, xr, nelem, quad_type, nrefine=1, refine_type=None, advection1D_problem_input=None,
                         flux_type='upwind', n=1):
-    # get problem statement (ps)
+    # get problem statement (degree)
     prob_input = advection1D_problem_input()
     ps = SimpleNamespace(**prob_input)
     outputs = ps.choose_output()
@@ -163,7 +163,7 @@ def advection_1d_steady(p, xl, xr, nelem, quad_type, nrefine=1, refine_type=None
 def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_type=None, boundary_type=None, sat_type='sbp_sat',
               poisson1D_problem_input=None,  a=1, n=1, app=1):
 
-    # get problem statement (ps)
+    # get problem statement (degree)
     prob_input = poisson1D_problem_input()
     ps = SimpleNamespace(**prob_input)
     outputs = ps.choose_output()
@@ -315,7 +315,7 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
 def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_type_vis='BR1', nrefine=1, refine_type=None,
                   boundary_type=None, sat_type='sbp_sat', advec_diff1D_problem_input=None,  a=1, n=1, app=1):
 
-    # get problem statement (ps)
+    # get problem statement (degree)
     prob_input = advec_diff1D_problem_input()
     ps = SimpleNamespace(**prob_input)
     outputs = ps.choose_output()

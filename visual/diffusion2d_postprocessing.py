@@ -2,6 +2,7 @@ import numpy as np
 from types import SimpleNamespace
 import pickle
 import matplotlib.pyplot as plt
+from matplotlib.ticker import StrMethodFormatter
 from solver.diffusion_solver import poisson_sbp_2d
 
 
@@ -20,7 +21,7 @@ class Node(object):
                                         /      |   |   |       |    |    |   |       |    |    |    |
                                  __________   ___
                                /  /   /   /    |
-    Node level 4             p1  p2  p3  p4   ps....
+    Node level 4             p1  p2  p3  p4   degree....
                              /   /   /  /     |
                           data   ...
                      in dictionary
@@ -100,7 +101,7 @@ class DataTree(object):
         self.root = Node(value)
 
 
-def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None):
+def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_adjoint=True):
 
     if sbp_families is None:
         sbp_families = ['gamma', 'omega', 'diagE']
@@ -108,7 +109,12 @@ def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None):
     if sats is None:
         sats = ['BR2']
     if ps is None:
-        ps = ['p1', 'p2', 'p3', 'p4']
+        ps = [1, 2, 3, 4]
+        degree = ['p1', 'p2', 'p3', 'p4']
+    else:
+        degree = []
+        for d in range(0, len(ps)):
+            degree.append('p' + str(ps[d]))
 
     sbp_families = [x.lower() for x in sbp_families]
     sats = [x.upper() for x in sats]
@@ -125,16 +131,16 @@ def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None):
             found_node1 = results.root.find_node(sbp_families[family])
             found_node1.add_node(sats[sat])
 
-            for p in range(1, len(ps)+1):
+            for p in range(0, len(ps)):
                 # add node to specify the degree of the operator
                 found_node2 = found_node1.find_node(sats[sat])
-                found_node2.add_node(ps[p-1])
+                found_node2.add_node(degree[p])
 
                 # solve the Poisson problem and obtain data
-                soln = poisson_sbp_2d(p, h, nrefine, sbp_family=sbp_families[family], flux_type=sats[sat])
+                soln = poisson_sbp_2d(ps[p], h, nrefine, sbp_families[family], sats[sat], solve_adjoint)
 
                 # add data to the leaves of the tree
-                found_node3 = found_node2.find_node(ps[p-1])
+                found_node3 = found_node2.find_node(degree[p])
                 found_node3.add_child(soln)
 
     # save result
@@ -145,7 +151,7 @@ def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None):
     return results
 
 
-def analyze_results(sbp_families=None, sats=None, ps=None):
+def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False, plot_by_sat=False):
     # solve and obtain results or open saved from file
     path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\visual\\poisson2d_results\\'
     with open(path+'results_poisson2D.pickle', 'rb') as infile:
@@ -157,7 +163,12 @@ def analyze_results(sbp_families=None, sats=None, ps=None):
     if sats is None:
         sats = ['BR2']
     if ps is None:
-        ps = ['p1', 'p2', 'p3', 'p4']
+        ps = [1, 2, 3, 4]
+        degree = ['p1', 'p2', 'p3', 'p4']
+    else:
+        degree = []
+        for d in range(0, len(ps)):
+            degree.append('p' + str(ps[d]))
 
     sbp_families = [x.lower() for x in sbp_families]
     sats = [x.upper() for x in sats]
@@ -183,36 +194,176 @@ def analyze_results(sbp_families=None, sats=None, ps=None):
     ms = 12     # markersize
     markers = ['--*g', '--sy', '--<r', '--ob', '--Dm']
 
-    # plot solution error
-    for p in range(1, len(ps)+1):
-        for family in range(0, len(sbp_families)):
-            # find node that specify the sbp family
-            f = results.root.find_node(sbp_families[family])
+    # plot solution by sbp family
+    if plot_by_family:
+        for p in range(0, len(ps)):
+            plt.figure(1)
+            plt.figure(2)
+            for family in range(0, len(sbp_families)):
+                # find node that specify the sbp family
+                f = results.root.find_node(sbp_families[family])
 
+                for sat in range(0, len(sats)):
+                    # find node that specify the SAT type
+                    s = f.find_node(sats[sat])
+
+                    # find node that specify the degree of the operator
+                    d = s.find_node(degree[p])
+
+                    # get results saved for each degree
+                    res = d.children[0]
+                    r = SimpleNamespace(**res)
+                    begin = len(r.hs) - 2
+                    end = len(r.hs)
+
+                    # calculate solution convergence rates
+                    conv_soln = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_soln[begin:end]), 1)[0])
+
+                    # calculate functional convergence rates
+                    conv_func = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_func[begin:end]), 1)[0])
+
+                    # plot solution convergence rates
+                    plt.figure(1)
+                    plt.loglog(r.hs, r.errs_soln, markers[family], linewidth=lw, markersize=ms,
+                               label='SBP-{}, {}, {}, r={:.2f}'.format(sbp_fam[family], sats[sat], degree[p], conv_soln))
+                    plt.xlabel(r'$h$')
+                    plt.ylabel(r'error in solution')
+                    plt.legend()
+                    plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
+                    plt.savefig(path + '\\soln_conv_rates\\errs_soln_VarOper_{}_p{}.pdf'.format(sats[sat], ps[p]), format='pdf')
+
+                    # plot functional convergence rates
+                    plt.figure(2)
+                    plt.loglog(r.hs, r.errs_func, markers[family], linewidth=lw, markersize=ms,
+                               label='SBP-{}, {}, {}, r={:.2f}'.format(sbp_fam[family], sats[sat], degree[p], conv_func))
+                    plt.xlabel(r'$h$')
+                    plt.ylabel(r'error in functional')
+                    plt.legend()
+                    plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
+                    plt.savefig(path + '\\soln_conv_rates\\errs_func_VarOper_{}_p{}.pdf'.format(sats[sat], ps[p]), format='pdf')
+
+            plt.show(1)
+            plt.close(1)
+
+            plt.show(2)
+            plt.close(2)
+
+    # plot adjoint by sbp family
+    if plot_by_family:
+        # plot convergence rates
+        for p in range(0, len(ps)):
+            for family in range(0, len(sbp_families)):
+                # find node that specify the sbp family
+                f = results.root.find_node(sbp_families[family])
+
+                for sat in range(0, len(sats)):
+                    # find node that specify the SAT type
+                    s = f.find_node(sats[sat])
+
+                    # find node that specify the degree of the operator
+                    d = s.find_node(degree[p])
+
+                    # get results saved for each degree
+                    res = d.children[0]
+                    r = SimpleNamespace(**res)
+                    begin = len(r.hs) - 2
+                    end = len(r.hs)
+
+    # plot solution by sat type
+    if plot_by_sat:
+        for p in range(0, len(ps)):
+            plt.figure(3)
+            plt.figure(4)
             for sat in range(0, len(sats)):
-                # find node that specify the SAT type
-                s = f.find_node(sats[sat])
+                for family in range(0, len(sbp_families)):
+                    # find node that specify the sbp family
+                    f = results.root.find_node(sbp_families[family])
+                    # find node that specify the SAT type
+                    s = f.find_node(sats[sat])
 
-                # find node that specify the degree of the operator
-                d = s.find_node(ps[p-1])
+                    # find node that specify the degree of the operator
+                    d = s.find_node(degree[p])
 
-                # get results saved for each degree
-                res = d.children[0]
-                r = SimpleNamespace(**res)
+                    # get results saved for each degree
+                    res = d.children[0]
+                    r = SimpleNamespace(**res)
+                    begin = len(r.hs) - 2
+                    end = len(r.hs)
 
-                # calculate convergence rates
-                conv = np.abs(np.polyfit(np.log10(r.hs[1:-1]), np.log10(r.errs_soln[1:-1]), 1)[0])
+                    # calculate solution convergence rates
+                    conv_soln = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_soln[begin:end]), 1)[0])
 
-                # plot result
-                plt.loglog(r.hs, r.errs_soln, markers[family], linewidth=lw, markersize=ms,
-                           label='SBP-{}, {}, {}, r={:.2f}'.format(sbp_fam[family], sats[sat], ps[p-1], conv))
-                plt.xlabel(r'$h$')
-                plt.ylabel(r'error in solution')
-                plt.legend()
-                plt.savefig(path + '\\soln_conv_rates\\errs_soln_VarOper_{}_p{}.pdf'.format(sats[sat], p), format='pdf')
-        plt.show()
-        # plt.close()
+                    # calculate functional convergence rates
+                    conv_func = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_func[begin:end]), 1)[0])
 
-soln = save_results(h=0.8, nrefine=5, sats=['LDG'], sbp_families=['gamma'])
-analyze_results(sats=['LDG'], sbp_families=['gamma'])
+                    # plot solution convergence rates
+                    plt.figure(3)
+                    plt.loglog(r.hs, r.errs_soln, markers[sat], linewidth=lw, markersize=ms,
+                               label='SBP-{}, {}, {}, r={:.2f}'.format(sbp_fam[family], sats[sat], degree[p], conv_soln))
+                    plt.xlabel(r'$h$')
+                    plt.ylabel(r'error in solution')
+                    plt.legend()
+                    plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
+                    plt.savefig(path + '\\soln_conv_rates\\errs_soln_VarOper_{}_p{}.pdf'.format(sats[sat], ps[p]), format='pdf')
+
+                    # plot functional convergence rates
+                    plt.figure(4)
+                    plt.loglog(r.hs, r.errs_func, markers[sat], linewidth=lw, markersize=ms,
+                               label='SBP-{}, {}, {}, r={:.2f}'.format(sbp_fam[family], sats[sat], degree[p], conv_func))
+                    plt.xlabel(r'$h$')
+                    plt.ylabel(r'error in functional')
+                    plt.legend()
+                    plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
+                    plt.savefig(path + '\\soln_conv_rates\\errs_func_VarOper_{}_p{}.pdf'.format(sats[sat], ps[p]), format='pdf')
+
+            plt.show(3)
+            plt.close(3)
+
+            plt.show(4)
+            plt.close(4)
+
+    # plot adjoint by sat type
+    if plot_by_sat:
+        for p in range(0, len(ps)):
+            for sat in range(0, len(sats)):
+                for family in range(0, len(sbp_families)):
+                    # find node that specify the sbp family
+                    f = results.root.find_node(sbp_families[family])
+
+                    # find node that specify the SAT type
+                    s = f.find_node(sats[sat])
+
+                    # find node that specify the degree of the operator
+                    d = s.find_node(degree[p])
+
+                    # get results saved for each degree
+                    res = d.children[0]
+                    r = SimpleNamespace(**res)
+                    begin = len(r.hs) - 2
+                    end = len(r.hs)
+
+                    # plot adjoint convergence rates
+                    if r.errs_adj:
+                        conv_adj = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_adj[begin:end]), 1)[0])
+                        plt.figure(3)
+                        plt.loglog(r.hs, r.errs_adj, markers[sat], linewidth=lw, markersize=ms,
+                                   label='SBP-{}, {}, {}, r={:.2f}'.format(sbp_fam[family], sats[sat], degree[p], conv_adj))
+                        plt.xlabel(r'$h$')
+                        plt.ylabel(r'error in adjoint')
+                        plt.legend()
+                        plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
+
+                        plt.savefig(path + '\\soln_conv_rates\\errs_adj_VarOper_{}_p{}.pdf'.format(sats[sat], ps[p]), format='pdf')
+                        plt.show()
+                        plt.close()
+
+fam = ['omega']
+sat = ['BO', 'BR2']
+p = [4]
+adj = False
+plt_fam = False
+plt_sat = True
+
+soln = save_results(h=0.5, nrefine=4, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj)
+analyze_results(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat)
 

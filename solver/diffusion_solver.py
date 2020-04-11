@@ -91,7 +91,7 @@ def heat_1d(p, xl, xr, nelem, t0, tf, quad_type, flux_type='BR1', nrefine=1, bou
 def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_type=None, boundary_type=None, sat_type='dg_sat',
               poisson1D_problem_input=None,  a=1, n=1, app=1):
 
-    # get problem statement (ps)
+    # get problem statement (degree)
     prob_input = poisson1D_problem_input()
     ps = SimpleNamespace(**prob_input)
     outputs = ps.choose_output()
@@ -424,7 +424,7 @@ def diffusion_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR1', plot_
     return u
 
 
-def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_fig=False):
+def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_adjoint=False, plot_fig=False):
 
     dim = 2
     nface = dim + 1
@@ -455,6 +455,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_fi
         if refine == 0:
             mesh = MeshGenerator2D.rectangle_mesh(h, bL, bR, bB, bT)
         else:
+            # mesh = MeshGenerator2D.rectangle_mesh(h, bL, bR, bB, bT, True)
             mesh = MeshTools2D.hrefine_uniform_2d(ass_data, bL, bR, bB, bT)
 
         # update assembled data for 2D implementation
@@ -475,7 +476,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_fi
         uNR_fun = lambda x, y: 0
         uDB_fun = lambda x, y: 0
         uNB_fun = lambda x, y: 0
-        uDT_fun = lambda x, y: np.sin(np.pi * x)
+        uDT_fun = lambda x, y: 0 #np.sin(np.pi * x)
         uNT_fun = lambda x, y: 0
 
         rhs_data = RHSCalculator.rhs_poisson_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
@@ -490,23 +491,80 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_fi
         A = rdata.A
         Hg = rdata.Hg
 
-        # get the source term
-        # f = ((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y) + fB.reshape(nelem, nnodes).T).flatten(order="F")
-        f = (fB.reshape(nelem, nnodes).T).flatten(order="F")
-
-        # solve the linear system
-        u = (spsolve(A, f)).reshape((nnodes, nelem), order="F")
+        # get the source term for primal problem
+        n = m = 2
+        f = (- (m**2*np.pi**2) * np.sin(m*np.pi * x) * np.sin(n*np.pi * y) \
+            - (n**2*np.pi**2) * np.sin(m*np.pi * x) * np.sin(n*np.pi * y)).flatten(order='F')
+        # f = ((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y) + fB).flatten(order="F")
+        # f = (fB.reshape(nelem, nnodes).T).flatten(order="F")
+        # f = fB
 
         # exact solution
-        # u_exact = np.sin(np.pi * x) * np.sin(np.pi * y)
-        u_exact = 1/(np.sinh(np.pi)) * np.sinh(np.pi*y) * np.sin(np.pi*x)
+        u_exact = np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
+        # u_exact = 1 / (np.sinh(np.pi)) * np.sinh(np.pi * y) * np.sin(np.pi * x)
+
+        # solve primal problem
+        u = (spsolve(A, f)).reshape((nnodes, nelem), order="F")
 
         # error calculation
-        # err = np.linalg.norm((u - u_exact), 2)
-        err_soln = np.sqrt((u - u_exact).flatten(order="F") @ Hg @ (u - u_exact).flatten(order="F"))\
-               /np.sqrt((u_exact).flatten(order="F") @ Hg @ (u_exact).flatten(order="F"))
+        err_soln = np.sqrt((u - u_exact).flatten(order="F") @ Hg @ (u - u_exact).flatten(order="F"))
+                  # / np.sqrt((u_exact).flatten(order="F") @ Hg @ (u_exact).flatten(order="F"))
 
         errs_soln.append(err_soln)
+
+        # adjoint problem
+        if solve_adjoint is True:
+            psi = np.zeros(u.shape)
+            # define boundary conditions on a rectangular domain
+            uDL_fun = lambda x, y: 0
+            uNL_fun = lambda x, y: 0
+            uDR_fun = lambda x, y: 0
+            uNR_fun = lambda x, y: 0
+            uDB_fun = lambda x, y: 0
+            uNB_fun = lambda x, y: 0
+            uDT_fun = lambda x, y: 0
+            uNT_fun = lambda x, y: 0
+
+            rhs_data = RHSCalculator.rhs_poisson_sbp_2d(p, psi, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
+                                                     adata.Ds, adata.H, adata.B1,adata.B2, adata.B3, adata.R1, adata.R2, adata.R3,
+                                                     adata.nx, adata.ny, adata.rx, adata.ry, adata.sx, adata.sy,
+                                                     adata.etoe, adata.etof,  adata.bgrp, adata.bgrpD, adata.bgrpN,
+                                                     adata.nelem, adata.surf_jac, adata.jac, flux_type, uDL_fun, uNL_fun,
+                                                     uDR_fun, uNR_fun, uDB_fun, uNB_fun, uDT_fun, uNT_fun, bL, bR, bB, bT,
+                                                     None, adata.etoe2, adata.etof2, adata.etof_nbr)
+            rdata = SimpleNamespace(**rhs_data)
+            fB_adj = rdata.fB
+            A_adj = rdata.A
+            Hg = rdata.Hg
+
+            # get source term for adjoint problem
+            # g = ((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y)).flatten(order='F') + fB_adj.flatten(order="F")
+            g = np.ones((nelem*nnodes, 1))
+
+            # exact adjoint
+            psi_exact = np.sin(np.pi * x) * np.sin(np.pi * y)
+
+            # solve primal problem
+            psi = (spsolve(A_adj, g)).reshape((nnodes, nelem), order="F")
+
+            # error calculation
+            err_adj = np.sqrt((psi - psi_exact).flatten(order="F") @ Hg @ (psi - psi_exact).flatten(order="F"))
+                       #/ np.sqrt((psi_exact).flatten(order="F") @ Hg @ (psi_exact).flatten(order="F"))
+
+            errs_adj.append(err_adj)
+
+        # calculate functional superconvergece
+        func = (((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y)).reshape((-1, 1), order='F').T \
+               @ Hg @ u.reshape((-1, 1), order='F')).flatten()[0]
+        func_exact = (-(-1)**n + 1)/(np.pi**2*n*m) * (-(-1)**m + 1)
+        # func_exact = -np.pi/2  # obtained using Wolfram Alpha
+        # func = np.ones((nelem * nnodes, 1)).T @ Hg @ u.flatten(order='F')
+        # func_exact = 2*np.tanh(np.pi/2)/(np.pi**2)   # obtained using Wolfram Alpha
+        # func = np.ones((nelem * nnodes, 1)).T @ Hg @ ((u.flatten(order='F'))**2)
+        # func_exact = (1/np.tanh(np.pi) - np.pi * 1/(np.sinh(np.pi)**2))/(4*np.pi)  # obtained using Wolfram Alpha
+        err_func = np.abs(func - func_exact)
+
+        errs_func.append(err_func)
 
         # get number of elements and calculate element size
         nelems.append(nelem)
@@ -524,20 +582,30 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', plot_fi
         # cond_nums.append(cond_num)
 
         # visualize result
-        print("error =", "{:.4e}".format(err_soln), "; nelem =", nelem, "; h =", "{:.4f}".format(h),
-              "; ", sbp_family, "; ", flux_type, "; p =", p, "; nnz_elem =", nnz_elem)
+        print("error_soln =", "{:.4e}".format(err_soln), "; error_func =", "{:.4e}".format(err_func), "; nelem =", nelem,
+              "; h =", "{:.4f}".format(h),"; ", sbp_family, "; ", flux_type, "; p =", p, "; nnz_elem =", nnz_elem)
+        if solve_adjoint is True:
+            print("error_adj =", "{:.4e}".format(err_adj))
+
         if plot_fig==True:
             # plot_figure_2d(x, y, u_exact)
             plot_figure_2d(x, y, u)
 
+            if solve_adjoint is True:
+                plot_figure_2d(x, y, psi)
+                plot_figure_2d(x, y, psi_exact)
+
+            # plot_figure_2d(x, y, u - u_exact)
+
             # path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\pysbp_results\\advec_diff_results\\figures\\'
-            plt.spy(A, marker='o', markeredgewidth=0, markeredgecolor='y', markersize=5, markerfacecolor='r')
+            # plt.spy(A, marker='o', markeredgewidth=0, markeredgecolor='y', markersize=5, markerfacecolor='r')
             # plt.savefig(path + 'sparsity_{}.pdf'.format(flux_type), format='pdf')
             # plt.close()
             plt.show()
 
-    return {'nelems': nelems, 'hs': hs, 'errs_soln': errs_soln, 'eig_vals': eig_vals, 'nnz_elems': nnz_elems}
+    return {'nelems': nelems, 'hs': hs, 'errs_soln': errs_soln, 'eig_vals': eig_vals, 'nnz_elems': nnz_elems,
+            'errs_adj': errs_adj, 'errs_func': errs_func}
 
-# poisson_sbp_2d(1, 0.5, 4, 'gamma', 'BR2', plot_fig=True)
+# poisson_sbp_2d(1, 0.5, 3, 'gamma', 'BR2', plot_fig=True, solve_adjoint=False)
 # diffusion_sbp_2d(1, 0.5, 4, 'gamma', 'BR1', plot_fig=True)
 # poisson_2d(1, 0.125, 1,'BR2')

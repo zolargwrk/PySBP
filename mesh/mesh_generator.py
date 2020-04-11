@@ -3,7 +3,9 @@ import numpy as np
 import warnings
 import meshzoo
 import meshio
+import pygmsh
 import dmsh
+import gmsh
 from src.csbp_type_operators import CSBPTypeOperators
 import scipy.io
 
@@ -128,15 +130,78 @@ class MeshGenerator2D:
         return
 
     @staticmethod
-    def rectangle_mesh(h, bL=-1, bR=1, bB=-1, bT=1):
+    def rectangle_mesh(h, bL=-1, bR=1, bB=-1, bT=1, refine=False):
         # ----------------------
+        # geo = dmsh.Rectangle(bL, bR, bB, bT)
+        # left = bL #* np.pi
+        # right = bR #* np.pi
+        # bottom = bB #* np.pi
+        # top = bT #* np.pi
+
+        # ------------------- dmsh ------------
         geo = dmsh.Rectangle(bL, bR, bB, bT)
-        left = bL #* np.pi
-        right = bR #* np.pi
-        bottom = bB #* np.pi
-        top = bT #* np.pi
-        geo = dmsh.Rectangle(left, right, bottom, top)
         vxy, etov = dmsh.generate(geo, h)
+
+        #-------------------- meshzoo ---------
+        # vxy, etov = meshzoo.rectangle(xmin=bL, xmax=bR, ymin=bB, ymax=bT, nx=int(np.ceil(2/h**2)+1),
+        #                               ny=int(np.ceil(2/h**2)+1), zigzag=False)
+        # vxy = vxy[:, 0:2]
+        # --------------------- gmsh -------
+        gmsh.initialize()
+        gmsh.model.geo.addPoint(bL, bB, 0, h, 1)
+        gmsh.model.geo.addPoint(bR, bB, 0, h, 2)
+        gmsh.model.geo.addPoint(bR, bT, 0, h, 3)
+        gmsh.model.geo.addPoint(bL, bT, 0, h, 4)
+        gmsh.model.geo.addLine(1, 2, 1)
+        gmsh.model.geo.addLine(3, 2, 2)
+        gmsh.model.geo.addLine(3, 4, 3)
+        gmsh.model.geo.addLine(4, 1, 4)
+        gmsh.model.geo.addCurveLoop([4, 1, -2, 3], 1)
+        gmsh.model.geo.addPlaneSurface([1], 1)
+        gmsh.model.addPhysicalGroup(1, [1, 2, 4], 5)
+        ps = gmsh.model.addPhysicalGroup(2, [1])
+        gmsh.model.setPhysicalName(2, ps, "Dirichlet top Boundary")
+        gmsh.model.geo.synchronize()
+        gmsh.model.mesh.generate(2)
+        # gmsh.fltk.run()  # see mesh
+
+        # refine mesh
+        if refine:
+            gmsh.model.mesh.refine()
+
+        # get element to vertex connectivity matrix
+        connect_elems = gmsh.model.mesh.getNodesByElementType(2)
+        etov = connect_elems[0].reshape((-1, 3)) - np.min(connect_elems[0].reshape((-1, 3)))
+        # get coordinates of the nodes
+        nodes = np.hstack([connect_elems[0].reshape((-1, 1)) - np.min(connect_elems[0].reshape((-1, 1))),
+                            connect_elems[1].reshape((-1, 3))])
+        nodes_sorted = nodes[nodes[:, 0].argsort()]
+        vxy = np.unique(nodes_sorted, axis=0)[:, 1:3]
+
+        gmsh.finalize()
+
+        # #------------------- gmsh ---------
+        # gmsh.initialize()
+        # gmsh.model.occ.addRectangle(0, 0, 0, 1, 1, 5)
+        # # gmsh.model.occ.setMeshSize(2, h)
+        # gmsh.model.occ.synchronize()
+        # gmsh.model.mesh.generate(2)
+        #
+        # # uniform mesh refinement
+        # for i in range(0, nrefine):
+        #     gmsh.model.mesh.refine()
+        #
+        # # get element to vertex connectivity matrix
+        # connect_elems = gmsh.model.mesh.getNodesByElementType(2, 5)
+        # etov = connect_elems[0].reshape((-1, 3)) - np.min(connect_elems[0].reshape((-1, 3)))
+        # # get coordinates of the nodes
+        # nodes = np.hstack([connect_elems[0].reshape((-1, 1)) - np.min(connect_elems[0].reshape((-1, 1))),
+        #                     connect_elems[1].reshape((-1, 3))])
+        # nodes_sorted = nodes[nodes[:, 0].argsort()]
+        # vxy = np.unique(nodes_sorted, axis=0)[:, 1:3]
+        # # gmsh.fltk.run()  # see mesh
+        # gmsh.finalize()
+        # #----------------
 
         # # vxy, etov = optimesh.cvt.quasi_newton_uniform_full(vxy, etov, 1.0e-10, 100)
         # # NOTE: optimesh gives rise to error when solving with h=0.4 (this is very weired, took me a whole day to figure
@@ -204,7 +269,7 @@ class MeshGenerator2D:
         vxy_edge = vxy[edge_vec, :].reshape((2, 3 * nelem * 2), order='F')
         vxy_mid = np.mean(vxy_edge, axis=0).reshape((3 * nelem, 2), order='F')
 
-        return vxy_mid, edge
+        return vxy_mid, edge.astype(int)
 
     @staticmethod
     def get_bgrp(vxy_mid, edge, bL, bR, bB, bT):
@@ -217,7 +282,7 @@ class MeshGenerator2D:
         # bottom = -1
         # top = 1
 
-        tol = 1e-10
+        tol = 1e-12
         bgrp = list()
         # left boundary
         i = np.abs(vxy_mid[:, 0] - bL) < tol

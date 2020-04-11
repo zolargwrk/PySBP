@@ -304,6 +304,8 @@ class MeshTools2D:
         # match
         matchL = np.vstack([sorted[indx, :], sorted[indx + 1, :]])
         matchR = np.vstack([sorted[indx + 1, :], sorted[indx, :]])
+        matchL = matchL.astype(int)
+        matchR = matchR.astype(int)
 
         etoe_temp = (etoe.reshape((etoe.shape[0]*etoe.shape[1], 1), order='F'))
         etoe_temp[matchL[:, 1].T] = np.asarray(matchR[:, 2]).reshape(len(matchR[:, 2]), 1)
@@ -750,9 +752,9 @@ class MeshTools2D:
         for i in range(0, len(btype)):
             bndry = btype[i]
             if bndry == 'd' or bndry == 'D' or bndry =='Dirichlet':
-                bgrpDs.append(bgrp[i])
+                bgrpDs.append(bgrp[i].astype(int))
             elif bndry == 'n' or bndry == 'N' or bndry == 'Neumann':
-                bgrpNs.append(bgrp[i])
+                bgrpNs.append(bgrp[i].astype(int))
 
         if bgrpDs !=[]:
             bgrpD = np.vstack(bgrpDs)[:, 2:4]
@@ -823,7 +825,7 @@ class MeshTools2D:
 
         # renumber face centers starting from nv which is due to the already existing vertices 0 to nv,
         # where nv is the total number of vertices
-        nv = np.max(etov)+1
+        nv = int(np.max(etov)+1)
         ids = np.unique(np.hstack([v3, v4, v5]))
         newids = np.zeros((max(ids)+1, 1), dtype=int)
         newids[ids, 0] = np.arange(0, len(ids), dtype=int)
@@ -870,8 +872,8 @@ class MeshTools2D:
         y2 = vy[v2]
 
         vmax = np.max([v3, v4, v5])
-        vx = np.vstack([vx.reshape(len(vx), 1), np.zeros((vmax - len(vx) + 1, 1))])
-        vy = np.vstack([vy.reshape(len(vy), 1), np.zeros((vmax - len(vy) + 1, 1))])
+        vx = np.vstack([vx.reshape(len(vx), 1), np.zeros((int(vmax) - len(vx) + 1, 1))])
+        vy = np.vstack([vy.reshape(len(vy), 1), np.zeros((int(vmax) - len(vy) + 1, 1))])
 
         vx[v3, 0] = 0.5*(x0 + x1)
         vy[v3, 0] = 0.5*(y0 + y1)
@@ -907,7 +909,7 @@ class MeshTools2D:
         nface = dim + 1
         nfp = int(xf.shape[0]/nface)
         nelem = xf.shape[1]
-        tol = 1e-10
+        tol = 1e-12
 
         # boundary facet nodes by facet number
         fid1 = np.arange(0, nfp)

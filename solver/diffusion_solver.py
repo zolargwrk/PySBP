@@ -495,6 +495,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         n = m = 2
         f = (- (m**2*np.pi**2) * np.sin(m*np.pi * x) * np.sin(n*np.pi * y) \
             - (n**2*np.pi**2) * np.sin(m*np.pi * x) * np.sin(n*np.pi * y)).flatten(order='F')
+
         # f = ((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y) + fB).flatten(order="F")
         # f = (fB.reshape(nelem, nnodes).T).flatten(order="F")
         # f = fB
@@ -557,13 +558,14 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         func = (((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y)).reshape((-1, 1), order='F').T \
                @ Hg @ u.reshape((-1, 1), order='F')).flatten()[0]
         func_exact = (-(-1)**n + 1)/(np.pi**2*n*m) * (-(-1)**m + 1)
-        # func_exact = -np.pi/2  # obtained using Wolfram Alpha
-        # func = np.ones((nelem * nnodes, 1)).T @ Hg @ u.flatten(order='F')
+
+        # func = (np.ones((nelem * nnodes, 1)).T @ Hg @ u.flatten(order='F'))[0]
         # func_exact = 2*np.tanh(np.pi/2)/(np.pi**2)   # obtained using Wolfram Alpha
+
         # func = np.ones((nelem * nnodes, 1)).T @ Hg @ ((u.flatten(order='F'))**2)
         # func_exact = (1/np.tanh(np.pi) - np.pi * 1/(np.sinh(np.pi)**2))/(4*np.pi)  # obtained using Wolfram Alpha
-        err_func = np.abs(func - func_exact)
 
+        err_func = np.abs(func - func_exact)
         errs_func.append(err_func)
 
         # get number of elements and calculate element size
@@ -578,12 +580,14 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         nnz_elem = A.count_nonzero()
         nnz_elems.append(nnz_elem)
 
-        # cond_num = np.linalg.cond(A) # need to find a way to calculate the condition number of a sparse matrix
-        # cond_nums.append(cond_num)
+        cond_num = np.linalg.cond(A.todense()) # need to find a way to calculate the condition number of a sparse matrix
+        cond_nums.append(cond_num)
+
 
         # visualize result
         print("error_soln =", "{:.4e}".format(err_soln), "; error_func =", "{:.4e}".format(err_func), "; nelem =", nelem,
-              "; h =", "{:.4f}".format(h),"; ", sbp_family, "; ", flux_type, "; p =", p, "; nnz_elem =", nnz_elem)
+              "; h =", "{:.4f}".format(h),"; ", sbp_family, "; ", flux_type, "; p =", p, "; cond_num =", "{:.4e}".format(cond_num),
+              "; nnz_elem =", nnz_elem)
         if solve_adjoint is True:
             print("error_adj =", "{:.4e}".format(err_adj))
 
@@ -604,8 +608,8 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             plt.show()
 
     return {'nelems': nelems, 'hs': hs, 'errs_soln': errs_soln, 'eig_vals': eig_vals, 'nnz_elems': nnz_elems,
-            'errs_adj': errs_adj, 'errs_func': errs_func}
+            'errs_adj': errs_adj, 'errs_func': errs_func, 'cond_nums': cond_nums}
 
-# poisson_sbp_2d(1, 0.5, 3, 'gamma', 'BR2', plot_fig=True, solve_adjoint=False)
+poisson_sbp_2d(1, 0.5, 1, 'gamma', 'BR2', plot_fig=True, solve_adjoint=False)
 # diffusion_sbp_2d(1, 0.5, 4, 'gamma', 'BR1', plot_fig=True)
 # poisson_2d(1, 0.125, 1,'BR2')

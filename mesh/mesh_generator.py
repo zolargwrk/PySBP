@@ -139,8 +139,8 @@ class MeshGenerator2D:
         # top = bT #* np.pi
 
         # ------------------- dmsh ------------
-        geo = dmsh.Rectangle(bL, bR, bB, bT)
-        vxy, etov = dmsh.generate(geo, h)
+        # geo = dmsh.Rectangle(bL, bR, bB, bT)
+        # vxy, etov = dmsh.generate(geo, h)
 
         #-------------------- meshzoo ---------
         # vxy, etov = meshzoo.rectangle(xmin=bL, xmax=bR, ymin=bB, ymax=bT, nx=int(np.ceil(2/h**2)+1),

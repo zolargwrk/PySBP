@@ -213,7 +213,7 @@ def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False,
     plt.rcParams.update(params)
     lw = 3      # lineweight
     ms = 12     # markersize
-    markers = ['--*g', '--sy', '--<r', '--ob', '--Dm']
+    markers = ['--*g', '--sy', '--<r', '--ob', '--dm', '--hc', '--X']
 
     # plot solution by sbp family
     if plot_by_family:
@@ -257,7 +257,8 @@ def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False,
                     plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
                     plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
                     plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
-                    plt.savefig(path + '\\soln_conv_rates\\errs_soln_VarOper_{}_p{}.pdf'.format(sats[sat], ps[p]), format='pdf')
+                    plt.savefig(path + '\\soln_conv_rates\\errs_soln_VarOper_{}_p{}.pdf'.format(sbp_families[family], ps[p]), format='pdf')
+
 
                     # plot functional convergence rates
                     plt.figure(2)
@@ -269,14 +270,10 @@ def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False,
                     plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
                     plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
                     plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
-                    plt.savefig(path + '\\soln_conv_rates\\errs_func_VarOper_{}_p{}.pdf'.format(sats[sat], ps[p]), format='pdf')
-        plt.show()
+                    plt.savefig(path + '\\func_conv_rates\\errs_func_VarOper_{}_p{}.pdf'.format(sbp_families[family], ps[p]), format='pdf')
 
-                # plt.show(1)
-                # plt.close(1)
-                #
-                # plt.show(2)
-                # plt.close(2)
+                plt.show()
+
 
     # plot adjoint by spb family
     if plot_by_sat:
@@ -361,7 +358,7 @@ def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False,
                     plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
                     plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
                     plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
-                    plt.savefig(path + '\\soln_conv_rates\\errs_soln_VarOper_{}_p{}.pdf'.format(sbp_families[family], ps[p]), format='pdf')
+                    plt.savefig(path + '\\soln_conv_rates\\errs_soln_VarSAT_{}_p{}.pdf'.format(sbp_families[family], ps[p]), format='pdf')
 
                     # plot functional convergence rates
                     plt.figure(4)
@@ -374,13 +371,9 @@ def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False,
                     plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
                     plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
                     plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
-                    plt.savefig(path + '\\soln_conv_rates\\errs_func_VarOper_{}_p{}.pdf'.format(sbp_families[family], ps[p]), format='pdf')
+                    plt.savefig(path + '\\func_conv_rates\\errs_func_VarSAT_{}_p{}.pdf'.format(sbp_families[family], ps[p]), format='pdf')
 
-                plt.show(3)
-                plt.close(3)
-
-                plt.show(4)
-                plt.close(4)
+                plt.show()
 
     # plot adjoint by sat type
     if plot_by_sat:
@@ -423,13 +416,21 @@ def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False,
                         plt.show()
                         plt.close()
 
-fam = ['omega']
-sat = ['CDG']
-p = [1, 2, 3, 4]
-adj = False
-plt_fam = True #False
-plt_sat = False #True
+    return
 
+
+# fam = ['gamma', 'omega', 'diagE']
+# sat = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG']
+# p = [1, 2, 3, 4]
+fam = ['gamma']
+sat = ['BR1', 'BR2']
+# sat = ['LDG', 'CDG']
+p = [4]
+adj = False
+plt_fam = False
+plt_sat = True
+
+soln = None
 soln = save_results(h=0.5, nrefine=4, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=False)
 analyze_results(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat, results=soln)
 

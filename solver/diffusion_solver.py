@@ -10,6 +10,7 @@ from src.error_conv import calc_err, calc_conv
 from types import SimpleNamespace
 from scipy import sparse
 import matplotlib.pyplot as plt
+import time
 from solver.problem_statements import poisson1D_problem_input
 
 
@@ -335,9 +336,10 @@ def poisson_2d(p, h, nrefine=1, flux_type='BR2'):
 
         plot_conv_fig(hs[1:], errs[1:], conv_start, conv_end)
 
-    plot_figure_2d(x, y, u)
+    # plot_figure_2d(x, y, u)
+    # plot_figure_2d(x, y, u_exact)
     print(errs)
-    plot_figure_2d(x, y, u_exact)
+    print(A.count_nonzero())
 
     return u
 
@@ -492,7 +494,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         Hg = rdata.Hg
 
         # get the source term for primal problem
-        n = m = 2
+        n = m = 4
         f = (- (m**2*np.pi**2) * np.sin(m*np.pi * x) * np.sin(n*np.pi * y) \
             - (n**2*np.pi**2) * np.sin(m*np.pi * x) * np.sin(n*np.pi * y)).flatten(order='F')
 
@@ -545,7 +547,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             # exact adjoint
             psi_exact = np.sin(np.pi * x) * np.sin(np.pi * y)
 
-            # solve primal problem
+            # solve adjoint problem
             psi = (spsolve(A_adj, g)).reshape((nnodes, nelem), order="F")
 
             # error calculation
@@ -555,11 +557,12 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             errs_adj.append(err_adj)
 
         # calculate functional superconvergece
-        func = (((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y)).reshape((-1, 1), order='F').T \
-               @ Hg @ u.reshape((-1, 1), order='F')).flatten()[0]
-        func_exact = (-(-1)**n + 1)/(np.pi**2*n*m) * (-(-1)**m + 1)
+        # func = (((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y)).reshape((-1, 1), order='F').T \
+        #        @ Hg @ u.reshape((-1, 1), order='F')).flatten()[0]
+        # func_exact = 0
 
-        # func = (np.ones((nelem * nnodes, 1)).T @ Hg @ u.flatten(order='F'))[0]
+        func = (np.ones((nelem * nnodes, 1)).T @ Hg @ u.flatten(order='F'))[0]
+        func_exact = (-(-1) ** n + 1) / (np.pi ** 2 * n * m) * (-(-1) ** m + 1) # obtained using https://www.symbolab.com/solver
         # func_exact = 2*np.tanh(np.pi/2)/(np.pi**2)   # obtained using Wolfram Alpha
 
         # func = np.ones((nelem * nnodes, 1)).T @ Hg @ ((u.flatten(order='F'))**2)
@@ -580,8 +583,15 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         nnz_elem = A.count_nonzero()
         nnz_elems.append(nnz_elem)
 
-        cond_num = np.linalg.cond(A.todense()) # need to find a way to calculate the condition number of a sparse matrix
+        # calculate the condition number (note that it can be evaluated as the ratio of the maximum to the minimum singular value of A)
+        # tic = time.time()
+        U, Sigma, Vh = sparse.linalg.svds(A)
+        # toc = time.time()
+        # print(toc-tic)
+        cond_num = np.max(Sigma)/np.min(Sigma)
         cond_nums.append(cond_num)
+        if not cond_nums:
+            cond_num = 0
 
 
         # visualize result
@@ -610,6 +620,6 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
     return {'nelems': nelems, 'hs': hs, 'errs_soln': errs_soln, 'eig_vals': eig_vals, 'nnz_elems': nnz_elems,
             'errs_adj': errs_adj, 'errs_func': errs_func, 'cond_nums': cond_nums}
 
-poisson_sbp_2d(1, 0.5, 1, 'gamma', 'BR2', plot_fig=True, solve_adjoint=False)
-# diffusion_sbp_2d(1, 0.5, 4, 'gamma', 'BR1', plot_fig=True)
-# poisson_2d(1, 0.125, 1,'BR2')
+# poisson_sbp_2d(4, 0.5, 1, 'omega', 'BR1', plot_fig=False, solve_adjoint=False)
+# diffusion_sbp_2d(1, 0.5, 1, 'gamma', 'BR1', plot_fig=False)
+poisson_2d(1, 0.5, 1,'BR2')

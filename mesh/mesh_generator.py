@@ -137,48 +137,50 @@ class MeshGenerator2D:
         # right = bR #* np.pi
         # bottom = bB #* np.pi
         # top = bT #* np.pi
-
+        mshgenerator = 'dmsh'
         # ------------------- dmsh ------------
-        # geo = dmsh.Rectangle(bL, bR, bB, bT)
-        # vxy, etov = dmsh.generate(geo, h)
+        if mshgenerator=='dmsh':
+            geo = dmsh.Rectangle(bL, bR, bB, bT)
+            vxy, etov = dmsh.generate(geo, h)
 
         #-------------------- meshzoo ---------
         # vxy, etov = meshzoo.rectangle(xmin=bL, xmax=bR, ymin=bB, ymax=bT, nx=int(np.ceil(2/h**2)+1),
         #                               ny=int(np.ceil(2/h**2)+1), zigzag=False)
         # vxy = vxy[:, 0:2]
         # --------------------- gmsh -------
-        gmsh.initialize()
-        gmsh.model.geo.addPoint(bL, bB, 0, h, 1)
-        gmsh.model.geo.addPoint(bR, bB, 0, h, 2)
-        gmsh.model.geo.addPoint(bR, bT, 0, h, 3)
-        gmsh.model.geo.addPoint(bL, bT, 0, h, 4)
-        gmsh.model.geo.addLine(1, 2, 1)
-        gmsh.model.geo.addLine(3, 2, 2)
-        gmsh.model.geo.addLine(3, 4, 3)
-        gmsh.model.geo.addLine(4, 1, 4)
-        gmsh.model.geo.addCurveLoop([4, 1, -2, 3], 1)
-        gmsh.model.geo.addPlaneSurface([1], 1)
-        gmsh.model.addPhysicalGroup(1, [1, 2, 4], 5)
-        ps = gmsh.model.addPhysicalGroup(2, [1])
-        gmsh.model.setPhysicalName(2, ps, "Dirichlet top Boundary")
-        gmsh.model.geo.synchronize()
-        gmsh.model.mesh.generate(2)
-        # gmsh.fltk.run()  # see mesh
+        elif mshgenerator == 'gmsh':
+            gmsh.initialize()
+            gmsh.model.geo.addPoint(bL, bB, 0, h, 1)
+            gmsh.model.geo.addPoint(bR, bB, 0, h, 2)
+            gmsh.model.geo.addPoint(bR, bT, 0, h, 3)
+            gmsh.model.geo.addPoint(bL, bT, 0, h, 4)
+            gmsh.model.geo.addLine(1, 2, 1)
+            gmsh.model.geo.addLine(3, 2, 2)
+            gmsh.model.geo.addLine(3, 4, 3)
+            gmsh.model.geo.addLine(4, 1, 4)
+            gmsh.model.geo.addCurveLoop([4, 1, -2, 3], 1)
+            gmsh.model.geo.addPlaneSurface([1], 1)
+            gmsh.model.addPhysicalGroup(1, [1, 2, 4], 5)
+            ps = gmsh.model.addPhysicalGroup(2, [1])
+            gmsh.model.setPhysicalName(2, ps, "Dirichlet top Boundary")
+            gmsh.model.geo.synchronize()
+            gmsh.model.mesh.generate(2)
+            # gmsh.fltk.run()  # see mesh
 
-        # refine mesh
-        if refine:
-            gmsh.model.mesh.refine()
+            # refine mesh
+            if refine:
+                gmsh.model.mesh.refine()
 
-        # get element to vertex connectivity matrix
-        connect_elems = gmsh.model.mesh.getNodesByElementType(2)
-        etov = connect_elems[0].reshape((-1, 3)) - np.min(connect_elems[0].reshape((-1, 3)))
-        # get coordinates of the nodes
-        nodes = np.hstack([connect_elems[0].reshape((-1, 1)) - np.min(connect_elems[0].reshape((-1, 1))),
-                            connect_elems[1].reshape((-1, 3))])
-        nodes_sorted = nodes[nodes[:, 0].argsort()]
-        vxy = np.unique(nodes_sorted, axis=0)[:, 1:3]
+            # get element to vertex connectivity matrix
+            connect_elems = gmsh.model.mesh.getNodesByElementType(2)
+            etov = connect_elems[0].reshape((-1, 3)) - np.min(connect_elems[0].reshape((-1, 3)))
+            # get coordinates of the nodes
+            nodes = np.hstack([connect_elems[0].reshape((-1, 1)) - np.min(connect_elems[0].reshape((-1, 1))),
+                                connect_elems[1].reshape((-1, 3))])
+            nodes_sorted = nodes[nodes[:, 0].argsort()]
+            vxy = np.unique(nodes_sorted, axis=0)[:, 1:3]
 
-        gmsh.finalize()
+            gmsh.finalize()
 
         # #------------------- gmsh ---------
         # gmsh.initialize()
@@ -207,15 +209,16 @@ class MeshGenerator2D:
         # # NOTE: optimesh gives rise to error when solving with h=0.4 (this is very weired, took me a whole day to figure
         # #      out that the issue for the solution divergence was the mesh, got to consider changing the mesher!)
         #-------------------------
-        # mat = scipy.io.loadmat('C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\mesh\\square_mesh_data.mat')
-        # etov = (np.asarray(mat['etov'])-1).astype(int)
-        # vxy = np.asarray(mat['vxy'])
-        # bgrp_mat = (np.asarray(mat['bgrp']))
-        # bgrp = list()
-        # bgrp.append(((np.asarray(bgrp_mat[0][0]) - 1)).astype(int))
-        # bgrp.append(((np.asarray(bgrp_mat[0][1]) - 1)).astype(int))
-        # bgrp.append(((np.asarray(bgrp_mat[0][2]) - 1)).astype(int))
-        # bgrp.append(((np.asarray(bgrp_mat[0][3]) - 1)).astype(int))
+        if mshgenerator=='test':
+            mat = scipy.io.loadmat('C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\mesh\\square_mesh_data.mat')
+            etov = (np.asarray(mat['etov'])-1).astype(int)
+            vxy = np.asarray(mat['vxy'])
+            bgrp_mat = (np.asarray(mat['bgrp']))
+            bgrp = list()
+            bgrp.append(((np.asarray(bgrp_mat[0][0]) - 1)).astype(int))
+            bgrp.append(((np.asarray(bgrp_mat[0][1]) - 1)).astype(int))
+            bgrp.append(((np.asarray(bgrp_mat[0][2]) - 1)).astype(int))
+            bgrp.append(((np.asarray(bgrp_mat[0][3]) - 1)).astype(int))
         #---------------------------------------
 
         vx = vxy[:, 0]

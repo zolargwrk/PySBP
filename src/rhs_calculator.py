@@ -434,6 +434,11 @@ class RHSCalculator:
                                               uDB_fun=None, uNB_fun=None, uDT_fun=None, uNT_fun=None, bL=None, bR=None,
                                               bB=None, bT=None, LB=None, fscale=None):
 
+        # uncomment R matrix for DG test
+        # R1 = np.array([[1, 0, 0], [0, 1, 0]])
+        # R2 = np.array([[0, 1, 0], [0, 0, 1]])
+        # R3 = np.array([[0, 0, 1], [1, 0, 0]])
+
         # get important variables
         nnodes = u.shape[0]
         nelem = u.shape[1]

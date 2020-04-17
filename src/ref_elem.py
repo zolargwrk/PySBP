@@ -437,30 +437,30 @@ class Ref2D_DG:
         # evaluate the vandermonde matrix at face 0
         v_1d = Ref1D.vandermonde_1d(p, r[fmask[:, 0]].flatten())
         # compute mass matrix and E matrix at face 0
-        # mass_f0 = np.linalg.inv(v_1d @ v_1d.T)
-        mass_f0 = np.eye(2)
+        mass_f0 = np.linalg.inv(v_1d @ v_1d.T)
+        # mass_f0 = np.eye(2)
         e_mat[fmask[:, 0].reshape(nfp, 1), np.arange(0, nfp)] = mass_f0
 
         # evaluate the vandermonde matrix at face 1
         v_1d = Ref1D.vandermonde_1d(p, s[fmask[:, 1]].flatten())
         # compute mass matrix and E matrix at face 1
-        # mass_f1 = np.linalg.inv(v_1d @ v_1d.T)
-        mass_f1 = np.array([[np.sqrt(2), 0], [0, np.sqrt(2)]])
+        mass_f1 = np.linalg.inv(v_1d @ v_1d.T)
+        # mass_f1 = np.array([[np.sqrt(2), 0], [0, np.sqrt(2)]])
         e_mat[fmask[:, 1].reshape(nfp, 1), np.arange(nfp, 2*nfp)] = mass_f1
 
         # evaluate the vandermonde matrix at face 2
         v_1d = Ref1D.vandermonde_1d(p, s[fmask[:, 2]].flatten())
         # compute mass matrix and E matrix at face 2
-        # mass_f2 = np.linalg.inv(v_1d @ v_1d.T)
-        mass_f2 = np.eye(2)
+        mass_f2 = np.linalg.inv(v_1d @ v_1d.T)
+        # mass_f2 = np.eye(2)
         e_mat[fmask[:, 2].reshape(nfp, 1), np.arange(2*nfp, 3*nfp)] = mass_f2
 
         # compute the 2D vandermonde matrix
         v = Ref2D_DG.vandermonde_2d(p, r, s)
         # compute lift
-        # lift = (v @ v.T) @ e_mat
-        H_inv = 1.5*np.eye(3)
-        lift = H_inv @ e_mat
+        lift = (v @ v.T) @ e_mat
+        # H_inv = 1.5*np.eye(3)
+        # lift = H_inv @ e_mat
 
         return lift
 

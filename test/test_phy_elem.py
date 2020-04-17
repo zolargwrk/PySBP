@@ -13,7 +13,7 @@ class TestPhy2D_SBP(unittest.TestCase):
         tol = 1e-9
         p = 1
         sbp_family = 'gamma'
-        flux_type = 'BR2'
+        flux_type = 'BR1'
         h = 0.5
         nrefine = 1
         nface = 3

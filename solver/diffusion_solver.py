@@ -426,7 +426,8 @@ def diffusion_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR1', plot_
     return u
 
 
-def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_adjoint=False, plot_fig=False):
+def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_adjoint=False, plot_fig=False,
+                   calc_condition_num = False):
 
     dim = 2
     nface = dim + 1
@@ -584,14 +585,11 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         nnz_elems.append(nnz_elem)
 
         # calculate the condition number (note that it can be evaluated as the ratio of the maximum to the minimum singular value of A)
-        # tic = time.time()
-        U, Sigma, Vh = sparse.linalg.svds(A)
-        # toc = time.time()
-        # print(toc-tic)
-        cond_num = np.max(Sigma)/np.min(Sigma)
-        cond_nums.append(cond_num)
-        if not cond_nums:
+        if calc_condition_num is True:
+            cond_num = np.linalg.cond(A.toarray())
+        else:
             cond_num = 0
+        cond_nums.append(cond_num)
 
 
         # visualize result
@@ -622,4 +620,4 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
 
 # poisson_sbp_2d(4, 0.5, 1, 'omega', 'BR1', plot_fig=False, solve_adjoint=False)
 # diffusion_sbp_2d(1, 0.5, 1, 'gamma', 'BR1', plot_fig=False)
-poisson_2d(1, 0.5, 1,'BR2')
+# poisson_2d(1, 0.5, 1,'BR2')

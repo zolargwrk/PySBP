@@ -137,7 +137,7 @@ class MeshGenerator2D:
         # right = bR #* np.pi
         # bottom = bB #* np.pi
         # top = bT #* np.pi
-        mshgenerator = 'dmsh'
+        mshgenerator = 'gmsh'
         # ------------------- dmsh ------------
         if mshgenerator=='dmsh':
             geo = dmsh.Rectangle(bL, bR, bB, bT)

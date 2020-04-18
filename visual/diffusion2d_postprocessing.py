@@ -101,7 +101,8 @@ class DataTree(object):
         self.root = Node(value)
 
 
-def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_adjoint=True, save_results=True):
+def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_adjoint=True, save_results=True,
+                 calc_cond =False):
 
     if sbp_families is None:
         sbp_families = ['gamma', 'omega', 'diagE']
@@ -137,7 +138,8 @@ def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_
                 found_node2.add_node(degree[p])
 
                 # solve the Poisson problem and obtain data
-                soln = poisson_sbp_2d(ps[p], h, nrefine, sbp_families[family], sats[sat], solve_adjoint)
+                soln = poisson_sbp_2d(ps[p], h, nrefine, sbp_families[family], sats[sat], solve_adjoint, plot_fig=False,
+                                      calc_condition_num=calc_cond)
 
                 # add data to the leaves of the tree
                 found_node3 = found_node2.find_node(degree[p])
@@ -146,18 +148,18 @@ def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_
     # save result
     if save_results:
         path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\visual\\poisson2d_results\\'
-        with open(path+'results_poisson2D.pickle', 'wb') as outfile:
+        with open(path+'results_poisson2D_v2.pickle', 'wb') as outfile:
             pickle.dump(results, outfile)
         
     return results
 
 
-def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False, plot_by_sat=False, results=None):
+def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False, plot_by_sat=False, results=None, save_fig=False):
 
     path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\visual\\poisson2d_results\\'
     if results is None:
         # solve and obtain results or open saved from file
-        with open(path+'results_poisson2D.pickle', 'rb') as infile:
+        with open(path+'results_poisson2D_v2.pickle', 'rb') as infile:
             results = pickle.load(infile)
 
     if sbp_families is None:
@@ -234,19 +236,21 @@ def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False,
                     # get results saved for each degree
                     res = d.children[0]
                     r = SimpleNamespace(**res)
-                    # begin = len(r.hs) - 2
-                    # end = len(r.hs)
-                    begin = -2
-                    end = -1
+                    begin = len(r.hs) - 3
+                    end = len(r.hs)
+                    # begin = -2
+                    # end = -1
 
                     # calculate solution convergence rates
-                    # conv_soln = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_soln[begin:end]), 1)[0])
-                    conv_soln = (np.log10(r.errs_soln[end]) - np.log10(r.errs_soln[begin])) \
-                               / (np.log10(r.hs[end]) - np.log10(r.hs[begin]))
+                    conv_soln = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_soln[begin:end]), 1)[0])
+                    # conv_soln = (np.log10(r.errs_soln[end]) - np.log10(r.errs_soln[begin])) \
+                    #            / (np.log10(r.hs[end]) - np.log10(r.hs[begin]))
+
                     # calculate functional convergence rates
-                    # conv_func = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_func[begin:end]), 1)[0])
-                    conv_func = (np.log10(r.errs_func[end]) - np.log10(r.errs_func[begin])) \
-                               / (np.log10(r.hs[end]) - np.log10(r.hs[begin]))
+                    conv_func = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_func[begin:end]), 1)[0])
+                    # conv_func = (np.log10(r.errs_func[end]) - np.log10(r.errs_func[begin])) \
+                    #            / (np.log10(r.hs[end]) - np.log10(r.hs[begin]))
+
                     # plot solution convergence rates
                     plt.figure(1)
                     plt.loglog(r.hs, r.errs_soln, markers[sat], linewidth=lw, markersize=ms,
@@ -257,7 +261,8 @@ def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False,
                     plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
                     plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
                     plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
-                    plt.savefig(path + '\\soln_conv_rates\\errs_soln_VarOper_{}_p{}.pdf'.format(sbp_families[family], ps[p]), format='pdf')
+                    if save_fig:
+                        plt.savefig(path + '\\soln_conv_rates\\errs_soln_VarOper_{}_p{}.pdf'.format(sbp_families[family], ps[p]), format='pdf')
 
 
                     # plot functional convergence rates
@@ -270,7 +275,8 @@ def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False,
                     plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
                     plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
                     plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
-                    plt.savefig(path + '\\func_conv_rates\\errs_func_VarOper_{}_p{}.pdf'.format(sbp_families[family], ps[p]), format='pdf')
+                    if save_fig:
+                        plt.savefig(path + '\\func_conv_rates\\errs_func_VarOper_{}_p{}.pdf'.format(sbp_families[family], ps[p]), format='pdf')
 
                 plt.show()
 
@@ -292,16 +298,16 @@ def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False,
                     # get results saved for each degree
                     res = d.children[0]
                     r = SimpleNamespace(**res)
-                    # begin = len(r.hs) - 2
-                    # end = len(r.hs)
-                    begin = -2
-                    end = -1
+                    begin = len(r.hs) - 3
+                    end = len(r.hs)
+                    # begin = -2
+                    # end = -1
 
                     # plot adjoint convergence rates
                     if r.errs_adj:
-                        # conv_adj = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_adj[begin:end]), 1)[0])
-                        conv_adj = (np.log10(r.errs_adj[end]) - np.log10(r.errs_adj[begin])) \
-                                   / (np.log10(r.hs[end]) - np.log10(r.hs[begin]))
+                        conv_adj = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_adj[begin:end]), 1)[0])
+                        # conv_adj = (np.log10(r.errs_adj[end]) - np.log10(r.errs_adj[begin])) \
+                        #            / (np.log10(r.hs[end]) - np.log10(r.hs[begin]))
                         plt.figure()
                         plt.loglog(r.hs, r.errs_adj, markers[sat], linewidth=lw, markersize=ms,
                                    label='SBP-{}| {}| {}| r={:.2f}'.format(sbp_fam[sbp_families[family]], sat_name[sats[sat]], degree[p], conv_adj))
@@ -311,8 +317,8 @@ def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False,
                         plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
                         plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
                         plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
-
-                        plt.savefig(path + '\\soln_conv_rates\\errs_adj_VarOper_{}_p{}.pdf'.format(sats[sat], ps[p]), format='pdf')
+                        if save_fig:
+                            plt.savefig(path + '\\soln_conv_rates\\errs_adj_VarOper_{}_p{}.pdf'.format(sats[sat], ps[p]), format='pdf')
                         plt.show()
                         plt.close()
 
@@ -334,19 +340,20 @@ def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False,
                     # get results saved for each degree
                     res = d.children[0]
                     r = SimpleNamespace(**res)
-                    # begin = len(r.hs) - 1
-                    # end = len(r.hs)
-                    begin = -2
-                    end = -1
+                    begin = len(r.hs) - 3
+                    end = len(r.hs)
+                    # begin = -2
+                    # end = -1
 
                     # calculate solution convergence rates
-                    # conv_soln = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_soln[begin:end]), 1)[0])
-                    conv_soln = (np.log10(r.errs_soln[end]) - np.log10(r.errs_soln[begin]))\
-                                /(np.log10(r.hs[end]) - np.log10(r.hs[begin]))
+                    conv_soln = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_soln[begin:end]), 1)[0])
+                    # conv_soln = (np.log10(r.errs_soln[end]) - np.log10(r.errs_soln[begin]))\
+                    #             /(np.log10(r.hs[end]) - np.log10(r.hs[begin]))
+
                     # calculate functional convergence rates
-                    # conv_func = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_func[begin:end]), 1)[0])
-                    conv_func = (np.log10(r.errs_func[end]) - np.log10(r.errs_func[begin])) \
-                                / (np.log10(r.hs[end]) - np.log10(r.hs[begin]))
+                    conv_func = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_func[begin:end]), 1)[0])
+                    # conv_func = (np.log10(r.errs_func[end]) - np.log10(r.errs_func[begin])) \
+                    #             / (np.log10(r.hs[end]) - np.log10(r.hs[begin]))
 
                     # plot solution convergence rates
                     plt.figure(3)
@@ -358,7 +365,8 @@ def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False,
                     plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
                     plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
                     plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
-                    plt.savefig(path + '\\soln_conv_rates\\errs_soln_VarSAT_{}_p{}.pdf'.format(sbp_families[family], ps[p]), format='pdf')
+                    if save_fig:
+                        plt.savefig(path + '\\soln_conv_rates\\errs_soln_VarSAT_{}_p{}.pdf'.format(sbp_families[family], ps[p]), format='pdf')
 
                     # plot functional convergence rates
                     plt.figure(4)
@@ -371,7 +379,8 @@ def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False,
                     plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
                     plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
                     plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
-                    plt.savefig(path + '\\func_conv_rates\\errs_func_VarSAT_{}_p{}.pdf'.format(sbp_families[family], ps[p]), format='pdf')
+                    if save_fig:
+                        plt.savefig(path + '\\func_conv_rates\\errs_func_VarSAT_{}_p{}.pdf'.format(sbp_families[family], ps[p]), format='pdf')
 
                 plt.show()
 
@@ -392,16 +401,16 @@ def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False,
                     # get results saved for each degree
                     res = d.children[0]
                     r = SimpleNamespace(**res)
-                    # begin = len(r.hs) - 1
-                    # end = len(r.hs)
-                    begin = -2
-                    end = -1
+                    begin = len(r.hs) - 3
+                    end = len(r.hs)
+                    # begin = -2
+                    # end = -1
 
                     # plot adjoint convergence rates
                     if r.errs_adj:
-                        # conv_adj = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_adj[begin:end]), 1)[0])
-                        conv_adj = (np.log10(r.errs_adj[end]) - np.log10(r.errs_adj[begin])) \
-                                    / (np.log10(r.hs[end]) - np.log10(r.hs[begin]))
+                        conv_adj = np.abs(np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_adj[begin:end]), 1)[0])
+                        # conv_adj = (np.log10(r.errs_adj[end]) - np.log10(r.errs_adj[begin])) \
+                        #             / (np.log10(r.hs[end]) - np.log10(r.hs[begin]))
                         plt.figure()
                         plt.loglog(r.hs, r.errs_adj, markers[family], linewidth=lw, markersize=ms,
                                    label='SBP-{}, {}, {}, r={:.2f}'.format(sbp_fam[sbp_families[family]], sat_name[sats[sat]], degree[p], conv_adj))
@@ -411,8 +420,8 @@ def analyze_results(sbp_families=None, sats=None, ps=None, plot_by_family=False,
                         plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
                         plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
                         plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
-
-                        plt.savefig(path + '\\soln_conv_rates\\errs_adj_VarOper_{}_p{}.pdf'.format(sbp_families[family], ps[p]), format='pdf')
+                        if save_fig:
+                            plt.savefig(path + '\\soln_conv_rates\\errs_adj_VarOper_{}_p{}.pdf'.format(sbp_families[family], ps[p]), format='pdf')
                         plt.show()
                         plt.close()
 
@@ -427,10 +436,13 @@ sat = ['BR1', 'BR2']
 # sat = ['LDG', 'CDG']
 p = [4]
 adj = False
-plt_fam = False
-plt_sat = True
+plt_fam = True #False
+plt_sat = False #True
+save_figure = False
 
 soln = None
-soln = save_results(h=0.5, nrefine=4, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=False)
-analyze_results(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat, results=soln)
+soln = save_results(h=0.5, nrefine=4, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=True,
+                    calc_cond=False)
+analyze_results(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat, results=soln,
+                save_fig=save_figure)
 

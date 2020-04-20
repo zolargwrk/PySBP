@@ -1385,16 +1385,6 @@ class SATs:
                     for i in range(0, nface-1):
                         # if not any(np.array_equal(np.array([elem, face]), rowD) for rowD in bgrpD) and \
                         if not any(np.array_equal(np.array([elem, face_other[i]]), rowD) for rowD in bgrpD):
-                            # sI[elem * nnodes:(elem + 1) * nnodes, elem * nnodes:(elem + 1) * nnodes] \
-                            #         += HB_inv[elem] @ (RB[face][elem].T @
-                            #                            (coefT5/hc*(nxB[face][elem] * BB[face][elem]* nxB[face_other[i]][elem]
-                            #                             +nyB[face][elem] * BB[face][elem]* nyB[face_other[i]][elem]))
-                            #                            @ RB[face_other[i]][elem])
-
-                            # nor = np.abs(nxB[face][elem] * nxB[face_other[i]][elem] + nyB[face][elem] * nyB[face_other[i]][elem])
-                            # sI[elem * nnodes:(elem + 1) * nnodes, elem * nnodes:(elem + 1) * nnodes] \
-                            #         += HB_inv[elem] @ (RB[face][elem].T @ (coefT5/hc* nor* BB[face][elem])
-                            #                                             @ RB[face_other[i]][elem])
 
                             sI[elem * nnodes:(elem + 1) * nnodes, elem * nnodes:(elem + 1) * nnodes] \
                                     += HB_inv[elem] @ (coefT5*RB[face][elem].T @ (BB[face][elem]
@@ -1414,16 +1404,6 @@ class SATs:
                     for i in range(0, nface-1):
                         if not any(np.array_equal(np.array([elem, face]), rowD) for rowD in bgrpD) and \
                             not any(np.array_equal(np.array([elem_nbr, face_nbr[i]]), rowD) for rowD in bgrpD):
-                             # sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr * nnodes:(elem_nbr + 1) * nnodes]\
-                             #    += HB_inv[elem] @ (RB[face][elem].T
-                             #                       @ (coefT6/hc*(nxB[face][elem] *BB[face][elem] * nxB[face_nbr[i]][elem_nbr]
-                             #                          + nyB[face][elem] *BB[face][elem] * nyB[face_nbr[i]][elem_nbr]))
-                             #                       @ np.flipud(RB[face_nbr[i]][elem_nbr]))
-
-                            # nor = np.abs(nxB[face][elem] * nxB[face_nbr[i]][elem_nbr] + nyB[face][elem] * nyB[face_nbr[i]][elem_nbr])
-                            # sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr * nnodes:(elem_nbr + 1) * nnodes]\
-                            #     += HB_inv[elem] @ (RB[face][elem].T @ (coefT6/hc*nor* BB[face][elem])
-                            #                                         @ np.flipud(RB[face_nbr[i]][elem_nbr]))
 
                             sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr * nnodes:(elem_nbr + 1) * nnodes]\
                                 += HB_inv[elem] @ (coefT6*(RB[face][elem].T) @ (BB[face][elem]
@@ -1432,15 +1412,6 @@ class SATs:
                                    + nyB[face][elem] * np.flipud(RB[face_gamma_nbr][elem_nbr] @ HB_inv[elem_nbr]
                                       @ RB[face_nbr[i]][elem_nbr].T) * nyB[face_nbr[i]][elem_nbr])
                                    @ np.flipud(BB[face_nbr[i]][elem_nbr])) @ np.flipud(RB[face_nbr[i]][elem_nbr]))
-
-
-                            # sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr * nnodes:(elem_nbr + 1) * nnodes]\
-                            #     += HB_inv[elem] @ (coefT6*RB[face][elem].T @ ((BB[face][elem])
-                            #        @ (nxB[face_gamma_nbr][elem_nbr] * np.flipud(RB[face_gamma_nbr][elem_nbr]) @ np.flipud(HB_inv[elem_nbr])
-                            #           @ np.flipud(RB[face_nbr[i]][elem_nbr].T) * nxB[face_nbr[i]][elem_nbr]
-                            #        + nyB[face_gamma_nbr][elem_nbr] * np.flipud(RB[face_gamma_nbr][elem_nbr]) @ np.flipud(HB_inv[elem_nbr])
-                            #           @ np.flipud(RB[face_nbr[i]][elem_nbr].T) * nyB[face_nbr[i]][elem_nbr])
-                            #        @ np.flipud(BB[face_nbr[i]][elem_nbr])) @ np.flipud(RB[face_nbr[i]][elem_nbr]))
 
                 # T5 LDG SAT term -- add only at interior facets
                 if flux_type == 'LDG':
@@ -1457,12 +1428,6 @@ class SATs:
                                 - betak[etof[elem, face_other[i]]][etoe[elem, face_other[i]]])
 
                         # add SAT term
-                        # sI[elem * nnodes:(elem + 1) * nnodes, elem * nnodes:(elem + 1) * nnodes] \
-                        #             += HB_inv[elem] @ (RB[face][elem].T
-                        #                               @ (T5 * (nxB[face][elem] * BB[face][elem]* nxB[face_other[i]][elem]
-                        #                             +nyB[face][elem] * BB[face][elem]* nyB[face_other[i]][elem]))
-                        #                            @ RB[face_other[i]][elem])
-
                         sI[elem * nnodes:(elem + 1) * nnodes, elem * nnodes:(elem + 1) * nnodes] \
                             += HB_inv[elem] @ (RB[face][elem].T @ (T5*(BB[face][elem]
                                         @ (nxB[face][elem] * RB[face][elem] @ HB_inv[elem]
@@ -1486,12 +1451,6 @@ class SATs:
                                 - betak[etof[elem_nbr, face_nbr[i]]][etoe[elem_nbr, face_nbr[i]]])
 
                         # add T6 term
-                        # sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr * nnodes:(elem_nbr + 1) * nnodes]\
-                        #         += HB_inv[elem] @ (RB[face][elem].T
-                        #                            @ (T6 * (nxB[face][elem] *BB[face][elem] * nxB[face_nbr[i]][elem_nbr]
-                        #                               + nyB[face][elem] *BB[face][elem] * nyB[face_nbr[i]][elem_nbr]))
-                        #                            @ np.flipud(RB[face_nbr[i]][elem_nbr]))
-
                         sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr * nnodes:(elem_nbr + 1) * nnodes]\
                             += HB_inv[elem] @ (RB[face][elem].T @ (T6*(BB[face][elem]
                                    @ (nxB[face][elem] * np.flipud(RB[face_gamma_nbr][elem_nbr] @ HB_inv[elem_nbr]
@@ -1523,17 +1482,6 @@ class SATs:
                             nbr_elem_other = etoe[elem, face_other[i]]
                             nbr_face_other = etof[elem, face_other[i]]
 
-                            # sI[elem*nnodes:(elem+1)*nnodes, nbr_elem_other*nnodes:(nbr_elem_other+1)*nnodes] \
-                            #     += HB_inv[elem] @ (RB[face][elem].T
-                            #                        @ (-coefT5/hc*(nxB[face][elem] *BB[face][elem]* nxB[face_other[i]][elem]
-                            #                           + nyB[face][elem] *BB[face][elem]* nyB[face_other[i]][elem]))
-                            #                        @ np.flipud(RB[nbr_face_other][nbr_elem_other]))
-
-                            # nor = np.abs(nxB[face][elem] * nxB[face_other[i]][elem] + nyB[face][elem] * nyB[face_other[i]][elem])
-                            # sI[elem*nnodes:(elem+1)*nnodes, nbr_elem_other*nnodes:(nbr_elem_other+1)*nnodes] \
-                            #     += HB_inv[elem] @ (RB[face][elem].T @ (-coefT5/hc*nor * BB[face][elem])
-                            #                                         @ np.flipud(RB[nbr_face_other][nbr_elem_other]))
-
                             sI[elem*nnodes:(elem+1)*nnodes, nbr_elem_other*nnodes:(nbr_elem_other+1)*nnodes] \
                                 += HB_inv[elem] @ (-coefT5*RB[face][elem].T @ (BB[face][elem]
                                         @ (nxB[face][elem] * RB[face][elem] @ HB_inv[elem]
@@ -1554,17 +1502,6 @@ class SATs:
                             elem_nbr_nbr = etoe[elem_nbr, face_nbr[i]]
                             face_nbr_nbr = etof[elem_nbr, face_nbr[i]]
 
-                            # sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr_nbr*nnodes:(elem_nbr_nbr + 1) * nnodes] \
-                            #     += HB_inv[elem] @ (RB[face][elem].T
-                            #                        @ (-coefT6/hc* (nxB[face][elem] * BB[face][elem] * nxB[face_nbr[i]][elem_nbr]
-                            #                           + nyB[face][elem] * BB[face][elem] * nyB[face_nbr[i]][elem_nbr]))
-                            #                        @ (RB[face_nbr_nbr][elem_nbr_nbr]))
-
-                            # nor = np.abs(nxB[face][elem] * nxB[face_nbr[i]][elem_nbr] + nyB[face][elem] * nyB[face_nbr[i]][elem_nbr])
-                            # sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr_nbr*nnodes:(elem_nbr_nbr + 1) * nnodes] \
-                            #     += HB_inv[elem] @ (RB[face][elem].T @ (-coefT6/hc*nor * BB[face][elem])
-                            #                                         @ (RB[face_nbr_nbr][elem_nbr_nbr]))
-
                             sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr_nbr*nnodes:(elem_nbr_nbr + 1) * nnodes] \
                                 += HB_inv[elem] @ (-coefT6*(RB[face][elem].T) @ (BB[face][elem]
                                    @ (nxB[face][elem] * np.flipud(RB[face_gamma_nbr][elem_nbr] @ HB_inv[elem_nbr]
@@ -1572,7 +1509,6 @@ class SATs:
                                    + nyB[face][elem] * np.flipud(RB[face_gamma_nbr][elem_nbr] @ HB_inv[elem_nbr]
                                       @ RB[face_nbr[i]][elem_nbr].T) * nyB[face_nbr[i]][elem_nbr])
                                    @ np.flipud(BB[face_nbr[i]][elem_nbr])) @ (RB[face_nbr_nbr][elem_nbr_nbr]))
-
 
                 # T5 LDG terms -- subtract
                 if flux_type == 'LDG':
@@ -1591,12 +1527,6 @@ class SATs:
                                 - betak[etof[elem, face_other[i]]][etoe[elem, face_other[i]]])
 
                         # subtract T5 term
-                        # sI[elem*nnodes:(elem+1)*nnodes, nbr_elem_other*nnodes:(nbr_elem_other+1)*nnodes] \
-                        #         += HB_inv[elem] @ (RB[face][elem].T
-                        #                        @ (T5 * (nxB[face][elem] *BB[face][elem]* nxB[face_other[i]][elem]
-                        #                           + nyB[face][elem] *BB[face][elem]* nyB[face_other[i]][elem]))
-                        #                        @ np.flipud(RB[nbr_face_other][nbr_elem_other]))
-
                         sI[elem*nnodes:(elem+1)*nnodes, nbr_elem_other*nnodes:(nbr_elem_other+1)*nnodes] \
                             += HB_inv[elem] @ (RB[face][elem].T @ (T5*(BB[face][elem]
                                         @ (nxB[face][elem] * RB[face][elem] @ HB_inv[elem]
@@ -1623,12 +1553,6 @@ class SATs:
                                 - betak[etof[elem_nbr, face_nbr[i]]][etoe[elem_nbr, face_nbr[i]]])
 
                         # subtract T6 term
-                        # sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr_nbr*nnodes:(elem_nbr_nbr + 1) * nnodes] \
-                        #         += HB_inv[elem] @ (RB[face][elem].T
-                        #                            @ (T6 * (nxB[face][elem] * BB[face][elem] * nxB[face_nbr[i]][elem_nbr]
-                        #                               + nyB[face][elem] * BB[face][elem] * nyB[face_nbr[i]][elem_nbr]))
-                        #                                                          @ (RB[face_nbr_nbr][elem_nbr_nbr]))
-
                         sI[elem * nnodes:(elem + 1) * nnodes, elem_nbr_nbr*nnodes:(elem_nbr_nbr + 1) * nnodes] \
                             += HB_inv[elem] @ (RB[face][elem].T @ (T6*(BB[face][elem]
                                    @ (nxB[face][elem] * np.flipud(RB[face_gamma_nbr][elem_nbr] @ HB_inv[elem_nbr]
@@ -1636,7 +1560,6 @@ class SATs:
                                    + nyB[face][elem] * np.flipud(RB[face_gamma_nbr][elem_nbr] @ HB_inv[elem_nbr]
                                       @ RB[face_nbr[i]][elem_nbr].T) * nyB[face_nbr[i]][elem_nbr])
                                    @ np.flipud(BB[face_nbr[i]][elem_nbr]))) @ (RB[face_nbr_nbr][elem_nbr_nbr]))
-
 
         # Dirichlet boundary condition
         for i in range(0, len(bgrpD)):

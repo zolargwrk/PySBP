@@ -427,7 +427,7 @@ def diffusion_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR1', plot_
 
 
 def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_adjoint=False, plot_fig=False,
-                   calc_condition_num = False):
+                   calc_condition_num=False, calc_eigvals=False):
 
     dim = 2
     nface = dim + 1
@@ -578,7 +578,10 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         hs.append(h)
 
         # calculate eigen value, condition number, and number of nonzero elements
-        eig_val = sparse.linalg.eigs(A)[0]
+        if calc_eigvals:
+            eig_val = np.linalg.eigvals(A.toarray())
+        else:
+            eig_val = sparse.linalg.eigs(A)[0]
         eig_vals.append(eig_val)
 
         nnz_elem = A.count_nonzero()

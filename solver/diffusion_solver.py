@@ -79,15 +79,8 @@ def heat_1d(p, xl, xr, nelem, t0, tf, quad_type, flux_type='BR1', nrefine=1, bou
 
     return u
 
-
 # heat_1d(p, xl, xr, nelem, t0, tf, quad_type, flux_type='BR1', nrefine, boundary_type=None, b=1, n=1):
 # u = heat_1d(1, 0, 2*np.pi, 5, 0, 0.1, 'CSBP', 'BR1', 5, 'nPeriodic', 'sbp_sat', a=0, b=1, n=6, app=2)
-
-# For Order-Matched and compatible operators (app=2) the HGT works with BR2 scheme. HGTL and CSBP do not work, Next time
-#   -- check why for order-matched operator the HGTL and CSBP operators do not work
-#   -- check why HGT does not work for BR1
-# **--** implement the methods for the Poisson problem and see if the issues still exist
-
 
 def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_type=None, boundary_type=None, sat_type='dg_sat',
               poisson1D_problem_input=None,  a=1, n=1, app=1):
@@ -250,7 +243,7 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
     return
 
 # diffusion_solver_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine, refine_type, boundary_type=None, b=1, n=1):
-# u = poisson_1d(2, 0, 1, 20, 'LGL', 'BR2', 1, 'ntrad', 'nPeriodic', 'sbp_sat', poisson1D_problem_input, a=0, n=16, app=2)
+# u = poisson_1d(2, 0, 1, 20, 'LGL', 'BR2', 4, 'ntrad', 'nPeriodic', 'sbp_sat', poisson1D_problem_input, a=0, n=16, app=2)
 
 
 #

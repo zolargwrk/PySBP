@@ -1,0 +1,115 @@
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (MiKTeX 2.9.7140) (preloaded format=latex 2019.10.6)  25 APR 2020 17:00
+entering extended mode
+**exit
+("C:\Program Files (x86)\MiKTeX 2.9\tex/latex/tools\.tex"
+! Interruption.
+<to be read again> 
+                   \begingroup 
+l.1 
+    %%
+? 
+LaTeX2e <2018-12-01>
+File ignored)
+*
+(Please type a command or say `\end')
+*end
+
+! LaTeX Error: Missing \begin{document}.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+<*> e
+     nd
+? 
+Missing character: There is no e in font nullfont!
+Missing character: There is no n in font nullfont!
+Missing character: There is no d in font nullfont!
+
+*
+
+Overfull \hbox (20.0pt too wide) detected at line 0
+[] 
+ []
+
+(Please type a command or say `\end')
+*
+(Please type a command or say `\end')
+*
+(Please type a command or say `\end')
+*\end
+
+*'\end'
+
+! LaTeX Error: \begin{document} ended by \end{'}.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+<*> '
+     \end'
+? 
+! Extra \endgroup.
+<recently read> \endgroup 
+                          
+<*> '
+     \end'
+? 
+! Interruption.
+\end ...ndafter \endgroup \if@endpe \@doendpe \fi 
+                                                  \if@ignore \@ignorefalse \...
+<*> '
+     \end'
+? 
+
+! LaTeX Error: \begin{document} ended by \end{'}.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+<*> '\end'
+          
+? 
+! Extra \endgroup.
+<recently read> \endgroup 
+                          
+<*> '\end'
+          
+? 
+
+*
+(Please type a command or say `\end')
+*
+(Please type a command or say `\end')
+*:q
+
+! LaTeX Error: Missing \begin{document}.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+<*> :
+     q
+? q
+OK, entering \batchmode...
+Missing character: There is no : in font nullfont!
+Missing character: There is no q in font nullfont!
+! Emergency stop.
+<*> :q
+      
+*** (job aborted, no legal \end found)
+
+ 
+Here is how much of TeX's memory you used:
+ 8 strings out of 492896
+ 214 string characters out of 3130715
+ 57471 words of memory out of 3000000
+ 4024 multiletter control sequences out of 15000+200000
+ 3640 words of font info for 14 fonts, out of 3000000 for 9000
+ 1141 hyphenation exceptions out of 8191
+ 5i,0n,6p,85b,14s stack positions out of 5000i,500n,10000p,200000b,50000s
+No pages of output.

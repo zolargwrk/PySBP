@@ -7,7 +7,7 @@ from solver.diffusion_solver import poisson_sbp_2d
 from matplotlib.ticker import MaxNLocator
 
 class Node(object):
-    """Data structure to contain the SBP results. The node structure is layed out below:
+    """Data structure to contain the SBP results. The node structure is laid out below:
                                                                     results
                                                               -------------------
     Node level 1                                                  sbp_family
@@ -106,7 +106,6 @@ def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_
 
     if sbp_families is None:
         sbp_families = ['gamma', 'omega', 'diagE']
-        # sbp_fam = ['$\Gamma$', '$\Omega$', 'E']
     if sats is None:
         sats = ['BR2']
     if ps is None:

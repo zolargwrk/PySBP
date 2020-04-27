@@ -13,9 +13,9 @@ def poisson1D_problem_input (x=None, xl=None, xr=None, n=None):
         prob = 'adjoint'
         # prob = 'all'
         func_conv = 0
-        plot_sol = 1
-        plot_err = 1
-        show_eig = 1
+        plot_sol = 0
+        plot_err = 0
+        show_eig = 0
         return {'prob': prob, 'func_conv': func_conv, 'plot_sol': plot_sol, 'plot_err': plot_err, 'show_eig': show_eig}
 
     def var_coef (x=1):
@@ -81,13 +81,13 @@ def advection1D_problem_input (x=None, xl=None, xr=None, n=None):
                 adjoint: output results of adjoint problem
                 functional: output results of functional convergence
                 all: outputs all three of the above"""
-        # prob = 'primal'
-        prob = 'adjoint'
+        prob = 'primal'
+        # prob = 'adjoint'
         # prob = 'all'
         func_conv = 0
-        plot_sol = 1
-        plot_err = 1
-        show_eig = 1
+        plot_sol = 0
+        plot_err = 0
+        show_eig = 0
         return {'prob': prob, 'func_conv': func_conv, 'plot_sol': plot_sol, 'plot_err': plot_err, 'show_eig': show_eig}
 
     def var_coef (x=1):
@@ -146,6 +146,7 @@ def advection1D_problem_input (x=None, xl=None, xr=None, n=None):
             'exact_adjoint':exact_adjoint, 'exact_functional': exact_functional, 'calc_functional':calc_functional,
             'choose_output': choose_output}
 
+
 def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
     def choose_output():
         """Choose which output to see
@@ -157,21 +158,23 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
         # prob = 'adjoint'
         # prob = 'all'
         func_conv = 0
-        plot_sol = 1
-        plot_err = 1
-        show_eig = 1
+        plot_sol = 0
+        plot_err = 0
+        show_eig = 0
         return {'prob': prob, 'func_conv': func_conv, 'plot_sol': plot_sol, 'plot_err': plot_err, 'show_eig': show_eig}
 
-    def var_coef_vis (x=1):
+    def var_coef_vis (x=1, b=None):
         """variable coefficient evaluated at the nodal location of the scheme of interest.
         Need to get the value of the nodal location x"""
-        b = 1   # x**0
+        if b is None:
+            b = 1   # x**0
         return b
 
-    def var_coef_inv (x=1):
+    def var_coef_inv (x=1, a=None):
         """variable coefficient evaluated at the nodal location of the scheme of interest.
         Need to get the value of the nodal location x"""
-        a = 0   # x**0
+        if a is None:
+            a = 0   # x**0
         return a
 
     def exact_solution(x):
@@ -239,7 +242,8 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
         J = (np.ones((1, rh.shape[0])) @ rh @ (g * u))[0][0]
         return J
 
-    return {'var_coef_vis': var_coef_vis, 'var_coef_inv': var_coef_inv,'exact_solution': exact_solution, 'boundary_conditions': boundary_conditions,
-            'source_term': source_term, 'adjoint_source_term':adjoint_source_term, 'adjoint_bndry':adjoint_bndry,
-            'exact_adjoint':exact_adjoint, 'exact_functional': exact_functional, 'calc_functional':calc_functional,
-            'choose_output': choose_output}
+    return {'var_coef_vis': var_coef_vis, 'var_coef_inv': var_coef_inv,'exact_solution': exact_solution,
+            'boundary_conditions': boundary_conditions, 'source_term': source_term,
+            'adjoint_source_term':adjoint_source_term, 'adjoint_bndry':adjoint_bndry,
+            'exact_adjoint':exact_adjoint, 'exact_functional': exact_functional,
+            'calc_functional':calc_functional, 'choose_output': choose_output}

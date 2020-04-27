@@ -313,7 +313,7 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
 
 
 def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_type_vis='BR1', nrefine=1, refine_type=None,
-                  boundary_type=None, sat_type='sbp_sat', advec_diff1D_problem_input=None,  a=1, n=1, app=1):
+                  boundary_type=None, sat_type='sbp_sat', advec_diff1D_problem_input=None, a=0, b=1, n=1, app=1):
 
     # get problem statement (degree)
     prob_input = advec_diff1D_problem_input()
@@ -322,8 +322,8 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
     choose_outs = SimpleNamespace(**outputs)
 
     mesh = MeshGenerator1D.line_mesh(p, xl, xr, n, nelem, quad_type, 1, app)
-    b = ps.var_coef_vis()
-    a = ps.var_coef_inv()
+    b = ps.var_coef_vis(b)
+    a = ps.var_coef_inv(a)
     self_assembler = Assembler(p, quad_type, boundary_type)
     rhs_data = Assembler.assembler_1d(self_assembler, xl, xr, a, nelem, n, b, app)
     errs = list()

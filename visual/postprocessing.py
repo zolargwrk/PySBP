@@ -675,7 +675,7 @@ calc_eigs = False
 save_figure = False
 
 soln = None
-# soln = save_results(h=0.5, nrefine=3, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=True,
+# soln = save_results(h=0.5, nrefine=3, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=False,
 #                     calc_cond=True, calc_eigvals=calc_eigs)
 analyze_results_2d(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat, plot_spectrum=plt_eig,
                 plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity, run_results=soln, save_fig=save_figure)
@@ -707,7 +707,7 @@ calc_eigs = False
 save_figure = False
 
 # soln = None
-# soln = save_results(nrefine=6, sbp_families=None, sats=None, ps=None, solve_adjoint=False, save_results=True,
+# soln = save_results(nrefine=6, sbp_families=None, sats=None, ps=None, solve_adjoint=False, save_results=False,
 #                  calc_cond=False, calc_eigvals=False, dim=1, stencil= app, imp=imp_type, prob=prob_type, n=25)
 # analyze_results_1d(sats=sat, sbp_families=opers, ps=p, stencil=sten, imp=imp_type, prob=prob_type, plot_by_family=plt_fam,
 #                    plot_by_sat=plt_sat, plot_spectrum=plt_eig, plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity,

@@ -5,30 +5,30 @@ from src.assembler import Assembler
 from src.rhs_calculator import RHSCalculator, MeshGenerator2D
 from src.sats import SATs
 from types import SimpleNamespace
+from src.calc_tools import CalcTools
 
 
 class TestPhy2D_SBP(unittest.TestCase):
 
     def test_poisson_sbp_2d(self):
-        tol = 1e-9
-        p = 1
-        sbp_family = 'gamma'
-        flux_type = 'BR1'
-        h = 0.5
-        nrefine = 1
-        nface = 3
-        nfp = p+1
+        tol = 1e-7
+        p = 4
+        sbp_family = 'omega'
+        flux_type = 'BR2'
+        p_map = 1
+        h = 1
 
         # the rectangular domain
         bL = 0
-        bR = 1
-        bB = 0
-        bT = 1
+        bR = 20
+        bB = -5
+        bT = 5
 
         # generate mesh
         mesh = MeshGenerator2D.rectangle_mesh(h, bL, bR, bB, bT)
         btype = ['d', 'd', 'd', 'd']
-        ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family)
+        # mesh curvature is applied in the assembler if curved mesh is generated
+        ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family, p_map=p_map)
         adata = SimpleNamespace(**ass_data)
         x = adata.x
         y = adata.y
@@ -37,13 +37,14 @@ class TestPhy2D_SBP(unittest.TestCase):
         u = 0 * adata.x
 
         # boundary conditions on a rectangular domain
-        uDL_fun = lambda x, y: 0
+        n = m = 1/5
+        uDL_fun = lambda x, y: np.sin(m * np.pi * x) * np.sin(n * np.pi * y)
         uNL_fun = lambda x, y: 0
-        uDR_fun = lambda x, y: 0
+        uDR_fun = lambda x, y: np.sin(m * np.pi * x) * np.sin(n * np.pi * y)
         uNR_fun = lambda x, y: 0
-        uDB_fun = lambda x, y: 0
+        uDB_fun = lambda x, y: np.sin(m * np.pi * x) * np.sin(n * np.pi * y)
         uNB_fun = lambda x, y: 0
-        uDT_fun = lambda x, y: 0  # np.sin(np.pi * x)
+        uDT_fun = lambda x, y: np.sin(m * np.pi * x) * np.sin(n * np.pi * y)  # np.sin(np.pi * x)
         uNT_fun = lambda x, y: 0
 
         rhs_data = RHSCalculator.rhs_poisson_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
@@ -72,12 +73,14 @@ class TestPhy2D_SBP(unittest.TestCase):
                                                     flux_type, rdata.uD, rdata.uN)
         sdata = SimpleNamespace(**sat_data)
 
-        # ---test norm matrix on physical element (the sum of all should give the area)
+        # -----------------------------------------------------------------------------------------------------
+        # ---test H, norm matrix on physical element (the sum of all should give the area)
         area_exact = (bR-bL)*(bT-bB)
         area_sbp = np.sum(sdata.Hg)
         errH = np.linalg.norm(area_exact - area_sbp)
 
-        # ---test the surface norm matrix (its sum should be equal to the length of the facets)
+        # -----------------------------------------------------------------------------------------------------
+        # ---test B, the surface norm matrix (its sum should be equal to the length of the facets)
         # get the length of each facet of the physical elements
         lenf1 = np.array([np.sqrt((adata.vx[adata.etov[:, 0]] - adata.vx[adata.etov[:, 1]])**2
                          + (adata.vy[adata.etov[:, 0]] - adata.vy[adata.etov[:, 1]])**2)]).reshape((-1, 1), order="F")
@@ -98,16 +101,19 @@ class TestPhy2D_SBP(unittest.TestCase):
         for i in range(3):
             errB += np.linalg.norm(lenf_exact[i]-lenf_sbp[i])
 
-        # ---test the derivative operators at each element
-        derX_sbp = sparse.block_diag(sdata.DxB) @ ((x.flatten(order='F'))**p)
-        derY_sbp = sparse.block_diag(sdata.DyB) @ ((y.flatten(order='F'))**p)
-        derX_exact = p*(x.flatten(order='F')**(p-1))
-        derY_exact = p*(y.flatten(order='F')**(p-1))
+        # -----------------------------------------------------------------------------------------------------
+        # ---test Dx, the derivative operators at each element
+        q = p-1
+        derX_sbp = sparse.block_diag(sdata.DxB) @ ((x.flatten(order='F'))**q)
+        derY_sbp = sparse.block_diag(sdata.DyB) @ ((y.flatten(order='F'))**q)
+        derX_exact = q*(x.flatten(order='F')**(q-1))
+        derY_exact = q*(y.flatten(order='F')**(q-1))
 
         errDx = np.linalg.norm(derX_exact - derX_sbp)
         errDy = np.linalg.norm(derY_exact - derY_sbp)
 
-        # ---test derivative operator at each facet
+        # -----------------------------------------------------------------------------------------------------
+        # ---test Dgk, derivative operator at each facet
         # get facet node locations
         xf1 = (adata.R1 @ x).reshape((-1, 1), order='F')
         xf2 = (adata.R2 @ x).reshape((-1, 1), order='F')
@@ -149,16 +155,65 @@ class TestPhy2D_SBP(unittest.TestCase):
             Dgk3_errXY = np.linalg.norm(sparse.block_diag(sdata.Dgk[2]) @ (yy**1 * xx**(p-1))
                                         - (0*yf3 + ny3*yf3**0 * xf3**(p-1)))
 
-        errDgk = (Dgk1_errX + Dgk2_errX + Dgk3_errX + Dgk1_errY + Dgk2_errY + Dgk3_errY
-                  + Dgk1_errXY + Dgk2_errXY + Dgk3_errXY)
+        errDgk = np.max([Dgk1_errX, Dgk2_errX, Dgk3_errX, Dgk1_errY, Dgk2_errY, Dgk3_errY,
+                         Dgk1_errXY, Dgk2_errXY, Dgk3_errXY])
 
+        # -----------------------------------------------------------------------------------------------------
+        # ------ test Q+Q.T = E, i.e., whether SBP property is satisfied
+        # get the Q matrix in each direction
+        QxB = sdata.HB @ sdata.DxB
+        QyB = sdata.HB @ sdata.DyB
+
+        # get the E matrix in each direction
+        RB = sdata.RB
+        BB = sdata.BB
+        nxB = sdata.nxB
+        nyB = sdata.nyB
+
+        ExB = RB[0].transpose(0, 2, 1) @ (BB[0] * nxB[0]) @ RB[0] + RB[1].transpose(0, 2, 1) @ (BB[1] * nxB[1]) @ RB[1]\
+              + RB[2].transpose(0, 2, 1) @ (BB[2] * nxB[2]) @ RB[2]
+        EyB = RB[0].transpose(0, 2, 1) @ (BB[0] * nyB[0]) @ RB[0] + RB[1].transpose(0, 2, 1) @ (BB[1] * nyB[1]) @ RB[1] \
+              + RB[2].transpose(0, 2, 1) @ (BB[2] * nyB[2]) @ RB[2]
+
+        errQx = np.max(np.abs(QxB + QxB.transpose(0, 2, 1) - ExB))
+        errQy = np.max(np.abs(QyB + QyB.transpose(0, 2, 1) - EyB))
+
+        # -----------------------------------------------------------------------------------------------------
+        # ------ test 1.T Ex 1 = 0, surface integral test
+        errEx = np.max(np.abs(np.ones((ExB.shape[0], ExB.shape[1], 1)).transpose(0, 2, 1) @ ExB \
+                @ np.ones((ExB.shape[0], ExB.shape[1], 1))))
+
+        errEy = np.max(np.abs(np.ones((EyB.shape[0], EyB.shape[1], 1)).transpose(0, 2, 1) @ EyB \
+                              @ np.ones((EyB.shape[0], EyB.shape[1], 1))))
+
+        # -----------------------------------------------------------------------------------------------------
+        # ---- test if the metric identities are satisfied
+        DrB = np.block([adata.Dr] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        DsB = np.block([adata.Ds] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+
+        metric_identityX = DrB @ CalcTools.block_diag_to_block_vec(sdata.jacB @ sdata.rxB) \
+                           + DsB @ CalcTools.block_diag_to_block_vec(sdata.jacB @ sdata.sxB) \
+
+        metric_identityY = DrB @ CalcTools.block_diag_to_block_vec(sdata.jacB @ sdata.ryB) \
+                           + DsB @ CalcTools.block_diag_to_block_vec(sdata.jacB @ sdata.syB)
+
+        err_metric_identityX = np.max(np.abs(metric_identityX))
+        err_metric_identityY = np.max(np.abs(metric_identityY))
+
+        # -----------------------------------------------------------------------------------------------------
         # check if conditions are met
+        self.assertLessEqual(err_metric_identityX, tol)
+        self.assertLessEqual(err_metric_identityY, tol)
         self.assertLessEqual(errD2, tol)
-        self.assertLessEqual(errH, tol)
-        self.assertLessEqual(errB, tol)
         self.assertLessEqual(errDx, tol)
         self.assertLessEqual(errDy, tol)
+        self.assertLessEqual(errQx, tol)
+        self.assertLessEqual(errQy, tol)
+        self.assertLessEqual(errEx, tol)
+        self.assertLessEqual(errEy, tol)
         self.assertLessEqual(errDgk, tol)
+        self.assertLessEqual(errH, tol)
+        # self.assertLessEqual(errB, tol)
 
 
 

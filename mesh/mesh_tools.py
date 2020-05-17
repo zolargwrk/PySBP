@@ -557,8 +557,12 @@ class MeshTools2D:
         ryf3 = R3 @ ry
         syf3 = R3 @ sy
 
+        jacf1 = R1 @ jac
+        jacf2 = R2 @ jac
+        jacf3 = R3 @ jac
+
         # calculate normals at the facets
-        jac_all_face = np.repeat(jac[0, :], nfp).reshape((nfp, -1), order="F")
+        # # jac_all_face = np.repeat(jac[0, :], nfp).reshape((nfp, -1), order="F")
         # nx1 = (rxf1 + sxf1)*jac_all_face
         # ny1 = (ryf1 + syf1)*jac_all_face
         #
@@ -568,14 +572,14 @@ class MeshTools2D:
         # nx3 = -sxf3*jac_all_face
         # ny3 = -syf3*jac_all_face
 
-        nx2 = (rxf2 + sxf2)*jac_all_face
-        ny2 = (ryf2 + syf2)*jac_all_face
+        nx2 = (rxf2 + sxf2)*jacf2 / (np.sqrt(2))
+        ny2 = (ryf2 + syf2)*jacf2 / (np.sqrt(2))
 
-        nx3 = -rxf3*jac_all_face
-        ny3 = -ryf3*jac_all_face
+        nx3 = -rxf3*jacf3
+        ny3 = -ryf3*jacf3
 
-        nx1 = -sxf1*jac_all_face
-        ny1 = -syf1*jac_all_face
+        nx1 = -sxf1*jacf1
+        ny1 = -syf1*jacf1
 
         # get the normals into one matrix
         nx = np.vstack([nx1, nx2, nx3])
@@ -583,7 +587,7 @@ class MeshTools2D:
 
         # get the magnitude of the surface jacobian
         # surf_jac_scaling = np.repeat(np.array([1/np.sqrt(2), 1, 1]), nfp).reshape((nfp*3, -1), order="F")
-        surf_jac =np.sqrt(nx**2 + ny**2)
+        surf_jac = np.sqrt(nx**2 + ny**2)
         nx = nx / surf_jac
         ny = ny / surf_jac
 
@@ -811,6 +815,10 @@ class MeshTools2D:
         nelem = rdata.nelem
         nface = 3
 
+        # get the size of the domain in the x and y directions
+        Lx = np.abs(bR - bL)
+        Ly = np.abs(bT - bB)
+
         # number face centers uniquely
         v3 = np.amax([0 + nface * np.arange(0, nelem), etof[:, 0] + nface * etoe[:, 0]], axis=0)    # face 0
         v4 = np.amax([1 + nface * np.arange(0, nelem), etof[:, 1] + nface * etoe[:, 1]], axis=0)    # face 1
@@ -897,7 +905,8 @@ class MeshTools2D:
         vx = vx.flatten()
         vy = vy.flatten()
 
-        return {'etov': etov, 'vx': vx, 'vy': vy, 'vxy': vxy, 'nelem': nelem, 'nvert': nvert, 'bgrp': bgrp, 'edge': edge}
+        return {'etov': etov, 'vx': vx, 'vy': vy, 'vxy': vxy, 'nelem': nelem, 'nvert': nvert, 'bgrp': bgrp,
+                'edge': edge, 'Lx': Lx, 'Ly': Ly}
 
     @staticmethod
     def set_bndry_sbp_2D(xf, yf, bgrpD, bgrpN, bL, bR, bB, bT, uDL_fun=None, uNL_fun=None, uDR_fun=None, uNR_fun=None,
@@ -1047,6 +1056,56 @@ class MeshTools2D:
 
         return {'etoe2': etoe2, 'etof2': etof2, 'etof_nbr': etof_nbr}
 
+    @staticmethod
+    def curve_mesh2d(x, y, vx, vy, etov, p_map=2, Lx=1, Ly=1, func=None, elem=None):
+
+        # obtain degree p Lagrange finite element nodes on reference element
+        x_ref, y_ref = Ref2D_DG.nodes_2d(p_map)   # on equilateral triangle element
+        r, s = Ref2D_DG.xytors(x_ref, y_ref)  # on right triangle reference element
+
+        # apply affine mapping and obtain Lagrange finite element node location on the physical elements
+        x_fe, y_fe = MeshTools2D.affine_map_2d(vx, vy, r, s, etov)
+
+        # apply mapping to curved elements both for Lagrange finite element nodes and SBP nodes
+        if func is not None:
+            x_fe2, y_fe2 = func(x_fe, y_fe)
+        else:
+            # use function from Jesse Chan et.al. 2019 paper: Efficient Entropy Stable Gauss Collocation Methods
+            alpha = 1/18
+            x_fe2 = x_fe + Lx*alpha*np.cos(np.pi/Lx * (x_fe - Lx/2)) * np.cos(3*np.pi/Ly * y_fe)
+            y_fe2 = y_fe + Ly*alpha*np.sin(4*np.pi/Lx * (x_fe2 - Lx/2)) * np.cos(np.pi/Ly * y_fe)
+
+            # alpha = 1/4
+            # x = x + alpha*(Lx - x)*(x**1)
+            # y = y + alpha*(Ly - y)*(y**1)
+
+        # get degree p Vandermonde matrix evaluated at the Lagrange finite element nodes and the SBP nodes
+        if len(x.shape) != 1:
+            nelem = x.shape[1]
+            # create matrices to store SBP nodes on curved elements
+            xcurved = np.zeros(x.shape)
+            ycurved = np.zeros(y.shape)
+
+            for j in range(nelem):
+                V_fe = Ref2D_DG.vandermonde_2d(p_map, x_fe[:, j], y_fe[:, j])
+                V_sbp = Ref2D_DG.vandermonde_2d(p_map, x[:, j], y[:, j])
+
+                # Interpolating the Lagrange polynomial on the curved elements to get the mapped SBP nodes
+                xcurved[:, j] = V_sbp @ (np.linalg.inv(V_fe) @ x_fe2[:, j])
+                ycurved[:, j] = V_sbp @ (np.linalg.inv(V_fe) @ y_fe2[:, j])
+
+        else:
+            x = x.reshape(x.shape[0], 1)
+            y = y.reshape(y.shape[0], 1)
+
+            if func is not None:
+                xcurved, ycurved = func(x, y)
+            else:
+                # map to curved element with out polynomial interpolation (used for plotting purposes only)
+                xcurved = x + Lx * alpha * np.cos(np.pi / Lx * (x - Lx / 2)) * np.cos(3 * np.pi / Ly * y)
+                ycurved = y + Ly * alpha * np.sin(4 * np.pi / Lx * (xcurved - Lx / 2)) * np.cos(np.pi / Ly * y)
+
+        return xcurved, ycurved
 
 # mesh = MeshGenerator2D.rectangle_mesh(0.5)
 #

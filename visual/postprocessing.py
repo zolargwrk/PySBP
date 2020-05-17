@@ -14,7 +14,7 @@ from solver.advection_diffusion_solver import advec_diff_1d
 
 def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_adjoint=False, save_results=False,
                  calc_cond=False, calc_eigvals=False, dim=2, stencil=('wide', 'narrow'), imp=('trad', 'elem'),
-                 prob=('Diff', 'AdvDiff', 'Adv'), n=25):
+                 prob=('Diff', 'AdvDiff', 'Adv'), n=25, showMesh=False, p_map=1):
 
     # setup default values based on input
     sbp_families, sats, ps, degrees, stencil, prob = input_defualt(sbp_families, sats, ps, stencil, prob, dim)
@@ -41,7 +41,8 @@ def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_
 
                     # solve the Poisson problem and obtain data
                     soln = poisson_sbp_2d(ps[p], h, nrefine, sbp_families[f], sats[s], solve_adjoint, plot_fig=False,
-                                          calc_condition_num=calc_cond, calc_eigvals=calc_eigvals)
+                                          calc_condition_num=calc_cond, calc_eigvals=calc_eigvals, showMesh=showMesh,
+                                          p_map=p_map)
 
                     # add data to the leaves of the tree
                     leaf = all_results.children[0].children[f].children[s].children[p]
@@ -658,25 +659,27 @@ def make_data_tree(sbp_families, sats, degrees, dim=2, stencil=('wide', 'narrow'
 
 # ================================================  2D-plots  ======================================================== #
 # give parameters for 2D solver and analyzer
-fam = ['gamma', 'omega', 'diagE']
-sat = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG']
-p = [1, 2, 3, 4]
-# fam = ['omega', 'diage', 'gamma']
-# sat = ['BR1', 'BR2', 'BO']
+# fam = ['gamma', 'omega', 'diagE']
+# sat = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG']
+# p = [1, 2, 3, 4]
+fam = ['gamma', 'diage']
+sat = ['BR2']
 # sat = ['LDG', 'CDG']
-# p = [1, 2]
+p = [1, 2, 3, 4]
+p_map = 2
 adj = False
-plt_fam = True
-plt_sat = False
-plt_eig = True
+plt_fam = False
+plt_sat = True
+plt_eig = False
 plt_rho = False
 plt_sparsity = False
 calc_eigs = False
+calc_cond_num = False
 save_figure = False
 
 soln = None
-# soln = save_results(h=0.5, nrefine=3, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=False,
-#                     calc_cond=True, calc_eigvals=calc_eigs)
+soln = save_results(h=5, nrefine=4, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=False,
+                    calc_cond=calc_cond_num, calc_eigvals=calc_eigs, showMesh=False, p_map=p_map)
 analyze_results_2d(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat, plot_spectrum=plt_eig,
                 plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity, run_results=soln, save_fig=save_figure)
 # ==================================================================================================================== #

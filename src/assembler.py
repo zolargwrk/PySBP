@@ -261,7 +261,7 @@ class Assembler:
                 'etov': etov, 'r': r, 's': s, 'etoe': etoe, 'etof': etof, 'vx': vx, 'vy': vy}
 
     @staticmethod
-    def assembler_sbp_2d(p, mesh, btype, sbp_family="gamma"):
+    def assembler_sbp_2d(p, mesh, btype, sbp_family="gamma", p_map=2):
 
         # define and set important variables
         nfp = p + 1                         # number of points on each facet
@@ -285,6 +285,11 @@ class Assembler:
 
         # apply affine mapping and obtain mesh location of all nodes on the physical element
         x, y = MeshTools2D.affine_map_2d(vx, vy, r, s, etov)
+        # get the length of the domain in the x and y directions
+        Lx = mesh['Lx']  # bR - bL
+        Ly = mesh['Ly']  # bT - bB
+        # curve the mesh
+        x, y = MeshTools2D.curve_mesh2d(x, y, vx, vy, etov, p_map=p_map, Lx=Lx, Ly=Ly)
 
         # apply affine mapping to obtain location of nodes on the facets of the physical elements
         # rf = sbpref.rsf[:, 0]
@@ -293,6 +298,8 @@ class Assembler:
         sf = sbpref.rsf[2, :, 1]
         baryf = sbpref.baryf
         xf, yf = MeshTools2D.affine_map_facet_sbp_2d(vx, vy, rf, sf, etov, baryf)
+        # curve the mesh
+        xf, yf = MeshTools2D.curve_mesh2d(xf, yf, vx, vy, etov, p_map=p_map, Lx=Lx, Ly=Ly)
 
         # # # obtain the nodes on the edges of the triangles on the physical element
         # mask = Ref2D_DG.fmask_2d(r, s, x, y)
@@ -373,8 +380,8 @@ class Assembler:
                 'B3': B3, 'R1': R1, 'R2': R2, 'R3': R3, 'Er': Er, 'Es': Es, 'rx': rx, 'ry': ry, 'sx': sx, 'sy': sy,
                 'jac': jac, 'nx': nx, 'ny': ny, 'surf_jac': surf_jac, 'bgrp': bgrp, 'x': x, 'y': y, 'etov': etov,
                 'r': r, 's': s, 'etoe': etoe, 'etof': etof, 'vx': vx, 'vy': vy, 'bgrpD': bgrpD, 'bgrpN': bgrpN,
-                'xf': xf, 'yf': yf, 'nnodes': nnodes, 'etoe2': etoe2, 'etof2': etof2, 'etof_nbr': etof_nbr,
-                'fscale': None}
+                'xf': xf, 'yf': yf, 'Lx': Lx, 'Ly': Ly, 'nnodes': nnodes, 'etoe2': etoe2, 'etof2': etof2,
+                'etof_nbr': etof_nbr, 'fscale': None}
 
 
 # mesh = MeshGenerator2D.rectangle_mesh(0.25)

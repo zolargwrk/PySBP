@@ -10,6 +10,7 @@ from src.error_conv import calc_err, calc_conv
 from types import SimpleNamespace
 from scipy import sparse
 import matplotlib.pyplot as plt
+from visual.mesh_plot import MeshPlot
 import time
 from solver.problem_statements import poisson1D_problem_input
 
@@ -420,7 +421,7 @@ def diffusion_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR1', plot_
 
 
 def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_adjoint=False, plot_fig=False,
-                   calc_condition_num=False, calc_eigvals=False):
+                   calc_condition_num=False, calc_eigvals=False, showMesh=False, p_map=1):
 
     dim = 2
     nface = dim + 1
@@ -428,14 +429,14 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
     ns = int((p+1)*(p+2)/2)
     # the rectangular domain
     bL = 0
-    bR = 1
-    bB = 0
-    bT = 1
+    bR = 20
+    bB = -5
+    bT = 5
 
     # generate mesh
     mesh = MeshGenerator2D.rectangle_mesh(h, bL, bR, bB, bT)
     btype = ['d', 'd', 'd', 'd']
-    ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family)
+    ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family, p_map=p_map)
     adata = SimpleNamespace(**ass_data)
     errs_soln = list()
     errs_adj = list()
@@ -455,7 +456,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             mesh = MeshTools2D.hrefine_uniform_2d(ass_data, bL, bR, bB, bT)
 
         # update assembled data for 2D implementation
-        ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family)
+        ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family, p_map)
         adata = SimpleNamespace(**ass_data)
 
         # extract variables from adata
@@ -463,16 +464,32 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         y = adata.y
         nelem = adata.nelem
         nnodes = adata.nnodes
+        vx = adata.vx
+        vy = adata.vy
+        xf = adata.xf
+        yf = adata.yf
+        Lx = adata.Lx
+        Ly = adata.Ly
+        etov= adata.etov
+
         u = 0*x
 
+        # get the source term for primal problem
+        n = m = 1/5
+        f = (- (m ** 2 * np.pi ** 2) * np.sin(m * np.pi * x) * np.sin(n * np.pi * y) \
+             - (n ** 2 * np.pi ** 2) * np.sin(m * np.pi * x) * np.sin(n * np.pi * y)).flatten(order='F')
+
+        # get function for the exact solution
+        exact_fun = lambda x, y: np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
+
         # define boundary conditions on a rectangular domain
-        uDL_fun = lambda x, y: 0
+        uDL_fun = lambda x, y: np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
         uNL_fun = lambda x, y: 0
-        uDR_fun = lambda x, y: 0
+        uDR_fun = lambda x, y: np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
         uNR_fun = lambda x, y: 0
-        uDB_fun = lambda x, y: 0
+        uDB_fun = lambda x, y: np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
         uNB_fun = lambda x, y: 0
-        uDT_fun = lambda x, y: 0 #np.sin(np.pi * x)
+        uDT_fun = lambda x, y: np.sin(m*np.pi * x) * np.sin(n*np.pi * y) #np.sin(np.pi * x)
         uNT_fun = lambda x, y: 0
 
         rhs_data = RHSCalculator.rhs_poisson_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
@@ -487,17 +504,11 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         A = rdata.A
         Hg = rdata.Hg
 
-        # get the source term for primal problem
-        n = m = 4
-        f = (- (m**2*np.pi**2) * np.sin(m*np.pi * x) * np.sin(n*np.pi * y) \
-            - (n**2*np.pi**2) * np.sin(m*np.pi * x) * np.sin(n*np.pi * y)).flatten(order='F')
+        # add contribution of the source term from the boundaries
+        f = f + fB.flatten(order='F')
 
-        # f = ((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y) + fB).flatten(order="F")
-        # f = (fB.reshape(nelem, nnodes).T).flatten(order="F")
-        # f = fB
-
-        # exact solution
-        u_exact = np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
+        # evaluate the exact solution at nodal points
+        u_exact = exact_fun(x, y) #np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
         # u_exact = 1 / (np.sinh(np.pi)) * np.sinh(np.pi * y) * np.sin(np.pi * x)
 
         # solve primal problem
@@ -556,7 +567,9 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         # func_exact = 0
 
         func = (np.ones((nelem * nnodes, 1)).T @ Hg @ u.flatten(order='F'))[0]
-        func_exact = (-(-1) ** n + 1) / (np.pi ** 2 * n * m) * (-(-1) ** m + 1) # obtained using https://www.symbolab.com/solver
+        func_exact = (-np.cos(np.pi*m*bR) + np.cos(np.pi*n*bL))/(np.pi**2 * m * n) \
+                     * (-np.cos(np.pi*n*bT) + np.cos(np.pi*n*bB)) # obtained using https://www.symbolab.com/solver
+        # func_exact = (-(-1) ** n + 1) / (np.pi ** 2 * n * m) * (-(-1) ** m + 1) # obtained using https://www.symbolab.com/solver
         # func_exact = 2*np.tanh(np.pi/2)/(np.pi**2)   # obtained using Wolfram Alpha
 
         # func = np.ones((nelem * nnodes, 1)).T @ Hg @ ((u.flatten(order='F'))**2)
@@ -603,6 +616,11 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
                 plot_figure_2d(x, y, psi)
                 plot_figure_2d(x, y, psi_exact)
 
+        if showMesh==True:
+            showFacetNodes = True
+            showVolumeNodes = True
+            MeshPlot.plot_mesh_2d(x, y, xf, yf, vx, vy, etov, p_map, Lx, Ly, showFacetNodes, showVolumeNodes)
+
             # plot_figure_2d(x, y, u - u_exact)
 
             # path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\pysbp_results\\advec_diff_results\\figures\\'
@@ -614,6 +632,6 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
     return {'nelems': nelems, 'hs': hs, 'errs_soln': errs_soln, 'eig_vals': eig_vals, 'nnz_elems': nnz_elems,
             'errs_adj': errs_adj, 'errs_func': errs_func, 'cond_nums': cond_nums}
 
-# poisson_sbp_2d(4, 0.5, 1, 'omega', 'BR1', plot_fig=False, solve_adjoint=False)
+poisson_sbp_2d(2, 5, 3, 'diage', 'BR2', plot_fig=True, solve_adjoint=False, showMesh=True, p_map=4)
 # diffusion_sbp_2d(1, 0.5, 1, 'gamma', 'BR1', plot_fig=False)
 # poisson_2d(1, 0.5, 1,'BR2')

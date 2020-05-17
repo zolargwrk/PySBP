@@ -137,18 +137,26 @@ class MeshGenerator2D:
         # right = bR #* np.pi
         # bottom = bB #* np.pi
         # top = bT #* np.pi
-        mshgenerator = 'gmsh'
+
+        # get the size of the domain in the x and y directions
+        Lx = np.abs(bR-bL)
+        Ly = np.abs(bT-bB)
+
+        # choose mesh generator
+        meshgenerator = 'gmsh'
         # ------------------- dmsh ------------
-        if mshgenerator=='dmsh':
+        if meshgenerator=='dmsh':
             geo = dmsh.Rectangle(bL, bR, bB, bT)
             vxy, etov = dmsh.generate(geo, h)
 
         #-------------------- meshzoo ---------
-        # vxy, etov = meshzoo.rectangle(xmin=bL, xmax=bR, ymin=bB, ymax=bT, nx=int(np.ceil(2/h**2)+1),
-        #                               ny=int(np.ceil(2/h**2)+1), zigzag=False)
-        # vxy = vxy[:, 0:2]
+        elif meshgenerator == 'meshzoo':
+            # nx = int(np.ceil(2 / h ** 2) + 1)
+            vxy, etov = meshzoo.rectangle(xmin=bL, xmax=bR, ymin=bB, ymax=bT, nx=17,
+                                          ny=9, zigzag=True)
+            vxy = vxy[:, 0:2]
         # --------------------- gmsh -------
-        elif mshgenerator == 'gmsh':
+        elif meshgenerator == 'gmsh':
             gmsh.initialize()
             gmsh.model.geo.addPoint(bL, bB, 0, h, 1)
             gmsh.model.geo.addPoint(bR, bB, 0, h, 2)
@@ -209,7 +217,7 @@ class MeshGenerator2D:
         # # NOTE: optimesh gives rise to error when solving with h=0.4 (this is very weired, took me a whole day to figure
         # #      out that the issue for the solution divergence was the mesh, got to consider changing the mesher!)
         #-------------------------
-        if mshgenerator=='test':
+        if meshgenerator=='test':
             mat = scipy.io.loadmat('C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\mesh\\square_mesh_data.mat')
             etov = (np.asarray(mat['etov'])-1).astype(int)
             vxy = np.asarray(mat['vxy'])
@@ -241,7 +249,8 @@ class MeshGenerator2D:
         vxy_mid, edge = MeshGenerator2D.mid_edge(vxy, etov)
         bgrp = MeshGenerator2D.get_bgrp(vxy_mid, edge, bL, bR, bB, bT)
 
-        return {'etov': etov, 'vx': vx, 'vy': vy, 'vxy': vxy, 'nelem': nelem, 'nvert': nvert, 'bgrp': bgrp, 'edge': edge}
+        return {'etov': etov, 'vx': vx, 'vy': vy, 'vxy': vxy, 'nelem': nelem, 'nvert': nvert, 'bgrp': bgrp,
+                'edge': edge, 'Lx': Lx, 'Ly': Ly}
 
     @staticmethod
     def mid_edge(vxy, etov):

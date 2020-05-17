@@ -2,6 +2,7 @@ import numpy as np
 from collections import deque
 from scipy import sparse
 import scipy as sp
+from src.calc_tools import CalcTools
 import matplotlib.pyplot as plt
 
 class SATs:
@@ -1057,14 +1058,21 @@ class SATs:
             bgrpD2 = bgrpD[bgrpD[:, 1] == 1, :]
             bgrpD3 = bgrpD[bgrpD[:, 1] == 2, :]
 
-        # get the geometric factors for each element (in rxB, B stands for Block)
-        rxB = rx.T.reshape(nelem, nnodes, 1)
-        ryB = ry.T.reshape(nelem, nnodes, 1)
-        sxB = sx.T.reshape(nelem, nnodes, 1)
-        syB = sy.T.reshape(nelem, nnodes, 1)
+        # get the geometric factors for each element (in rxB, B stands for Block), and write in block diagonal 3D matrix
+        # rxB = rx.T.reshape(nelem, nnodes, 1)
+        # ryB = ry.T.reshape(nelem, nnodes, 1)
+        # sxB = sx.T.reshape(nelem, nnodes, 1)
+        # syB = sy.T.reshape(nelem, nnodes, 1)
+
+        # define empty 3D array
+        rxB = CalcTools.matrix_to_3D_block_diag(rx)
+        ryB = CalcTools.matrix_to_3D_block_diag(ry)
+        sxB = CalcTools.matrix_to_3D_block_diag(sx)
+        syB = CalcTools.matrix_to_3D_block_diag(sy)
 
         # get volume and surface Jacobians for each elements
-        jacB = jac.T.reshape(nelem, nnodes, 1)
+        # jacB = jac.T.reshape(nelem, nnodes, 1)
+        jacB = CalcTools.matrix_to_3D_block_diag(jac)
         surf_jac1B = surf_jac[fid1, :].flatten(order='F').reshape(nelem, nfp, 1)
         surf_jac2B = surf_jac[fid2, :].flatten(order='F').reshape(nelem, nfp, 1)
         surf_jac3B = surf_jac[fid3, :].flatten(order='F').reshape(nelem, nfp, 1)
@@ -1082,12 +1090,6 @@ class SATs:
         nxB = [nx1B, nx2B, nx3B]
         nyB = [ny1B, ny2B, ny3B]
 
-        # get the derivative operator on the physical elements and store it for each element
-        DrB = np.block([Dr] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
-        DsB = np.block([Ds] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
-        DxB = rxB * DrB + sxB * DsB
-        DyB = ryB * DrB + syB * DsB
-
         # np.block([R1] * nelem) is a matrix of size nfp X nelem*nnodes, since python reads row by row first transpose
         # it, then reshape it in to 3D array of size nelem X nnodes X nfp, gets the first 3*10 entries and form 10 X 3
         # matrix and do that for the second, etc. So we need to transpose 10X3 matrices corresponding to each element
@@ -1097,23 +1099,50 @@ class SATs:
 
         RB = [R1B, R2B, R3B]
 
+        # get volume norm matrix and its inverse on physical elements
+        HB = jacB @ np.block([H] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        HB_inv = np.linalg.inv(HB)
+
+        # get surface norm matrix for each facet of each element
+        BB1 = (surf_jac1B * np.block([B1] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
+        BB2 = (surf_jac2B * np.block([B2] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
+        BB3 = (surf_jac3B * np.block([B3] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
+
+        BB = [BB1, BB2, BB3]
+
+        # get the derivative operator on the physical elements and store it for each element
+        # DrB = np.block([Dr] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        # DsB = np.block([Ds] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        # DxB = rxB @ DrB + sxB @ DsB
+        # DyB = ryB @ DrB + syB @ DsB
+        # construct Q,  the weak derivative matrix
+        QrB = np.block([H @ Dr] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        QsB = np.block([H @ Ds] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        # construct S, the skew symmetric matrix
+        SxB = 1/2 * ((jacB @ rxB) @ QrB + (jacB @ sxB) @ QsB) \
+              - 1/2*(QrB.transpose(0, 2, 1) @ (jacB @ rxB) + QsB.transpose(0, 2, 1) @ (jacB @ sxB))
+        SyB = 1/2 * ((jacB @ ryB) @ QrB + (jacB @ syB) @ QsB) \
+              - 1/2*(QrB.transpose(0, 2, 1) @ (jacB @ ryB) + QsB.transpose(0, 2, 1) @ (jacB @ syB))
+
+        # construct E, the surface integral matrix
+        ExB =   RB[0].transpose(0, 2, 1) @ (BB[0] * nxB[0]) @ RB[0] \
+              + RB[1].transpose(0, 2, 1) @ (BB[1] * nxB[1]) @ RB[1] \
+              + RB[2].transpose(0, 2, 1) @ (BB[2] * nxB[2]) @ RB[2]
+
+        EyB =   RB[0].transpose(0, 2, 1) @ (BB[0] * nyB[0]) @ RB[0] \
+              + RB[1].transpose(0, 2, 1) @ (BB[1] * nyB[1]) @ RB[1] \
+              + RB[2].transpose(0, 2, 1) @ (BB[2] * nyB[2]) @ RB[2]
+
+        # construct D, the derivative operator on the physical elements
+        DxB = HB_inv @ (SxB + 1/2*ExB)
+        DyB = HB_inv @ (SyB + 1/2*EyB)
+        # print(np.min(jac))
         # get derivative operator on each facet
         Dgk1B = (nx1B * R1B @ (LxxB @ DxB + LxyB @ DyB) + ny1B * R1B @ (LyxB @ DxB + LyyB @ DyB))
         Dgk2B = (nx2B * R2B @ (LxxB @ DxB + LxyB @ DyB) + ny2B * R2B @ (LyxB @ DxB + LyyB @ DyB))
         Dgk3B = (nx3B * R3B @ (LxxB @ DxB + LxyB @ DyB) + ny3B * R3B @ (LyxB @ DxB + LyyB @ DyB))
 
         Dgk = [Dgk1B, Dgk2B, Dgk3B]
-
-        # get volume norm matrix and its inverse on physical elements
-        HB = jacB * np.block([H] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
-        HB_inv = np.linalg.inv(HB)
-
-        # get surface norm matrix for each facet of each element
-        BB1 = (surf_jac1B * np.block([B1] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
-        BB2 = (surf_jac2B / (np.sqrt(2)) * np.block([B2] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
-        BB3 = (surf_jac3B * np.block([B3] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
-
-        BB = [BB1, BB2, BB3]
 
         # compute the length of each face
         face_size = np.zeros((nelem, nface))
@@ -1606,4 +1635,6 @@ class SATs:
         fB = fD + fN
         Hg = sparse.block_diag(HB)
 
-        return {'sI': sI_mat, 'fB': fB, 'Hg': Hg, 'BB': BB, 'Dgk': Dgk, 'DxB': DxB, 'DyB': DyB, 'nxB': nxB, 'nyB': nyB}
+        return {'sI': sI_mat, 'fB': fB, 'Hg': Hg, 'BB': BB, 'Dgk': Dgk, 'DxB': DxB, 'DyB': DyB, 'nxB': nxB, 'nyB': nyB,
+                'HB': HB, 'RB': RB, 'ExB': ExB, 'EyB': EyB, 'SxB': SxB, 'SyB': SyB, 'rxB': rxB, 'ryB': ryB, 'sxB': sxB,
+                'syB': syB, 'jacB': jacB}

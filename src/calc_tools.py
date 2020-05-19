@@ -33,3 +33,11 @@ class CalcTools:
 
         return rxB
 
+    @staticmethod
+    def matrix_to_repeating_block_vec(H, n, shape1, shape2):
+        """Takes an (shape1 x shape2) matrix and creates an (n x shape1 x shape2) 3D block array where each of the nth
+        entry contain H"""
+        HB = np.block([H] * n).T.reshape(n, shape1, shape2).transpose(0, 2, 1)
+
+        return HB
+

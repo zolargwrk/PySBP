@@ -2,6 +2,7 @@ import numpy as np
 from types import SimpleNamespace
 from mesh.mesh_generator import MeshGenerator1D, MeshGenerator2D
 from src.ref_elem import Ref2D_DG, Ref2D_SBP
+from src.calc_tools import CalcTools
 
 
 class MeshTools1D:
@@ -1083,9 +1084,111 @@ class MeshTools2D:
         return {'x': xcurved, 'y': ycurved, 'xr': xr, 'xs': xs, 'yr': yr, 'ys': ys}
 
     @staticmethod
-    def map_to_phy_curvilinear(H, Dr, Ds, Er, Es, rx, ry, sx, sy):
+    def map_operators_to_phy_2d(p, nelem, H, Dr, Ds, Er, Es, R1, R2, R3, B1, B2, B3, rx, ry, sx, sy, jac,
+                                            surf_jac, nx, ny):
+        # get number of nodes per face and number of volume nodes per elements
+        nfp = p+1
+        nnodes = H.shape[0]
 
-        return
+        # face id
+        fid1 = np.arange(0, nfp)
+        fid2 = np.arange(nfp, 2 * nfp)
+        fid3 = np.arange(2 * nfp, 3 * nfp)
+
+        # get the geometric factors for each element (in rxB, B stands for Block), and write in block diagonal 3D matrix
+        rxB = CalcTools.matrix_to_3D_block_diag(rx)
+        ryB = CalcTools.matrix_to_3D_block_diag(ry)
+        sxB = CalcTools.matrix_to_3D_block_diag(sx)
+        syB = CalcTools.matrix_to_3D_block_diag(sy)
+
+        # get volume and surface Jacobians for each elements
+        jacB = CalcTools.matrix_to_3D_block_diag(jac)
+        surf_jac1B = surf_jac[fid1, :].T.reshape(nelem, nfp, 1)
+        surf_jac2B = surf_jac[fid2, :].T.reshape(nelem, nfp, 1)
+        surf_jac3B = surf_jac[fid3, :].T.reshape(nelem, nfp, 1)
+
+        surf_jacB = [surf_jac1B, surf_jac2B, surf_jac3B]
+
+        # get the normal vectors on each facet.
+        nx1B = nx[fid1, :].T.reshape((nelem, nfp, 1))
+        ny1B = ny[fid1, :].T.reshape((nelem, nfp, 1))
+        nx2B = nx[fid2, :].T.reshape((nelem, nfp, 1))
+        ny2B = ny[fid2, :].T.reshape((nelem, nfp, 1))
+        nx3B = nx[fid3, :].T.reshape((nelem, nfp, 1))
+        ny3B = ny[fid3, :].T.reshape((nelem, nfp, 1))
+
+        nxB = [nx1B, nx2B, nx3B]
+        nyB = [ny1B, ny2B, ny3B]
+
+        # get the extrapolation/interpolation matrix on each element
+        R1B = np.block([R1] * nelem).T.reshape(nelem, nnodes, nfp).transpose(0, 2, 1)
+        R2B = np.block([R2] * nelem).T.reshape(nelem, nnodes, nfp).transpose(0, 2, 1)
+        R3B = np.block([R3] * nelem).T.reshape(nelem, nnodes, nfp).transpose(0, 2, 1)
+
+        RB = [R1B, R2B, R3B]
+
+        # get volume norm matrix and its inverse on physical elements
+        HB = jacB @ np.block([H] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+
+        # get surface norm matrix for each facet of each element
+        BB1 = (surf_jac1B * np.block([B1] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
+        BB2 = (surf_jac2B * np.block([B2] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
+        BB3 = (surf_jac3B * np.block([B3] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
+
+        BB = [BB1, BB2, BB3]
+
+        # get the derivative operator on the physical elements and store it for each element
+        DrB = np.block([Dr] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        DsB = np.block([Ds] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        # the derivative operator on the physical elements can be constructed in different ways, e.g., using the
+        # skew symmetric formulation Dx = H^-1 (Sx + 1/2 Ex), but here we construct it based on the accuracy analysis
+        # in Crean et.al.(2017) (Section 5.5, page 24)
+        DxB = 1/2*(rxB @ DrB + sxB @ DsB) + 1/2*np.linalg.inv(jacB) @ (DrB @ jacB @ rxB + DsB @ jacB @ sxB)
+        DyB = 1/2*(ryB @ DrB + syB @ DsB) + 1/2*np.linalg.inv(jacB) @ (DrB @ jacB @ ryB + DsB @ jacB @ syB)
+
+        # construct E, the surface integral matrix
+        ErB = np.block([Er] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        EsB = np.block([Es] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        # again we use the result in the accuracy analysis of Crean et.al.(2017) (section 5.5) to construct Ex and Ey
+        # instead of the decomposition Ex = sum (Rgk.T @ B @ N @ R)
+        ExB = ErB @ (jacB @ rxB) + EsB @ (jacB @ sxB)
+        EyB = ErB @ (jacB @ ryB) + EsB @ (jacB @ syB)
+
+        # construct S, the skew-symmetric matrix
+        Qr = H @ Dr
+        Qs = H @ Ds
+        QrB = np.block([Qr] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        QsB = np.block([Qs] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        # construct S, the skew symmetric matrix
+        SxB = 1 / 2 * ((jacB @ rxB) @ QrB + (jacB @ sxB) @ QsB) \
+              - 1 / 2 * (QrB.transpose(0, 2, 1) @ (jacB @ rxB) + QsB.transpose(0, 2, 1) @ (jacB @ sxB))
+        SyB = 1 / 2 * ((jacB @ ryB) @ QrB + (jacB @ syB) @ QsB) \
+              - 1 / 2 * (QrB.transpose(0, 2, 1) @ (jacB @ ryB) + QsB.transpose(0, 2, 1) @ (jacB @ syB))
+
+        # -------------------------------------------------------------------------------------------------------------
+        # the alternative ways to construct the Ex and Ey matrices
+        # construct E, the surface integral matrix
+        # ExB =   RB[0].transpose(0, 2, 1) @ (BB[0] * nxB[0]) @ RB[0] \
+        #       + RB[1].transpose(0, 2, 1) @ (BB[1] * nxB[1]) @ RB[1] \
+        #       + RB[2].transpose(0, 2, 1) @ (BB[2] * nxB[2]) @ RB[2]
+        #
+        # EyB =   RB[0].transpose(0, 2, 1) @ (BB[0] * nyB[0]) @ RB[0] \
+        #       + RB[1].transpose(0, 2, 1) @ (BB[1] * nyB[1]) @ RB[1] \
+        #       + RB[2].transpose(0, 2, 1) @ (BB[2] * nyB[2]) @ RB[2]
+
+        # the alternative ways to construct the Dx and Dy
+        # HB_inv = np.linalg.inv(HB)
+        # DxB = HB_inv @ QxB
+        # DyB = HB_inv @ QyB
+        #--------------------------------------------------------------------------------------------------------------
+
+        # construct Q, the weak derivative operator on the physical elements
+        QxB = SxB + 1 / 2 * ExB
+        QyB = SyB + 1 / 2 * EyB
+
+        return {'rxB': rxB, 'ryB': ryB, 'sxB': sxB, 'syB': syB, 'jacB': jacB, 'surf_jacB': surf_jacB, 'nxB': nxB,
+                'nyB': nyB, 'RB': RB, 'HB': HB, 'BB': BB, 'DxB': DxB, 'DyB': DyB, 'ExB': ExB, 'EyB': EyB, 'QxB': QxB,
+                'QyB': QyB, 'SxB': SxB, 'SyB': SyB}
 
 # mesh = MeshGenerator2D.rectangle_mesh(0.5)
 #

@@ -474,7 +474,15 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         Ly = adata.Ly
         etov= adata.etov
 
+        # initialize solution vectors
         u = 0*x
+
+        # get operators on physical elements
+        phy_data = MeshTools2D.map_operators_to_phy_2d(p, nelem, adata.H, adata.Dr, adata.Ds, adata.Er, adata.Es,
+                                                       adata.R1, adata.R2, adata.R3, adata.B1, adata.B2, adata.B3,
+                                                       adata.rx, adata.ry, adata.sx, adata.sy, adata.jac,
+                                                       adata.surf_jac, adata.nx, adata.ny)
+        phy = SimpleNamespace(**phy_data)
 
         # get the source term for primal problem
         n = m = 1/5
@@ -494,13 +502,12 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         uDT_fun = lambda x, y: np.sin(m*np.pi * x) * np.sin(n*np.pi * y) #np.sin(np.pi * x)
         uNT_fun = lambda x, y: 0
 
-        rhs_data = RHSCalculator.rhs_poisson_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
-                                                 adata.Ds, adata.H, adata.B1,adata.B2, adata.B3, adata.R1, adata.R2, adata.R3,
-                                                 adata.Er, adata.Es, adata.nx, adata.ny, adata.rx, adata.ry, adata.sx, adata.sy,
-                                                 adata.etoe, adata.etof,  adata.bgrp, adata.bgrpD, adata.bgrpN,
-                                                 adata.nelem, adata.surf_jac, adata.jac, flux_type, uDL_fun, uNL_fun,
-                                                 uDR_fun, uNR_fun, uDB_fun, uNB_fun, uDT_fun, uNT_fun, bL, bR, bB, bT,
-                                                 LB=None)
+        rhs_data = RHSCalculator.rhs_poisson_sbp_2d(u, adata.xf, adata.yf, phy.DxB, phy.DyB, phy.HB, phy.BB, phy.RB,
+                                                    phy.nxB, phy.nyB, phy.rxB, phy.ryB, phy.sxB,
+                                                    phy.syB, phy.surf_jacB, phy.jacB, adata.etoe, adata.etof,
+                                                    adata.bgrp, adata.bgrpD, adata.bgrpN, flux_type, uDL_fun, uNL_fun,
+                                                    uDR_fun, uNR_fun, uDB_fun, uNB_fun, uDT_fun, uNT_fun, bL, bR, bB,
+                                                    bT, LB=None)
         rdata = SimpleNamespace(**rhs_data)
         fB = rdata.fB
         A = rdata.A
@@ -535,13 +542,12 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             uDT_fun = lambda x, y: 0
             uNT_fun = lambda x, y: 0
 
-            rhs_data = RHSCalculator.rhs_poisson_sbp_2d(p, psi, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
-                                                     adata.Ds, adata.H, adata.B1,adata.B2, adata.B3, adata.R1, adata.R2, adata.R3,
-                                                     adata.Er, adata.Es, adata.nx, adata.ny, adata.rx, adata.ry, adata.sx, adata.sy,
-                                                     adata.etoe, adata.etof,  adata.bgrp, adata.bgrpD, adata.bgrpN,
-                                                     adata.nelem, adata.surf_jac, adata.jac, flux_type, uDL_fun, uNL_fun,
-                                                     uDR_fun, uNR_fun, uDB_fun, uNB_fun, uDT_fun, uNT_fun, bL, bR, bB, bT,
-                                                     LB=None)
+            rhs_data = RHSCalculator.rhs_poisson_sbp_2d(u, adata.xf, adata.yf, phy.DxB, phy.DyB, phy.HB, phy.BB, phy.RB,
+                                                    phy.nxB, phy.nyB, phy.rxB, phy.ryB, phy.sxB,
+                                                    phy.syB, phy.surf_jacB, phy.jacB, adata.etoe, adata.etof,
+                                                    adata.bgrp, adata.bgrpD, adata.bgrpN, flux_type, uDL_fun, uNL_fun,
+                                                    uDR_fun, uNR_fun, uDB_fun, uNB_fun, uDT_fun, uNT_fun, bL, bR, bB,
+                                                    bT, LB=None)
             rdata = SimpleNamespace(**rhs_data)
             fB_adj = rdata.fB
             A_adj = rdata.A
@@ -634,6 +640,6 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
     return {'nelems': nelems, 'hs': hs, 'errs_soln': errs_soln, 'eig_vals': eig_vals, 'nnz_elems': nnz_elems,
             'errs_adj': errs_adj, 'errs_func': errs_func, 'cond_nums': cond_nums}
 
-poisson_sbp_2d(2, 5, 1, 'gamma', 'BR2', plot_fig=True, solve_adjoint=False, showMesh=True, p_map=3)
+# poisson_sbp_2d(2, 5, 3, 'gamma', 'BR2', plot_fig=True, solve_adjoint=False, showMesh=True, p_map=1)
 # diffusion_sbp_2d(1, 0.5, 1, 'gamma', 'BR1', plot_fig=False)
 # poisson_2d(1, 0.5, 1,'BR2')

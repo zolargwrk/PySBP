@@ -662,11 +662,11 @@ def make_data_tree(sbp_families, sats, degrees, dim=2, stencil=('wide', 'narrow'
 # fam = ['gamma', 'omega', 'diagE']
 # sat = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG']
 # p = [1, 2, 3, 4]
-fam = ['gamma', 'diage']
+fam = ['omega', 'gamma', 'diage']
 sat = ['BR2']
 # sat = ['LDG', 'CDG']
-p = [3, 4]
-p_map = 4
+p = [1, 2, 3, 4]
+p_map = 2
 adj = False
 plt_fam = False
 plt_sat = True
@@ -678,7 +678,7 @@ calc_cond_num = False
 save_figure = False
 
 soln = None
-soln = save_results(h=3, nrefine=4, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=False,
+soln = save_results(h=3, nrefine=3, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=False,
                     calc_cond=calc_cond_num, calc_eigvals=calc_eigs, showMesh=False, p_map=p_map)
 analyze_results_2d(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat, plot_spectrum=plt_eig,
                 plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity, run_results=soln, save_fig=save_figure)

@@ -1036,21 +1036,15 @@ class SATs:
 
 
     @staticmethod
-    def diffusion_sbp_sat_2d_steady(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, Ds, Dr, H, B1, B2, B3, R1, R2, R3, Er, Es,
-                                    rx, ry, sx, sy, jac, surf_jac, nx, ny, etoe, etof,  bgrp, bgrpD, bgrpN,
-                                    flux_type='BR2', uD=None, uN=None):
+    def diffusion_sbp_sat_2d_steady(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, DxB, DyB, HB, BB, RB, rxB, ryB, sxB, syB,
+                                    jacB, surf_jacB, nxB, nyB, etoe, etof,  bgrp, bgrpD, bgrpN, flux_type='BR2',
+                                    uD=None, uN=None):
 
-        nfp = int(nx.shape[0] / 3)  # number of nodes per facet, also nfp = p+1
+        nfp = int(nxB[0][0].shape[0])  # number of nodes per facet, also nfp = p+1
         dim = 2
         nface = dim + 1
-        # face id
-        fid1 = np.arange(0, nfp)
-        fid2 = np.arange(nfp, 2 * nfp)
-        fid3 = np.arange(2 * nfp, 3 * nfp)
         flux_type = flux_type.upper()
 
-        # boundary group (obtain element number and facet number only)
-        bgrp = np.vstack(bgrp)[:, 2:4]
         # Dirichlet boundary groups by facet
         bgrpD1 = bgrpD2 = bgrpD3 = []
         if len(bgrpD) != 0:
@@ -1058,94 +1052,28 @@ class SATs:
             bgrpD2 = bgrpD[bgrpD[:, 1] == 1, :]
             bgrpD3 = bgrpD[bgrpD[:, 1] == 2, :]
 
-        # get the geometric factors for each element (in rxB, B stands for Block), and write in block diagonal 3D matrix
-        rxB = CalcTools.matrix_to_3D_block_diag(rx)
-        ryB = CalcTools.matrix_to_3D_block_diag(ry)
-        sxB = CalcTools.matrix_to_3D_block_diag(sx)
-        syB = CalcTools.matrix_to_3D_block_diag(sy)
+        # get the normals on each facets
+        nx1B = nxB[0]
+        nx2B = nxB[1]
+        nx3B = nxB[2]
 
-        # get volume and surface Jacobians for each elements
-        # jacB = jac.T.reshape(nelem, nnodes, 1)
-        jacB = CalcTools.matrix_to_3D_block_diag(jac)
-        surf_jac1B = surf_jac[fid1, :].flatten(order='F').reshape(nelem, nfp, 1)
-        surf_jac2B = surf_jac[fid2, :].flatten(order='F').reshape(nelem, nfp, 1)
-        surf_jac3B = surf_jac[fid3, :].flatten(order='F').reshape(nelem, nfp, 1)
+        ny1B = nyB[0]
+        ny2B = nyB[1]
+        ny3B = nyB[2]
 
-        # get the normal vectors on each facet.
-        nx1B = nx[fid1, :].flatten(order='F').reshape((nelem, nfp, 1))
-        ny1B = ny[fid1, :].flatten(order='F').reshape((nelem, nfp, 1))
+        # get the interpolation/extrapolation matrices on each facet
+        R1B = RB[0]
+        R2B = RB[1]
+        R3B = RB[2]
 
-        nx2B = nx[fid2, :].flatten(order='F').reshape((nelem, nfp, 1))
-        ny2B = ny[fid2, :].flatten(order='F').reshape((nelem, nfp, 1))
+        # get the surface quadrature weights on each facet
+        BB1 = BB[0]
+        BB2 = BB[1]
+        BB3 = BB[2]
 
-        nx3B = nx[fid3, :].flatten(order='F').reshape((nelem, nfp, 1))
-        ny3B = ny[fid3, :].flatten(order='F').reshape((nelem, nfp, 1))
-
-        nxB = [nx1B, nx2B, nx3B]
-        nyB = [ny1B, ny2B, ny3B]
-
-        # np.block([R1] * nelem) is a matrix of size nfp X nelem*nnodes, since python reads row by row first transpose
-        # it, then reshape it in to 3D array of size nelem X nnodes X nfp, gets the first 3*10 entries and form 10 X 3
-        # matrix and do that for the second, etc. So we need to transpose 10X3 matrices corresponding to each element
-        R1B = np.block([R1] * nelem).T.reshape(nelem, nnodes, nfp).transpose(0, 2, 1)
-        R2B = np.block([R2] * nelem).T.reshape(nelem, nnodes, nfp).transpose(0, 2, 1)
-        R3B = np.block([R3] * nelem).T.reshape(nelem, nnodes, nfp).transpose(0, 2, 1)
-
-        RB = [R1B, R2B, R3B]
-
-        # get volume norm matrix and its inverse on physical elements
-        HB = jacB @ np.block([H] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        # get the inverse of the norm matrix
         HB_inv = np.linalg.inv(HB)
 
-        # get surface norm matrix for each facet of each element
-        BB1 = (surf_jac1B * np.block([B1] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
-        BB2 = (surf_jac2B * np.block([B2] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
-        BB3 = (surf_jac3B * np.block([B3] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))
-
-        BB = [BB1, BB2, BB3]
-
-        # get the derivative operator on the physical elements and store it for each element
-        DrB = np.block([Dr] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
-        DsB = np.block([Ds] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
-        # DxB = rxB @ DrB + sxB @ DsB
-        # DyB = ryB @ DrB + syB @ DsB
-        # DxB = 1/2 * np.linalg.inv(jacB) @ ((jacB @ rxB @ DrB + jacB @ sxB @ DsB) + (DrB @ jacB @ rxB + DsB @ jacB @ sxB))
-        # DyB = 1/2 * np.linalg.inv(jacB) @ ((jacB @ ryB @ DrB + jacB @ syB @ DsB) + (DrB @ jacB @ ryB + DsB @ jacB @ syB))
-
-        # construct Q,  the weak derivative matrix
-        Qr = H @ Dr
-        Qs = H @ Ds
-        QrB = np.block([Qr] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
-        QsB = np.block([Qs] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
-        # construct S, the skew symmetric matrix
-        SxB = 1/2 * ((jacB @ rxB) @ QrB + (jacB @ sxB) @ QsB) \
-              - 1/2*(QrB.transpose(0, 2, 1) @ (jacB @ rxB) + QsB.transpose(0, 2, 1) @ (jacB @ sxB))
-        SyB = 1/2 * ((jacB @ ryB) @ QrB + (jacB @ syB) @ QsB) \
-              - 1/2*(QrB.transpose(0, 2, 1) @ (jacB @ ryB) + QsB.transpose(0, 2, 1) @ (jacB @ syB))
-
-        # construct E, the surface integral matrix
-        ErB = np.block([Er] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
-        EsB = np.block([Es] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
-
-        ExB = ErB @ (jacB @ rxB) + EsB @ (jacB @ sxB)
-        EyB = ErB @ (jacB @ ryB) + EsB @ (jacB @ syB)
-
-        # ExB =   RB[0].transpose(0, 2, 1) @ (BB[0] * nxB[0]) @ RB[0] \
-        #       + RB[1].transpose(0, 2, 1) @ (BB[1] * nxB[1]) @ RB[1] \
-        #       + RB[2].transpose(0, 2, 1) @ (BB[2] * nxB[2]) @ RB[2]
-        #
-        # EyB =   RB[0].transpose(0, 2, 1) @ (BB[0] * nyB[0]) @ RB[0] \
-        #       + RB[1].transpose(0, 2, 1) @ (BB[1] * nyB[1]) @ RB[1] \
-        #       + RB[2].transpose(0, 2, 1) @ (BB[2] * nyB[2]) @ RB[2]
-
-        # construct D, the derivative operator on the physical elements
-        QxB = SxB + 1/2*ExB
-        QyB = SyB + 1/2*EyB
-
-        DxB = HB_inv @ QxB
-        DyB = HB_inv @ QyB
-
-        # print(np.min(jac))
         # get derivative operator on each facet
         Dgk1B = (nx1B * R1B @ (LxxB @ DxB + LxyB @ DyB) + ny1B * R1B @ (LyxB @ DxB + LyyB @ DyB))
         Dgk2B = (nx2B * R2B @ (LxxB @ DxB + LxyB @ DyB) + ny2B * R2B @ (LyxB @ DxB + LyyB @ DyB))
@@ -1207,7 +1135,7 @@ class SATs:
         Ugk = [Ugk1B, Ugk2B, Ugk3B]
 
         # calculate the characteristic mesh size
-        hk = 2*jac
+        hk = 2*jacB
         hc = np.max(hk)
 
         # SAT coefficients for different methods
@@ -1295,17 +1223,6 @@ class SATs:
                 face = bgrpN[i, 1]
                 betak[face][elem][:] = 1
                 betav[face][elem][:] = 0
-            #
-            # test_beta1 = np.zeros(betak1B.shape)
-            # test_beta2 = np.zeros(betak1B.shape)
-            # test_beta3 = np.zeros(betak1B.shape)
-            # for i in range(0, nelem):
-            #     if not any(np.array_equal(np.array([i, 0]), rowD) for rowD in bgrpD):
-            #         test_beta1[i] = betak[0][i] + betak[etof[i, 0]][etoe[i, 0]]
-            #     if not any(np.array_equal(np.array([i, 1]), rowD) for rowD in bgrpD):
-            #         test_beta2[i] = betak[1][i] + betak[etof[i, 1]][etoe[i, 1]]
-            #     if not any(np.array_equal(np.array([i, 2]), rowD) for rowD in bgrpD):
-            #         test_beta3[i] = betak[2][i] + betak[etof[i, 2]][etoe[i, 2]]
 
             T2gk = [BB1*0, BB2*0, BB3*0]
             T3gk = [BB1*0, BB2*0, BB3*0]
@@ -1644,6 +1561,4 @@ class SATs:
         fB = fD + fN
         Hg = sparse.block_diag(HB)
 
-        return {'sI': sI_mat, 'fB': fB, 'Hg': Hg, 'BB': BB, 'Dgk': Dgk, 'DxB': DxB, 'DyB': DyB, 'nxB': nxB, 'nyB': nyB,
-                'HB': HB, 'RB': RB, 'ExB': ExB, 'EyB': EyB, 'SxB': SxB, 'SyB': SyB, 'rxB': rxB, 'ryB': ryB, 'sxB': sxB,
-                'syB': syB, 'jacB': jacB, 'QxB': QxB, 'QyB': QyB}
+        return {'sI': sI_mat, 'fB': fB, 'Hg': Hg, 'Dgk': Dgk}

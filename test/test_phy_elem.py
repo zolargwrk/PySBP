@@ -6,6 +6,7 @@ from src.rhs_calculator import RHSCalculator, MeshGenerator2D
 from src.sats import SATs
 from types import SimpleNamespace
 from src.calc_tools import CalcTools
+from mesh.mesh_tools import MeshTools2D
 
 
 class TestPhy2D_SBP(unittest.TestCase):
@@ -15,7 +16,7 @@ class TestPhy2D_SBP(unittest.TestCase):
         p = 4
         sbp_family = 'gamma'
         flux_type = 'BR2'
-        p_map = 2
+        p_map = 1
         h = 5
 
         # the rectangular domain
@@ -47,12 +48,19 @@ class TestPhy2D_SBP(unittest.TestCase):
         uDT_fun = lambda x, y: np.sin(m * np.pi * x) * np.sin(n * np.pi * y)  # np.sin(np.pi * x)
         uNT_fun = lambda x, y: 0
 
-        rhs_data = RHSCalculator.rhs_poisson_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
-                                             adata.Ds, adata.H, adata.B1,adata.B2, adata.B3, adata.R1, adata.R2, adata.R3,
-                                             adata.Er, adata.Es, adata.nx, adata.ny, adata.rx, adata.ry, adata.sx, adata.sy,
-                                             adata.etoe, adata.etof, adata.bgrp, adata.bgrpD, adata.bgrpN, adata.nelem,
-                                             adata.surf_jac, adata.jac, flux_type, uDL_fun, uNL_fun, uDR_fun, uNR_fun,
-                                             uDB_fun, uNB_fun, uDT_fun, uNT_fun, bL, bR, bB, bT)
+        # get operators on physical elements
+        phy_data = MeshTools2D.map_operators_to_phy_2d(p, nelem, adata.H, adata.Dr, adata.Ds, adata.Er, adata.Es,
+                                                       adata.R1, adata.R2, adata.R3, adata.B1, adata.B2, adata.B3,
+                                                       adata.rx, adata.ry, adata.sx, adata.sy, adata.jac,
+                                                       adata.surf_jac, adata.nx, adata.ny)
+        phy = SimpleNamespace(**phy_data)
+
+        rhs_data = RHSCalculator.rhs_poisson_sbp_2d(u, adata.xf, adata.yf, phy.DxB, phy.DyB, phy.HB, phy.BB, phy.RB,
+                                                    phy.nxB, phy.nyB, phy.rxB, phy.ryB, phy.sxB,
+                                                    phy.syB, phy.surf_jacB, phy.jacB, adata.etoe, adata.etof,
+                                                    adata.bgrp, adata.bgrpD, adata.bgrpN, flux_type, uDL_fun, uNL_fun,
+                                                    uDR_fun, uNR_fun, uDB_fun, uNB_fun, uDT_fun, uNT_fun, bL, bR, bB,
+                                                    bT, LB=None)
         rdata = SimpleNamespace(**rhs_data)
 
         # ---test if D2 is correct for every element
@@ -66,11 +74,10 @@ class TestPhy2D_SBP(unittest.TestCase):
 
         # get operators on the physical elements
         sat_data = SATs.diffusion_sbp_sat_2d_steady(nnodes, nelem, rdata.LxxB, rdata.LxyB, rdata.LyxB, rdata.LyyB,
-                                                    adata.Ds, adata.Dr, adata.H, adata.B1, adata.B2, adata.B3,
-                                                    adata.R1, adata.R2, adata.R3, adata.Er, adata.Es, adata.rx,
-                                                    adata.ry, adata.sx, adata.sy, adata.jac, adata.surf_jac, adata.nx,
-                                                    adata.ny, adata.etoe, adata.etof, adata.bgrp, adata.bgrpD,
-                                                    adata.bgrpN, flux_type, rdata.uD, rdata.uN)
+                                                    phy.DxB, phy.DyB, phy.HB, phy.BB, phy.RB, phy.rxB, phy.ryB, phy.sxB,
+                                                    phy.syB, phy.jacB, phy.surf_jacB, phy.nxB, phy.nyB, adata.etoe,
+                                                    adata.etof, adata.bgrp, adata.bgrpD, adata.bgrpN, flux_type,
+                                                    rdata.uD, rdata.uN)
         sdata = SimpleNamespace(**sat_data)
 
         # -----------------------------------------------------------------------------------------------------
@@ -91,9 +98,9 @@ class TestPhy2D_SBP(unittest.TestCase):
         lenf_exact = [lenf1, lenf2, lenf3]
 
         # get the sum of the diagonals of the B matrix at each facet (should be equal to the length of the facet)
-        lenf1_sbp = np.sum(np.sum(sdata.BB[0], axis=1), axis=1).reshape(-1, 1)
-        lenf2_sbp = np.sum(np.sum(sdata.BB[1], axis=1), axis=1).reshape(-1, 1)
-        lenf3_sbp = np.sum(np.sum(sdata.BB[2], axis=1), axis=1).reshape(-1, 1)
+        lenf1_sbp = np.sum(np.sum(phy.BB[0], axis=1), axis=1).reshape(-1, 1)
+        lenf2_sbp = np.sum(np.sum(phy.BB[1], axis=1), axis=1).reshape(-1, 1)
+        lenf3_sbp = np.sum(np.sum(phy.BB[2], axis=1), axis=1).reshape(-1, 1)
         lenf_sbp = [lenf1_sbp, lenf2_sbp, lenf3_sbp]
 
         # calculate the error
@@ -104,8 +111,8 @@ class TestPhy2D_SBP(unittest.TestCase):
         # -----------------------------------------------------------------------------------------------------
         # ---test Dx, the derivative operators at each element
         q = p-1
-        derX_sbp = sparse.block_diag(sdata.DxB) @ ((x.flatten(order='F'))**q)
-        derY_sbp = sparse.block_diag(sdata.DyB) @ ((y.flatten(order='F'))**q)
+        derX_sbp = sparse.block_diag(phy.DxB) @ ((x.flatten(order='F'))**q)
+        derY_sbp = sparse.block_diag(phy.DyB) @ ((y.flatten(order='F'))**q)
         derX_exact = q*(x.flatten(order='F')**(q-1))
         derY_exact = q*(y.flatten(order='F')**(q-1))
 
@@ -125,12 +132,12 @@ class TestPhy2D_SBP(unittest.TestCase):
         xx = x.reshape((-1, 1), order='F')
         yy = y.reshape((-1, 1), order='F')
 
-        nx1 =(sdata.nxB[0]).reshape((-1, 1))
-        ny1 =(sdata.nyB[0]).reshape((-1, 1))
-        nx2 =(sdata.nxB[1]).reshape((-1, 1))
-        ny2 =(sdata.nyB[1]).reshape((-1, 1))
-        nx3 =(sdata.nxB[2]).reshape((-1, 1))
-        ny3 =(sdata.nyB[2]).reshape((-1, 1))
+        nx1 =(phy.nxB[0]).reshape((-1, 1))
+        ny1 =(phy.nyB[0]).reshape((-1, 1))
+        nx2 =(phy.nxB[1]).reshape((-1, 1))
+        ny2 =(phy.nyB[1]).reshape((-1, 1))
+        nx3 =(phy.nxB[2]).reshape((-1, 1))
+        ny3 =(phy.nyB[2]).reshape((-1, 1))
 
         Dgk1_errX = np.linalg.norm(sparse.block_diag(sdata.Dgk[0]) @ (xx**p) - p*nx1*xf1**(p-1))
         Dgk2_errX = np.linalg.norm(sparse.block_diag(sdata.Dgk[1]) @ (xx**p) - p*nx2*xf2**(p-1))
@@ -160,32 +167,32 @@ class TestPhy2D_SBP(unittest.TestCase):
 
         # -----------------------------------------------------------------------------------------------------
         # ------ test Q+Q.T = E, i.e., whether SBP property is satisfied
-        # get the Q matrix in each direction
-        QxB = sdata.QxB
-        QyB = sdata.QyB
+        # # get the Q matrix in each direction
+        # QxB = sdata.QxB
+        # QyB = sdata.QyB
 
         # get the E matrix in each direction
-        errQx = np.max(np.abs(QxB + QxB.transpose(0, 2, 1) - sdata.ExB))
-        errQy = np.max(np.abs(QyB + QyB.transpose(0, 2, 1) - sdata.EyB))
+        errQx = np.max(np.abs(phy.QxB + phy.QxB.transpose(0, 2, 1) - phy.ExB))
+        errQy = np.max(np.abs(phy.QyB + phy.QyB.transpose(0, 2, 1) - phy.EyB))
 
         # -----------------------------------------------------------------------------------------------------
         # ------ test 1.T Ex 1 = 0, surface integral test
-        errEx = np.max(np.abs(np.ones((sdata.ExB.shape[0], sdata.ExB.shape[1], 1)).transpose(0, 2, 1) @ sdata.ExB \
-                @ np.ones((sdata.ExB.shape[0], sdata.ExB.shape[1], 1))))
+        errEx = np.max(np.abs(np.ones((phy.ExB.shape[0], phy.ExB.shape[1], 1)).transpose(0, 2, 1) @ phy.ExB \
+                @ np.ones((phy.ExB.shape[0], phy.ExB.shape[1], 1))))
 
-        errEy = np.max(np.abs(np.ones((sdata.EyB.shape[0], sdata.EyB.shape[1], 1)).transpose(0, 2, 1) @ sdata.EyB \
-                              @ np.ones((sdata.EyB.shape[0], sdata.EyB.shape[1], 1))))
+        errEy = np.max(np.abs(np.ones((phy.EyB.shape[0], phy.EyB.shape[1], 1)).transpose(0, 2, 1) @ phy.EyB \
+                              @ np.ones((phy.EyB.shape[0], phy.EyB.shape[1], 1))))
 
         # -----------------------------------------------------------------------------------------------------
         # ---- test if the metric identities are satisfied
         DrB = np.block([adata.Dr] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
         DsB = np.block([adata.Ds] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
 
-        metric_identityX = DrB @ CalcTools.block_diag_to_block_vec(sdata.jacB @ sdata.rxB) \
-                           + DsB @ CalcTools.block_diag_to_block_vec(sdata.jacB @ sdata.sxB) \
+        metric_identityX = DrB @ CalcTools.block_diag_to_block_vec(phy.jacB @ phy.rxB) \
+                           + DsB @ CalcTools.block_diag_to_block_vec(phy.jacB @ phy.sxB) \
 
-        metric_identityY = DrB @ CalcTools.block_diag_to_block_vec(sdata.jacB @ sdata.ryB) \
-                           + DsB @ CalcTools.block_diag_to_block_vec(sdata.jacB @ sdata.syB)
+        metric_identityY = DrB @ CalcTools.block_diag_to_block_vec(phy.jacB @ phy.ryB) \
+                           + DsB @ CalcTools.block_diag_to_block_vec(phy.jacB @ phy.syB)
 
         err_metric_identityX = np.max(np.abs(metric_identityX))
         err_metric_identityY = np.max(np.abs(metric_identityY))

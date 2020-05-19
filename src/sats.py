@@ -1036,9 +1036,9 @@ class SATs:
 
 
     @staticmethod
-    def diffusion_sbp_sat_2d_steady(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, Ds, Dr, H, B1, B2, B3, R1, R2, R3, rx, ry,
-                                    sx, sy, jac, surf_jac, nx, ny, etoe, etof,  bgrp, bgrpD, bgrpN, flux_type='BR2',
-                                    uD=None, uN=None, etoe2=None, etof2=None, etof_nbr=None):
+    def diffusion_sbp_sat_2d_steady(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, Ds, Dr, H, B1, B2, B3, R1, R2, R3, Er, Es,
+                                    rx, ry, sx, sy, jac, surf_jac, nx, ny, etoe, etof,  bgrp, bgrpD, bgrpN,
+                                    flux_type='BR2', uD=None, uN=None):
 
         nfp = int(nx.shape[0] / 3)  # number of nodes per facet, also nfp = p+1
         dim = 2
@@ -1059,12 +1059,6 @@ class SATs:
             bgrpD3 = bgrpD[bgrpD[:, 1] == 2, :]
 
         # get the geometric factors for each element (in rxB, B stands for Block), and write in block diagonal 3D matrix
-        # rxB = rx.T.reshape(nelem, nnodes, 1)
-        # ryB = ry.T.reshape(nelem, nnodes, 1)
-        # sxB = sx.T.reshape(nelem, nnodes, 1)
-        # syB = sy.T.reshape(nelem, nnodes, 1)
-
-        # define empty 3D array
         rxB = CalcTools.matrix_to_3D_block_diag(rx)
         ryB = CalcTools.matrix_to_3D_block_diag(ry)
         sxB = CalcTools.matrix_to_3D_block_diag(sx)
@@ -1111,13 +1105,18 @@ class SATs:
         BB = [BB1, BB2, BB3]
 
         # get the derivative operator on the physical elements and store it for each element
-        # DrB = np.block([Dr] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
-        # DsB = np.block([Ds] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        DrB = np.block([Dr] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        DsB = np.block([Ds] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
         # DxB = rxB @ DrB + sxB @ DsB
         # DyB = ryB @ DrB + syB @ DsB
+        # DxB = 1/2 * np.linalg.inv(jacB) @ ((jacB @ rxB @ DrB + jacB @ sxB @ DsB) + (DrB @ jacB @ rxB + DsB @ jacB @ sxB))
+        # DyB = 1/2 * np.linalg.inv(jacB) @ ((jacB @ ryB @ DrB + jacB @ syB @ DsB) + (DrB @ jacB @ ryB + DsB @ jacB @ syB))
+
         # construct Q,  the weak derivative matrix
-        QrB = np.block([H @ Dr] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
-        QsB = np.block([H @ Ds] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        Qr = H @ Dr
+        Qs = H @ Ds
+        QrB = np.block([Qr] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        QsB = np.block([Qs] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
         # construct S, the skew symmetric matrix
         SxB = 1/2 * ((jacB @ rxB) @ QrB + (jacB @ sxB) @ QsB) \
               - 1/2*(QrB.transpose(0, 2, 1) @ (jacB @ rxB) + QsB.transpose(0, 2, 1) @ (jacB @ sxB))
@@ -1125,17 +1124,27 @@ class SATs:
               - 1/2*(QrB.transpose(0, 2, 1) @ (jacB @ ryB) + QsB.transpose(0, 2, 1) @ (jacB @ syB))
 
         # construct E, the surface integral matrix
-        ExB =   RB[0].transpose(0, 2, 1) @ (BB[0] * nxB[0]) @ RB[0] \
-              + RB[1].transpose(0, 2, 1) @ (BB[1] * nxB[1]) @ RB[1] \
-              + RB[2].transpose(0, 2, 1) @ (BB[2] * nxB[2]) @ RB[2]
+        ErB = np.block([Er] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        EsB = np.block([Es] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
 
-        EyB =   RB[0].transpose(0, 2, 1) @ (BB[0] * nyB[0]) @ RB[0] \
-              + RB[1].transpose(0, 2, 1) @ (BB[1] * nyB[1]) @ RB[1] \
-              + RB[2].transpose(0, 2, 1) @ (BB[2] * nyB[2]) @ RB[2]
+        ExB = ErB @ (jacB @ rxB) + EsB @ (jacB @ sxB)
+        EyB = ErB @ (jacB @ ryB) + EsB @ (jacB @ syB)
+
+        # ExB =   RB[0].transpose(0, 2, 1) @ (BB[0] * nxB[0]) @ RB[0] \
+        #       + RB[1].transpose(0, 2, 1) @ (BB[1] * nxB[1]) @ RB[1] \
+        #       + RB[2].transpose(0, 2, 1) @ (BB[2] * nxB[2]) @ RB[2]
+        #
+        # EyB =   RB[0].transpose(0, 2, 1) @ (BB[0] * nyB[0]) @ RB[0] \
+        #       + RB[1].transpose(0, 2, 1) @ (BB[1] * nyB[1]) @ RB[1] \
+        #       + RB[2].transpose(0, 2, 1) @ (BB[2] * nyB[2]) @ RB[2]
 
         # construct D, the derivative operator on the physical elements
-        DxB = HB_inv @ (SxB + 1/2*ExB)
-        DyB = HB_inv @ (SyB + 1/2*EyB)
+        QxB = SxB + 1/2*ExB
+        QyB = SyB + 1/2*EyB
+
+        DxB = HB_inv @ QxB
+        DyB = HB_inv @ QyB
+
         # print(np.min(jac))
         # get derivative operator on each facet
         Dgk1B = (nx1B * R1B @ (LxxB @ DxB + LxyB @ DyB) + ny1B * R1B @ (LyxB @ DxB + LyyB @ DyB))
@@ -1637,4 +1646,4 @@ class SATs:
 
         return {'sI': sI_mat, 'fB': fB, 'Hg': Hg, 'BB': BB, 'Dgk': Dgk, 'DxB': DxB, 'DyB': DyB, 'nxB': nxB, 'nyB': nyB,
                 'HB': HB, 'RB': RB, 'ExB': ExB, 'EyB': EyB, 'SxB': SxB, 'SyB': SyB, 'rxB': rxB, 'ryB': ryB, 'sxB': sxB,
-                'syB': syB, 'jacB': jacB}
+                'syB': syB, 'jacB': jacB, 'QxB': QxB, 'QyB': QyB}

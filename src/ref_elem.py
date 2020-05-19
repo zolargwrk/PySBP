@@ -1177,7 +1177,6 @@ class Ref2D_SBP:
         Vf.append(Ref2D_DG.vandermonde_2d(p, rsf1[:, 0], rsf1[:, 1]))
         Vf.append(Ref2D_DG.vandermonde_2d(p, rsf2[:, 0], rsf2[:, 1]))
         Vf.append(Ref2D_DG.vandermonde_2d(p, rsf3[:, 0], rsf3[:, 1]))
-        # Vdxf = Ref2D_DG.grad_vandermonde2d(p, rsf1[:, 0], rsf1[:, 1])
 
         # calculate the Vandermonde matrix at the cubature nodes
         V = Ref2D_DG.vandermonde_2d(p, r, s)

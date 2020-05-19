@@ -30,10 +30,12 @@ def mytriplot(ax, *args, **kwargs):
     tri, args, kwargs = Triangulation.get_from_args_and_kwargs(*args, **kwargs)
     x, y, edges = (tri.x, tri.y, tri.edges)
     # get mesh length in the x and y directions
-    etov = args[1]
-    p_map = args[2]
-    Lx = args[3]
-    Ly = args[4]
+    r = args[1]
+    s = args[2]
+    etov = args[3]
+    p_map = args[4]
+    Lx = args[5]
+    Ly = args[6]
 
     # Decode plot format string, e.g., 'ro-'
     fmt = args[0] if args else ""
@@ -63,7 +65,7 @@ def mytriplot(ax, *args, **kwargs):
         tri_lines_x = np.insert(x[edges], 2, np.nan, axis=1)
         tri_lines_y = np.insert(y[edges], 2, np.nan, axis=1)
 
-        tri_lines_x2, tri_lines_y2 = add_points(tri_lines_x, tri_lines_y, x, y, etov, p_map=p_map, Lx=Lx, Ly=Ly)
+        tri_lines_x2, tri_lines_y2 = add_points(r, s, tri_lines_x, tri_lines_y, x, y, etov, p_map=p_map, Lx=Lx, Ly=Ly)
 
         tri_lines = ax.plot(tri_lines_x2.ravel(), tri_lines_y2.ravel(), **kw_lines)
     else:
@@ -82,7 +84,7 @@ def mytriplot(ax, *args, **kwargs):
 
     return tri_lines + tri_markers
 
-def add_points(tri_lines_x, tri_lines_y, vx, vy, etov, p_map=2, Lx=1, Ly=1):
+def add_points(r, s, tri_lines_x, tri_lines_y, vx, vy, etov, p_map=2, Lx=1, Ly=1):
     """ Adds more nodes between the vertices of the triangles and applies mesh curvature
     :arg tri_line_x - n X 3 matrix where the first two columns contain the x coordinates of connected vertices
     :arg tri_line_y - n X 3 matrix where the first two columns contain the y coordinates of connected vertices"""
@@ -108,7 +110,9 @@ def add_points(tri_lines_x, tri_lines_y, vx, vy, etov, p_map=2, Lx=1, Ly=1):
         # etov_elem = etov[j].reshape((1, -1))
         # vx_elem = vx[etov_elem].reshape((-1, 1))
         # vy_elem = vy[etov_elem].reshape((-1, 1))
-        x, y = MeshTools2D.curve_mesh2d(x, y, vx, vy, etov, p_map, Lx, Ly, elem=j)
+        curved_data = MeshTools2D.curve_mesh2d(r, s, x.reshape((-1, 1)), y.reshape(-1, 1), vx, vy, etov, p_map, Lx, Ly)
+        x = curved_data['x']
+        y = curved_data['y']
 
         # add nodes to tri_lines
         xnew = np.insert(x.reshape(-1, 2), 2, np.nan, axis=1)

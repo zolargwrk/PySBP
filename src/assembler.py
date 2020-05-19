@@ -289,17 +289,28 @@ class Assembler:
         Lx = mesh['Lx']  # bR - bL
         Ly = mesh['Ly']  # bT - bB
         # curve the mesh
-        x, y = MeshTools2D.curve_mesh2d(x, y, vx, vy, etov, p_map=p_map, Lx=Lx, Ly=Ly)
+        curvedxy_data = MeshTools2D.curve_mesh2d(r, s, x, y, vx, vy, etov, p_map=p_map, Lx=Lx, Ly=Ly)
+        xycrv = SimpleNamespace(**curvedxy_data)
+        x = xycrv.x
+        y = xycrv.y
+        jac = xycrv.xr * xycrv.ys - xycrv.xs * xycrv.yr
+        rx = xycrv.ys / jac
+        sx = -xycrv.yr / jac
+        ry = -xycrv.xs / jac
+        sy = xycrv.xr / jac
 
         # apply affine mapping to obtain location of nodes on the facets of the physical elements
         # rf = sbpref.rsf[:, 0]
         # sf = sbpref.rsf[:, 1]
-        rf = sbpref.rsf[2, :, 0]
-        sf = sbpref.rsf[2, :, 1]
+        rf = (sbpref.rsf[:, :, 0]).reshape((-1, 1))
+        sf = (sbpref.rsf[:, :, 1]).reshape((-1, 1))
         baryf = sbpref.baryf
-        xf, yf = MeshTools2D.affine_map_facet_sbp_2d(vx, vy, rf, sf, etov, baryf)
+        xf, yf = MeshTools2D.affine_map_facet_sbp_2d(vx, vy, etov, baryf)
         # curve the mesh
-        xf, yf = MeshTools2D.curve_mesh2d(xf, yf, vx, vy, etov, p_map=p_map, Lx=Lx, Ly=Ly)
+        curvedxy_facetdata = MeshTools2D.curve_mesh2d(rf, sf, xf, yf, vx, vy, etov, p_map=p_map, Lx=Lx, Ly=Ly)
+        xyfcrv = SimpleNamespace(**curvedxy_facetdata)
+        xf = xyfcrv.x
+        yf = xyfcrv.y
 
         # # # obtain the nodes on the edges of the triangles on the physical element
         # mask = Ref2D_DG.fmask_2d(r, s, x, y)
@@ -324,34 +335,21 @@ class Assembler:
         R2 = sbpref.R2
         R3 = sbpref.R3
 
-        # get necessary geometric factors
-        geo = MeshTools2D.geometric_factors_2d(x, y, Dr, Ds)
-        rx = geo['rx']
-        ry = geo['ry']
-        sx = geo['sx']
-        sy = geo['sy']
-        jac = geo['jac']
-
-        # #----------- test H and jac ---------
-        # # area of each element
-        # a0 = 1/2*((vx[etov[:, 1]] - vx[etov[:, 0]]) * (vy[etov[:, 2]] - vy[etov[:, 0]])
-        #           - (vx[etov[:, 2]] - vx[etov[:, 0]]) * (vy[etov[:, 1]] - vy[etov[:, 0]]))
-        # a0_H = np.sum(np.diag(H).reshape(-1, 1)*jac, axis=0)
-        # err_a0 = np.max(a0 - a0_H)
-        # #------------------------------------
+        # get volume geometric factors
+        geo_data = MeshTools2D.geometric_factors_2d(x, y, Dr, Ds)
+        geo = SimpleNamespace(**geo_data)
 
         # get normals and surface scaling factor
-        # norm = MeshTools2D.normals_sbp_2d(nfp, vx, vy, etov)
-        norm = MeshTools2D.normals_sbp_2d(rx, ry, sx, sy, jac, R1, R2, R3)
+        norm2 = MeshTools2D.normals_sbp_2d(geo.rx, geo.ry, geo.sx, geo.sy, geo.jac, R1, R2, R3)
+        nx2 = norm2['nx']
+        ny2 = norm2['ny']
+        surf_jac2 = norm2['surf_jac']
+        # fscale = surf_jac / jac[fmask.reshape((fmask.shape[0] * fmask.shape[1], 1), order='F'), :].reshape(surf_jac.shape)
+
+        norm = MeshTools2D.normals_sbp_2d_method2(xyfcrv.xr, xyfcrv.yr, xyfcrv.xs, xyfcrv.ys)
         nx = norm['nx']
         ny = norm['ny']
         surf_jac = norm['surf_jac']
-        # fscale = surf_jac / jac[fmask.reshape((fmask.shape[0] * fmask.shape[1], 1), order='F'), :].reshape(surf_jac.shape)
-
-        # norm = MeshTools2D.normals_2d(p, x, y, Dr, Ds, fmask)
-        # nx = norm['nx']
-        # ny = norm['ny']
-        # surf_jac = norm['surf_jac']
         # fscale = surf_jac / jac[fmask.reshape((fmask.shape[0] * fmask.shape[1], 1), order='F'), :].reshape(surf_jac.shape)
 
         # build connectivity matrices
@@ -377,7 +375,8 @@ class Assembler:
         bgrpN = bgrp_type['bgrpN']
 
         return {'nfp': nfp, 'ns': ns, 'nface': nface, 'nelem': nelem, 'Dr': Dr, 'Ds': Ds, 'H': H, 'B1': B1, 'B2': B2,
-                'B3': B3, 'R1': R1, 'R2': R2, 'R3': R3, 'Er': Er, 'Es': Es, 'rx': rx, 'ry': ry, 'sx': sx, 'sy': sy,
+                'B3': B3, 'R1': R1, 'R2': R2, 'R3': R3, 'Er': Er, 'Es': Es, 'rx': rx, 'ry': ry,
+                'sx': sx, 'sy': sy, 'xr': xycrv.xr, 'xs': xycrv.xs, 'yr': xycrv.yr, 'ys': xycrv.ys,
                 'jac': jac, 'nx': nx, 'ny': ny, 'surf_jac': surf_jac, 'bgrp': bgrp, 'x': x, 'y': y, 'etov': etov,
                 'r': r, 's': s, 'etoe': etoe, 'etof': etof, 'vx': vx, 'vy': vy, 'bgrpD': bgrpD, 'bgrpN': bgrpN,
                 'xf': xf, 'yf': yf, 'Lx': Lx, 'Ly': Ly, 'nnodes': nnodes, 'etoe2': etoe2, 'etof2': etof2,

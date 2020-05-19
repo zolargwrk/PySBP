@@ -358,11 +358,10 @@ class RHSCalculator:
         return A, M
 
     @staticmethod
-    def rhs_poisson_sbp_2d(p, u, x, y, r, s, xf, yf, Dr, Ds, H, B1, B2, B3, R1, R2, R3, nx, ny, rx, ry, sx, sy,
+    def rhs_poisson_sbp_2d(p, u, x, y, r, s, xf, yf, Dr, Ds, H, B1, B2, B3, R1, R2, R3, Er, Es, nx, ny, rx, ry, sx, sy,
                            etoe, etof, bgrp, bgrpD, bgrpN, nelem, surf_jac, jac, flux_type='BR2', uDL_fun=None,
                            uNL_fun=None, uDR_fun=None, uNR_fun=None, uDB_fun=None, uNB_fun=None, uDT_fun=None,
-                           uNT_fun=None, bL=None, bR=None, bB=None, bT=None, LB=None, etoe2=None, etof2=None,
-                           etof_nbr=None):
+                           uNT_fun=None, bL=None, bR=None, bB=None, bT=None, LB=None):
 
         # define and set important variables
         ns = (p+1)*(p+2)/2      # number of shape functions (cardinality)
@@ -398,18 +397,17 @@ class RHSCalculator:
             # LyyB = jacB * np.block([I] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
 
 
-        # get the derivative operator on each element
-        Dr_block = ([Dr]*nelem)     # Dr matrix for every element
-        Ds_block = ([Ds]*nelem)     # Ds matrix for every element
-
-        # get the derivative on the physical element, we've: Dx = Dr*rx + Ds*sx and  Dy = Dr*ry + Ds*sy
-        DxB = sparse.diags(rx.flatten(order='F')) @ sparse.block_diag(Dr_block) \
-            + sparse.diags(sx.flatten(order='F')) @ sparse.block_diag(Ds_block)
-        DyB = sparse.diags(ry.flatten(order='F')) @ sparse.block_diag(Dr_block) \
-            + sparse.diags(sy.flatten(order='F')) @ sparse.block_diag(Ds_block)
-
-        # get system matrix
-        D2B = sparse.csr_matrix((np.block([DxB, DyB]) @ LB @ np.block([[DxB], [DyB]]))[0, 0])
+        # # get the derivative operator on each element
+        # Dr_block = ([Dr]*nelem)     # Dr matrix for every element
+        # Ds_block = ([Ds]*nelem)     # Ds matrix for every element
+        #
+        # # get the derivative on the physical element, we've: Dx = Dr*rx + Ds*sx and  Dy = Dr*ry + Ds*sy
+        # DxB = sparse.diags(rx.flatten(order='F')) @ sparse.block_diag(Dr_block) \
+        #     + sparse.diags(sx.flatten(order='F')) @ sparse.block_diag(Ds_block)
+        # DyB = sparse.diags(ry.flatten(order='F')) @ sparse.block_diag(Dr_block) \
+        #     + sparse.diags(sy.flatten(order='F')) @ sparse.block_diag(Ds_block)
+        # # get system matrix
+        # D2B = sparse.csr_matrix((np.block([DxB, DyB]) @ LB @ np.block([[DxB], [DyB]]))[0, 0])
 
         # set boundary conditions
         uD, uN = MeshTools2D.set_bndry_sbp_2D(xf, yf, bgrpD, bgrpN, bL, bR, bB, bT, uDL_fun, uNL_fun, uDR_fun, uNR_fun,
@@ -417,9 +415,14 @@ class RHSCalculator:
 
         # get the SATs
         sat_data = SATs.diffusion_sbp_sat_2d_steady(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, Ds, Dr, H, B1, B2, B3,
-                                                  R1, R2, R3, rx, ry, sx, sy, jac, surf_jac, nx, ny, etoe, etof,
-                                                  bgrp, bgrpD, bgrpN, flux_type, uD, uN, etoe2, etof2, etof_nbr)
+                                                  R1, R2, R3, Er, Es, rx, ry, sx, sy, jac, surf_jac, nx, ny, etoe, etof,
+                                                  bgrp, bgrpD, bgrpN, flux_type, uD, uN)
         sdata = SimpleNamespace(**sat_data)
+
+        # get system matrix
+        DxB = sparse.block_diag(sdata.DxB)
+        DyB = sparse.block_diag(sdata.DyB)
+        D2B = sparse.csr_matrix((np.block([DxB, DyB]) @ LB @ np.block([[DxB], [DyB]]))[0, 0])
 
         A = (D2B - sdata.sI)
 

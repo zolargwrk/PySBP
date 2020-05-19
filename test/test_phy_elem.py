@@ -13,10 +13,10 @@ class TestPhy2D_SBP(unittest.TestCase):
     def test_poisson_sbp_2d(self):
         tol = 1e-7
         p = 4
-        sbp_family = 'omega'
+        sbp_family = 'gamma'
         flux_type = 'BR2'
-        p_map = 1
-        h = 1
+        p_map = 2
+        h = 5
 
         # the rectangular domain
         bL = 0
@@ -49,10 +49,10 @@ class TestPhy2D_SBP(unittest.TestCase):
 
         rhs_data = RHSCalculator.rhs_poisson_sbp_2d(p, u, adata.x, adata.y, adata.r, adata.s, adata.xf, adata.yf, adata.Dr,
                                              adata.Ds, adata.H, adata.B1,adata.B2, adata.B3, adata.R1, adata.R2, adata.R3,
-                                             adata.nx, adata.ny, adata.rx, adata.ry, adata.sx, adata.sy,
+                                             adata.Er, adata.Es, adata.nx, adata.ny, adata.rx, adata.ry, adata.sx, adata.sy,
                                              adata.etoe, adata.etof, adata.bgrp, adata.bgrpD, adata.bgrpN, adata.nelem,
                                              adata.surf_jac, adata.jac, flux_type, uDL_fun, uNL_fun, uDR_fun, uNR_fun,
-                                             uDB_fun, uNB_fun, uDT_fun, uNT_fun, bL, bR, bB, bT, None, adata.fscale)
+                                             uDB_fun, uNB_fun, uDT_fun, uNT_fun, bL, bR, bB, bT)
         rdata = SimpleNamespace(**rhs_data)
 
         # ---test if D2 is correct for every element
@@ -67,10 +67,10 @@ class TestPhy2D_SBP(unittest.TestCase):
         # get operators on the physical elements
         sat_data = SATs.diffusion_sbp_sat_2d_steady(nnodes, nelem, rdata.LxxB, rdata.LxyB, rdata.LyxB, rdata.LyyB,
                                                     adata.Ds, adata.Dr, adata.H, adata.B1, adata.B2, adata.B3,
-                                                    adata.R1, adata.R2, adata.R3, adata.rx, adata.ry, adata.sx,
-                                                    adata.sy, adata.jac, adata.surf_jac,  adata.nx, adata.ny,
-                                                    adata.etoe, adata.etof, adata.bgrp, adata.bgrpD, adata.bgrpN,
-                                                    flux_type, rdata.uD, rdata.uN)
+                                                    adata.R1, adata.R2, adata.R3, adata.Er, adata.Es, adata.rx,
+                                                    adata.ry, adata.sx, adata.sy, adata.jac, adata.surf_jac, adata.nx,
+                                                    adata.ny, adata.etoe, adata.etof, adata.bgrp, adata.bgrpD,
+                                                    adata.bgrpN, flux_type, rdata.uD, rdata.uN)
         sdata = SimpleNamespace(**sat_data)
 
         # -----------------------------------------------------------------------------------------------------
@@ -161,30 +161,20 @@ class TestPhy2D_SBP(unittest.TestCase):
         # -----------------------------------------------------------------------------------------------------
         # ------ test Q+Q.T = E, i.e., whether SBP property is satisfied
         # get the Q matrix in each direction
-        QxB = sdata.HB @ sdata.DxB
-        QyB = sdata.HB @ sdata.DyB
+        QxB = sdata.QxB
+        QyB = sdata.QyB
 
         # get the E matrix in each direction
-        RB = sdata.RB
-        BB = sdata.BB
-        nxB = sdata.nxB
-        nyB = sdata.nyB
-
-        ExB = RB[0].transpose(0, 2, 1) @ (BB[0] * nxB[0]) @ RB[0] + RB[1].transpose(0, 2, 1) @ (BB[1] * nxB[1]) @ RB[1]\
-              + RB[2].transpose(0, 2, 1) @ (BB[2] * nxB[2]) @ RB[2]
-        EyB = RB[0].transpose(0, 2, 1) @ (BB[0] * nyB[0]) @ RB[0] + RB[1].transpose(0, 2, 1) @ (BB[1] * nyB[1]) @ RB[1] \
-              + RB[2].transpose(0, 2, 1) @ (BB[2] * nyB[2]) @ RB[2]
-
-        errQx = np.max(np.abs(QxB + QxB.transpose(0, 2, 1) - ExB))
-        errQy = np.max(np.abs(QyB + QyB.transpose(0, 2, 1) - EyB))
+        errQx = np.max(np.abs(QxB + QxB.transpose(0, 2, 1) - sdata.ExB))
+        errQy = np.max(np.abs(QyB + QyB.transpose(0, 2, 1) - sdata.EyB))
 
         # -----------------------------------------------------------------------------------------------------
         # ------ test 1.T Ex 1 = 0, surface integral test
-        errEx = np.max(np.abs(np.ones((ExB.shape[0], ExB.shape[1], 1)).transpose(0, 2, 1) @ ExB \
-                @ np.ones((ExB.shape[0], ExB.shape[1], 1))))
+        errEx = np.max(np.abs(np.ones((sdata.ExB.shape[0], sdata.ExB.shape[1], 1)).transpose(0, 2, 1) @ sdata.ExB \
+                @ np.ones((sdata.ExB.shape[0], sdata.ExB.shape[1], 1))))
 
-        errEy = np.max(np.abs(np.ones((EyB.shape[0], EyB.shape[1], 1)).transpose(0, 2, 1) @ EyB \
-                              @ np.ones((EyB.shape[0], EyB.shape[1], 1))))
+        errEy = np.max(np.abs(np.ones((sdata.EyB.shape[0], sdata.EyB.shape[1], 1)).transpose(0, 2, 1) @ sdata.EyB \
+                              @ np.ones((sdata.EyB.shape[0], sdata.EyB.shape[1], 1))))
 
         # -----------------------------------------------------------------------------------------------------
         # ---- test if the metric identities are satisfied

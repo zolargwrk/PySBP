@@ -216,6 +216,30 @@ class MeshTools2D:
 
         return {'xr': xr, 'xs': xs, 'yr': yr, 'ys': ys, 'jac': jac, 'rx': rx, 'sx': sx, 'ry': ry, 'sy': sy}
 
+    @staticmethod
+    def facet_geometric_factors_2d(xf, yf, Drf, Dsf):
+        nfp = int(xf.shape[0]/3)
+        fid1 = np.arange(0, nfp)
+        fid2 = np.arange(nfp, 2*nfp)
+        fid3 = np.arange(2*nfp, 3*nfp)
+
+        xrf1 = Drf[0] @ xf[fid1]
+        yrf1 = Drf[0] @ yf[fid1]
+
+        xrf2 = Drf[1] @ xf[fid2]
+        xsf2 = Drf[1] @ xf[fid2]
+        yrf2 = Drf[1] @ yf[fid2]
+        ysf2 = Drf[1] @ yf[fid2]
+
+        xsf3 = Drf[0] @ xf[fid3]
+        ysf3 = Drf[0] @ yf[fid3]
+
+        surf_jacf1 = np.sqrt((xrf1**2 + yrf1**2))
+        surf_jacf2 = np.sqrt((xrf2+xsf2)**2 + (yrf2+ysf2)**2)/np.sqrt(2)
+        surf_jacf3 = np.sqrt((xsf3**2 + ysf3**2))
+
+        return {'xrf1': xrf1, 'yrf1': yrf1, 'xrf2': xrf2, 'xsf2': xsf2, 'yrf2': yrf2, 'ysf2': ysf2, 'xsf3': xsf3,
+                'ysf3': ysf3, 'surf_jacf1': surf_jacf1, 'surf_jacf2': surf_jacf2, 'surf_jacf3': surf_jacf3}
 
     @staticmethod
     def connectivity_2d(etov):
@@ -340,7 +364,7 @@ class MeshTools2D:
         return x, y
 
     @staticmethod
-    def affine_map_facet_sbp_2d(vx, vy, r, s, etov, baryf=None):
+    def affine_map_facet_sbp_2d(vx, vy, etov, baryf):
         # vertices
         va = etov[:, 0].T
         vb = etov[:, 1].T
@@ -484,60 +508,8 @@ class MeshTools2D:
 
         return {'nx': nx, 'ny': ny, 'surf_jac': surf_jac}
 
-    # @staticmethod
-    # def normals_sbp_2d(nfp, vx, vy, etov):
-    #     """Calculates the surface normals of the physical element given the vertices."""
-    #     nelem = etov.shape[0]
-    #     # vector along facet 1
-    #     vx1 = np.array([vx[etov[:, 2]] - vx[etov[:, 1]]]).reshape((-1, 1), order="F")
-    #     vy1 = np.array([vy[etov[:, 2]] - vy[etov[:, 1]]]).reshape((-1, 1), order="F")
-    #     # vector along facet 2
-    #     vx2 = np.array([vx[etov[:, 0]] - vx[etov[:, 2]]]).reshape((-1, 1), order="F")
-    #     vy2 = np.array([vy[etov[:, 0]] - vy[etov[:, 2]]]).reshape((-1, 1), order="F")
-    #     # vector along facet 3
-    #     vx3 = np.array([vx[etov[:, 1]] - vx[etov[:, 0]]]).reshape((-1, 1), order="F")
-    #     vy3 = np.array([vy[etov[:, 1]] - vy[etov[:, 0]]]).reshape((-1, 1), order="F")
-    #
-    #     # put components of the vectors together
-    #     zz = np.zeros((len(vx1), 1))
-    #     v1 = np.hstack([vx1, vy1, zz])
-    #     v2 = np.hstack([vx2, vy2, zz])
-    #     v3 = np.hstack([vx3, vy3, zz])
-    #
-    #     # vector pointing out of the page
-    #     vz = np.array([0, 0, 1])
-    #
-    #     # get normal vector on each facet
-    #     vn1 = np.cross(v1, vz)[:, 0:2]
-    #     vn2 = np.cross(v2, vz)[:, 0:2]
-    #     vn3 = np.cross(v3, vz)[:, 0:2]
-    #
-    #     # get the normal vectors for each element and face
-    #     nfp = int(nfp)
-    #     fid1 = np.arange(0, nfp)
-    #     fid2 = np.arange(nfp, 2*nfp)
-    #     fid3 = np.arange(2*nfp, 3*nfp)
-    #     # x-component of the normal vector
-    #     nx = np.ones((3*nfp, nelem))
-    #     nx[fid1, :] = nx[fid1, :] * vn1[:, 0]
-    #     nx[fid2, :] = nx[fid2, :] * vn2[:, 0]
-    #     nx[fid3, :] = nx[fid3, :] * vn3[:, 0]
-    #     # y-component of the normal vector
-    #     ny = np.ones((3*nfp, nelem))
-    #     ny[fid1, :] = ny[fid1, :] * vn1[:, 1]
-    #     ny[fid2, :] = ny[fid2, :] * vn2[:, 1]
-    #     ny[fid3, :] = ny[fid3, :] * vn3[:, 1]
-    #
-    #     # compute surface jacobian and normalize normals
-    #     surf_jac = np.sqrt(nx**2 + ny**2)
-    #     nx = nx / surf_jac
-    #     ny = ny / surf_jac
-    #     # surf_jac /= 2   # need to check why divide by 2?
-    #
-    #     return {'nx': nx, 'ny': ny, 'surf_jac': surf_jac}
-
     @staticmethod
-    def normals_sbp_2d(rx, ry, sx, sy, jac, R1, R2, R3,):
+    def normals_sbp_2d(rx, ry, sx, sy, jac, R1, R2, R3):
         """Calculates the surface normals of the physical element given the vertices."""
         # get number of nodes per face and number of elments
         nfp = R1.shape[0]
@@ -593,49 +565,39 @@ class MeshTools2D:
 
         return {'nx': nx, 'ny': ny, 'surf_jac': surf_jac}
 
-    # @staticmethod
-    # def normals_sbp_2d(x, y, Dr, Ds, R1, R2, R3, ):
-    #     """Calculates the surface normals of the physical element given the vertices."""
-    #     # get number of nodes per face and number of elments
-    #     nfp = R1.shape[0]
-    #
-    #     # calculate the geometric factors at each facet
-    #     xrf1 = R1 @ (Dr @ x)
-    #     xsf1 = R1 @ (Ds @ x)
-    #     xrf2 = R2 @ (Dr @ x)
-    #     xsf2 = R2 @ (Ds @ x)
-    #     xrf3 = R3 @ (Dr @ x)
-    #     xsf3 = R3 @ (Ds @ x)
-    #
-    #     yrf1 = R1 @ (Dr @ y)
-    #     ysf1 = R1 @ (Ds @ y)
-    #     yrf2 = R2 @ (Dr @ y)
-    #     ysf2 = R2 @ (Ds @ y)
-    #     yrf3 = R3 @ (Dr @ y)
-    #     ysf3 = R3 @ (Ds @ y)
-    #
-    #     # calculate normals at the facets
-    #     nx1 = rxf1 + sxf1
-    #     ny1 = ryf1 + syf1
-    #
-    #     nx2 = -rxf2
-    #     ny2 = -ryf2
-    #
-    #     nx3 = -sxf3
-    #     ny3 = -syf3
-    #
-    #     # get the normals into one matrix
-    #     nx = np.vstack([nx1, nx2, nx3])
-    #     ny = np.vstack([ny1, ny2, ny3])
-    #
-    #     # get the magnitude of the surface jacobian
-    #     jac_all_face = np.repeat(jac[0, :], nfp * 3).reshape((nfp * 3, -1), order="F")
-    #     surf_jac_scaling = np.repeat(np.array([1 / np.sqrt(2), 1, 1]), nfp).reshape((nfp * 3, -1), order="F")
-    #     surf_jac = surf_jac_scaling * jac_all_face * np.sqrt(nx ** 2 + ny ** 2)
-    #     nx = nx / np.sqrt(nx ** 2 + ny ** 2)
-    #     ny = ny / np.sqrt(nx ** 2 + ny ** 2)
-    #
-    #     return {'nx': nx, 'ny': ny, 'surf_jac': surf_jac}
+    @staticmethod
+    def normals_sbp_2d_method2(xrf, yrf, xsf, ysf):
+        """Calculates the surface normals of the physical element given the vertices."""
+
+        nfp = int(xrf.shape[0]/3)
+        fid1 = np.arange(0, nfp)
+        fid2 = np.arange(nfp, 2 * nfp)
+        fid3 = np.arange(2 * nfp, 3 * nfp)
+
+        # calculate the surface jacobian
+        surf_jacf1 = np.sqrt((xrf[fid1, :] ** 2 + yrf[fid1, :] ** 2))
+        surf_jacf2 = np.sqrt((xrf[fid2, :] - xsf[fid2, :]) ** 2 + (-yrf[fid2, :] + ysf[fid2, :]) ** 2) / np.sqrt(2)
+        surf_jacf3 = np.sqrt((xsf[fid3, :] ** 2 + ysf[fid3, :] ** 2))
+
+        # calculate the normals at the faces
+        nx1 = 1 / surf_jacf1 * (yrf[fid1, :])
+        ny1 = 1 / surf_jacf1 * (-xrf[fid1, :])
+
+        nx2 = 1 / np.sqrt(2) * 1 / surf_jacf2 * (ysf[fid2, :] - yrf[fid2, :])
+        ny2 = 1 / np.sqrt(2) * 1 / surf_jacf2 * (-xsf[fid2, :] + xrf[fid2, :])
+
+        nx3 = 1 / surf_jacf3 * (-ysf[fid3, :])
+        ny3 = 1 / surf_jacf3 * (xsf[fid3, :])
+
+        # get the normals into one matrix
+        nx = np.vstack([nx1, nx2, nx3])
+        ny = np.vstack([ny1, ny2, ny3])
+
+        # get the surface jacobian in one matrix
+        # surf_jac = np.vstack([surf_jacf1, surf_jacf2/(2*np.sqrt(2)), surf_jacf3])
+        surf_jac = np.vstack([surf_jacf1, surf_jacf2, surf_jacf3])
+
+        return {'nx': nx, 'ny': ny, 'surf_jac': surf_jac}
 
     @staticmethod
     def mesh_bgrp(nelem, bgrp, edge):
@@ -1057,42 +1019,55 @@ class MeshTools2D:
         return {'etoe2': etoe2, 'etof2': etof2, 'etof_nbr': etof_nbr}
 
     @staticmethod
-    def curve_mesh2d(x, y, vx, vy, etov, p_map=2, Lx=1, Ly=1, func=None, elem=None):
+    def curve_mesh2d(r, s, x, y, vx, vy, etov, p_map=2, Lx=1, Ly=1, func=None):
 
         # obtain degree p Lagrange finite element nodes on reference element
         x_ref, y_ref = Ref2D_DG.nodes_2d(p_map)   # on equilateral triangle element
-        r, s = Ref2D_DG.xytors(x_ref, y_ref)  # on right triangle reference element
+        r_lag, s_lag = Ref2D_DG.xytors(x_ref, y_ref)  # on right triangle reference element
 
         # apply affine mapping and obtain Lagrange finite element node location on the physical elements
-        x_fe, y_fe = MeshTools2D.affine_map_2d(vx, vy, r, s, etov)
+        x_lag, y_lag = MeshTools2D.affine_map_2d(vx, vy, r_lag, s_lag, etov)
 
         # apply mapping to curved elements both for Lagrange finite element nodes and SBP nodes
         if func is not None:
-            x_fe2, y_fe2 = func(x_fe, y_fe)
+            x_lag2, y_lag2 = func(x_lag, y_lag)
         else:
             # use function from Jesse Chan et.al. 2019 paper: Efficient Entropy Stable Gauss Collocation Methods
-            alpha = 1/18
-            x_fe2 = x_fe + Lx*alpha*np.cos(np.pi/Lx * (x_fe - Lx/2)) * np.cos(3*np.pi/Ly * y_fe)
-            y_fe2 = y_fe + Ly*alpha*np.sin(4*np.pi/Lx * (x_fe2 - Lx/2)) * np.cos(np.pi/Ly * y_fe)
-
-            # alpha = 1/4
-            # x = x + alpha*(Lx - x)*(x**1)
-            # y = y + alpha*(Ly - y)*(y**1)
+            alpha = 1/32
+            x_lag2 = x_lag + Lx*alpha*np.cos(np.pi/Lx * (x_lag - Lx/2)) * np.cos(3*np.pi/Ly * y_lag)
+            y_lag2 = y_lag + Ly*alpha*np.sin(4*np.pi/Lx * (x_lag2 - Lx/2)) * np.cos(np.pi/Ly * y_lag)
 
         # get degree p Vandermonde matrix evaluated at the Lagrange finite element nodes and the SBP nodes
-        if len(x.shape) != 1:
-            nelem = x.shape[1]
-            # create matrices to store SBP nodes on curved elements
-            xcurved = np.zeros(x.shape)
-            ycurved = np.zeros(y.shape)
+        nelem = x.shape[1]
+        # create matrices to store SBP nodes on curved elements
+        xcurved = np.zeros(x.shape)
+        ycurved = np.zeros(y.shape)
+        xr = np.zeros(y.shape)
+        xs = np.zeros(y.shape)
+        yr = np.zeros(y.shape)
+        ys = np.zeros(y.shape)
 
+        V_lag = Ref2D_DG.vandermonde_2d(p_map, r_lag, s_lag)
+        V_sbp = Ref2D_DG.vandermonde_2d(p_map, r, s)
+        Vder_sbp = Ref2D_DG.grad_vandermonde2d(p_map, r, s)
+        Vr_sbp = Vder_sbp['vdr']
+        Vs_sbp = Vder_sbp['vds']
+
+        if x.shape[1] != 1:
             for j in range(nelem):
-                V_fe = Ref2D_DG.vandermonde_2d(p_map, x_fe[:, j], y_fe[:, j])
-                V_sbp = Ref2D_DG.vandermonde_2d(p_map, x[:, j], y[:, j])
+                # get coefficients that give the purturbed Lagrange finite element nodes
+                xhat = (np.linalg.inv(V_lag) @ x_lag2[:, j])
+                yhat = (np.linalg.inv(V_lag) @ y_lag2[:, j])
 
                 # Interpolating the Lagrange polynomial on the curved elements to get the mapped SBP nodes
-                xcurved[:, j] = V_sbp @ (np.linalg.inv(V_fe) @ x_fe2[:, j])
-                ycurved[:, j] = V_sbp @ (np.linalg.inv(V_fe) @ y_fe2[:, j])
+                xcurved[:, j] = V_sbp @ xhat
+                ycurved[:, j] = V_sbp @ yhat
+
+                # Find geometric terms by interpolating the exact geometric terms
+                xr[:, j] = Vr_sbp @ xhat
+                xs[:, j] = Vs_sbp @ xhat
+                yr[:, j] = Vr_sbp @ yhat
+                ys[:, j] = Vs_sbp @ yhat
 
         else:
             x = x.reshape(x.shape[0], 1)
@@ -1105,7 +1080,12 @@ class MeshTools2D:
                 xcurved = x + Lx * alpha * np.cos(np.pi / Lx * (x - Lx / 2)) * np.cos(3 * np.pi / Ly * y)
                 ycurved = y + Ly * alpha * np.sin(4 * np.pi / Lx * (xcurved - Lx / 2)) * np.cos(np.pi / Ly * y)
 
-        return xcurved, ycurved
+        return {'x': xcurved, 'y': ycurved, 'xr': xr, 'xs': xs, 'yr': yr, 'ys': ys}
+
+    @staticmethod
+    def map_to_phy_curvilinear(H, Dr, Ds, Er, Es, rx, ry, sx, sy):
+
+        return
 
 # mesh = MeshGenerator2D.rectangle_mesh(0.5)
 #

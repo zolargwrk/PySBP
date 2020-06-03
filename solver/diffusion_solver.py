@@ -244,7 +244,7 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
     return
 
 # diffusion_solver_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine, refine_type, boundary_type=None, b=1, n=1):
-# u = poisson_1d(2, 0, 1, 20, 'LGL', 'BR2', 4, 'ntrad', 'nPeriodic', 'sbp_sat', poisson1D_problem_input, a=0, n=16, app=2)
+# u = poisson_1d(2, 0, 1, 1, 'LG', 'BR2', 1, 'ntrad', 'nPeriodic', 'sbp_sat', poisson1D_problem_input, a=0, n=16, app=1)
 
 
 #
@@ -421,7 +421,7 @@ def diffusion_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR1', plot_
 
 
 def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_adjoint=False, plot_fig=False,
-                   calc_condition_num=False, calc_eigvals=False, showMesh=False, p_map=1):
+                   calc_condition_num=False, calc_eigvals=False, showMesh=False, p_map=1, curve_mesh=False):
 
     dim = 2
     nface = dim + 1
@@ -436,7 +436,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
     # generate mesh
     mesh = MeshGenerator2D.rectangle_mesh(h, bL, bR, bB, bT)
     btype = ['d', 'd', 'd', 'd']
-    ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family, p_map=p_map)
+    ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family, p_map=p_map, curve_mesh=curve_mesh)
     adata = SimpleNamespace(**ass_data)
     errs_soln = list()
     errs_adj = list()
@@ -456,7 +456,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             mesh = MeshTools2D.hrefine_uniform_2d(ass_data, bL, bR, bB, bT)
 
         # update assembled data for 2D implementation
-        ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family, p_map)
+        ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family, p_map, curve_mesh=curve_mesh)
         adata = SimpleNamespace(**ass_data)
 
         # extract variables from adata
@@ -612,7 +612,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         # visualize result
         print("error_soln =", "{:.4e}".format(err_soln), "; error_func =", "{:.4e}".format(err_func), "; nelem =", nelem,
               "; h =", "{:.4f}".format(h),"; ", sbp_family, "; ", flux_type, "; p =", p, "; cond_num =", "{:.4e}".format(cond_num),
-              "; nnz_elem =", nnz_elem)
+                  "; nnz_elem =", nnz_elem, "; min_Jacobian =", "{:.4f}".format(np.min((sparse.block_diag(phy.jacB).diagonal()))))
         if solve_adjoint is True:
             print("error_adj =", "{:.4e}".format(err_adj))
 
@@ -627,19 +627,13 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         if showMesh==True:
             showFacetNodes = True
             showVolumeNodes = True
-            MeshPlot.plot_mesh_2d(r, s, x, y, xf, yf, vx, vy, etov, p_map, Lx, Ly, showFacetNodes, showVolumeNodes)
+            MeshPlot.plot_mesh_2d(h, r, s, x, y, xf, yf, vx, vy, etov, p_map, Lx, Ly, showFacetNodes, showVolumeNodes,
+                                  saveMeshPlot=False)
 
-            # plot_figure_2d(x, y, u - u_exact)
-
-            # path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\pysbp_results\\advec_diff_results\\figures\\'
-            # plt.spy(A, marker='o', markeredgewidth=0, markeredgecolor='y', markersize=5, markerfacecolor='r')
-            # plt.savefig(path + 'sparsity_{}.pdf'.format(flux_type), format='pdf')
-            # plt.close()
-            plt.show()
 
     return {'nelems': nelems, 'hs': hs, 'errs_soln': errs_soln, 'eig_vals': eig_vals, 'nnz_elems': nnz_elems,
             'errs_adj': errs_adj, 'errs_func': errs_func, 'cond_nums': cond_nums}
 
-# poisson_sbp_2d(2, 5, 3, 'gamma', 'BR2', plot_fig=True, solve_adjoint=False, showMesh=True, p_map=1)
+# poisson_sbp_2d(3, 5, 1, 'gamma', 'BR2', plot_fig=False, solve_adjoint=False, showMesh=True, p_map=4, curve_mesh=True)
 # diffusion_sbp_2d(1, 0.5, 1, 'gamma', 'BR1', plot_fig=False)
 # poisson_2d(1, 0.5, 1,'BR2')

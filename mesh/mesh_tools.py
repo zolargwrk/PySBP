@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from mesh.mesh_generator import MeshGenerator1D, MeshGenerator2D
 from src.ref_elem import Ref2D_DG, Ref2D_SBP
 from src.calc_tools import CalcTools
+from scipy import sparse
 
 
 class MeshTools1D:
@@ -567,7 +568,7 @@ class MeshTools2D:
         return {'nx': nx, 'ny': ny, 'surf_jac': surf_jac}
 
     @staticmethod
-    def normals_sbp_2d_method2(xrf, yrf, xsf, ysf):
+    def normals_sbp_curved_2d(xrf, yrf, xsf, ysf):
         """Calculates the surface normals of the physical element given the vertices."""
 
         nfp = int(xrf.shape[0]/3)
@@ -577,7 +578,7 @@ class MeshTools2D:
 
         # calculate the surface jacobian
         surf_jacf1 = np.sqrt((xrf[fid1, :] ** 2 + yrf[fid1, :] ** 2))
-        surf_jacf2 = np.sqrt((xrf[fid2, :] - xsf[fid2, :]) ** 2 + (-yrf[fid2, :] + ysf[fid2, :]) ** 2) / np.sqrt(2)
+        surf_jacf2 = np.sqrt((-xrf[fid2, :] + xsf[fid2, :]) ** 2 + (-yrf[fid2, :] + ysf[fid2, :]) ** 2) / np.sqrt(2)
         surf_jacf3 = np.sqrt((xsf[fid3, :] ** 2 + ysf[fid3, :] ** 2))
 
         # calculate the normals at the faces
@@ -1023,18 +1024,18 @@ class MeshTools2D:
     def curve_mesh2d(r, s, x, y, vx, vy, etov, p_map=2, Lx=1, Ly=1, func=None):
 
         # obtain degree p Lagrange finite element nodes on reference element
-        x_ref, y_ref = Ref2D_DG.nodes_2d(p_map)   # on equilateral triangle element
-        r_lag, s_lag = Ref2D_DG.xytors(x_ref, y_ref)  # on right triangle reference element
+        x_ref, y_ref = Ref2D_DG.nodes_2d(p_map)         # on equilateral triangle element
+        r_lag, s_lag = Ref2D_DG.xytors(x_ref, y_ref)    # on right triangle reference element
 
         # apply affine mapping and obtain Lagrange finite element node location on the physical elements
         x_lag, y_lag = MeshTools2D.affine_map_2d(vx, vy, r_lag, s_lag, etov)
 
-        # apply mapping to curved elements both for Lagrange finite element nodes and SBP nodes
+        # apply mapping to Lagrangian nodes on the physical space
         if func is not None:
             x_lag2, y_lag2 = func(x_lag, y_lag)
         else:
             # use function from Jesse Chan et.al. 2019 paper: Efficient Entropy Stable Gauss Collocation Methods
-            alpha = 1/32
+            alpha = 1/16
             x_lag2 = x_lag + Lx*alpha*np.cos(np.pi/Lx * (x_lag - Lx/2)) * np.cos(3*np.pi/Ly * y_lag)
             y_lag2 = y_lag + Ly*alpha*np.sin(4*np.pi/Lx * (x_lag2 - Lx/2)) * np.cos(np.pi/Ly * y_lag)
 
@@ -1085,7 +1086,7 @@ class MeshTools2D:
 
     @staticmethod
     def map_operators_to_phy_2d(p, nelem, H, Dr, Ds, Er, Es, R1, R2, R3, B1, B2, B3, rx, ry, sx, sy, jac,
-                                            surf_jac, nx, ny):
+                                            surf_jac, nx, ny, LB=None):
         # get number of nodes per face and number of volume nodes per elements
         nfp = p+1
         nnodes = H.shape[0]
@@ -1140,26 +1141,31 @@ class MeshTools2D:
         # get the derivative operator on the physical elements and store it for each element
         DrB = np.block([Dr] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
         DsB = np.block([Ds] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
-        # the derivative operator on the physical elements can be constructed in different ways, e.g., using the
-        # skew symmetric formulation Dx = H^-1 (Sx + 1/2 Ex), but here we construct it based on the accuracy analysis
-        # in Crean et.al.(2017) (Section 5.5, page 24)
-        DxB = 1/2*(rxB @ DrB + sxB @ DsB) + 1/2*np.linalg.inv(jacB) @ (DrB @ jacB @ rxB + DsB @ jacB @ sxB)
-        DyB = 1/2*(ryB @ DrB + syB @ DsB) + 1/2*np.linalg.inv(jacB) @ (DrB @ jacB @ ryB + DsB @ jacB @ syB)
 
-        # construct E, the surface integral matrix
-        ErB = np.block([Er] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
-        EsB = np.block([Es] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
-        # again we use the result in the accuracy analysis of Crean et.al.(2017) (section 5.5) to construct Ex and Ey
-        # instead of the decomposition Ex = sum (Rgk.T @ B @ N @ R)
-        ExB = ErB @ (jacB @ rxB) + EsB @ (jacB @ sxB)
-        EyB = ErB @ (jacB @ ryB) + EsB @ (jacB @ syB)
+        # # the derivative operator on the physical elements can be constructed in different ways, e.g., using the
+        # # skew symmetric formulation Dx = H^-1 (Sx + 1/2 Ex), but here we construct it based on the accuracy analysis
+        # # in Crean et.al.(2017) (Section 5.5, page 24)
+        # DxB = 1/2*(rxB @ DrB + sxB @ DsB) + 1/2*np.linalg.inv(jacB) @ (DrB @ jacB @ rxB + DsB @ jacB @ sxB)
+        # DyB = 1/2*(ryB @ DrB + syB @ DsB) + 1/2*np.linalg.inv(jacB) @ (DrB @ jacB @ ryB + DsB @ jacB @ syB)
+        #
+        # # construct E, the surface integral matrix
+        # ErB = np.block([Er] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        # EsB = np.block([Es] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        # # again we use the result in the accuracy analysis of Crean et.al.(2017) (section 5.5) to construct Ex and Ey
+        # # instead of the decomposition Ex = sum (Rgk.T @ B @ N @ R)
+        # ExB = ErB @ (jacB @ rxB) + EsB @ (jacB @ sxB)
+        # EyB = ErB @ (jacB @ ryB) + EsB @ (jacB @ syB)
+        #
+        # # construct Q, the weak derivative operator on the physical elements
+        # QxB = HB @ DxB
+        # QyB = HB @ DyB
 
         # construct S, the skew-symmetric matrix
         Qr = H @ Dr
         Qs = H @ Ds
         QrB = np.block([Qr] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
         QsB = np.block([Qs] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
-        # construct S, the skew symmetric matrix
+
         SxB = 1 / 2 * ((jacB @ rxB) @ QrB + (jacB @ sxB) @ QsB) \
               - 1 / 2 * (QrB.transpose(0, 2, 1) @ (jacB @ rxB) + QsB.transpose(0, 2, 1) @ (jacB @ sxB))
         SyB = 1 / 2 * ((jacB @ ryB) @ QrB + (jacB @ syB) @ QsB) \
@@ -1168,27 +1174,48 @@ class MeshTools2D:
         # -------------------------------------------------------------------------------------------------------------
         # the alternative ways to construct the Ex and Ey matrices
         # construct E, the surface integral matrix
-        # ExB =   RB[0].transpose(0, 2, 1) @ (BB[0] * nxB[0]) @ RB[0] \
-        #       + RB[1].transpose(0, 2, 1) @ (BB[1] * nxB[1]) @ RB[1] \
-        #       + RB[2].transpose(0, 2, 1) @ (BB[2] * nxB[2]) @ RB[2]
-        #
-        # EyB =   RB[0].transpose(0, 2, 1) @ (BB[0] * nyB[0]) @ RB[0] \
-        #       + RB[1].transpose(0, 2, 1) @ (BB[1] * nyB[1]) @ RB[1] \
-        #       + RB[2].transpose(0, 2, 1) @ (BB[2] * nyB[2]) @ RB[2]
+        ExB =   RB[0].transpose(0, 2, 1) @ (BB[0] * nxB[0]) @ RB[0] \
+              + RB[1].transpose(0, 2, 1) @ (BB[1] * nxB[1]) @ RB[1] \
+              + RB[2].transpose(0, 2, 1) @ (BB[2] * nxB[2]) @ RB[2]
 
-        # the alternative ways to construct the Dx and Dy
-        # HB_inv = np.linalg.inv(HB)
-        # DxB = HB_inv @ QxB
-        # DyB = HB_inv @ QyB
-        #--------------------------------------------------------------------------------------------------------------
+        EyB =   RB[0].transpose(0, 2, 1) @ (BB[0] * nyB[0]) @ RB[0] \
+              + RB[1].transpose(0, 2, 1) @ (BB[1] * nyB[1]) @ RB[1] \
+              + RB[2].transpose(0, 2, 1) @ (BB[2] * nyB[2]) @ RB[2]
+
 
         # construct Q, the weak derivative operator on the physical elements
         QxB = SxB + 1 / 2 * ExB
         QyB = SyB + 1 / 2 * EyB
 
+        # the alternative ways to construct the Dx and Dy
+        HB_inv = np.linalg.inv(HB)
+        DxB = HB_inv @ QxB
+        DyB = HB_inv @ QyB
+
+        #--------------------------------------------------------------------------------------------------------------
+        # calculate Laplacian operator
+        if LB is None:
+            I = np.eye(nnodes)
+            Lxx = sparse.block_diag([I] * nelem)
+            Lyy = sparse.block_diag([I] * nelem)
+            Lxy = 0*Lxx
+            Lyx = 0*Lyy
+            LB = np.block([[Lxx, Lxy], [Lyx, Lyy]])
+        else:
+            Lxx = LB[0, 0]
+            Lxy = LB[0, 1]
+            Lyx = LB[1, 0]
+            Lyy = LB[1, 1]
+
+        D2B = sparse.csr_matrix((np.block([sparse.block_diag(DxB), sparse.block_diag(DyB)]) @ LB
+                                 @ np.block([[sparse.block_diag(DxB)], [sparse.block_diag(DyB)]]))[0, 0])
+        # D2B = sparse.block_diag(DxB) @ (Lxx @ sparse.block_diag(DxB) + Lxy @ sparse.block_diag(DyB)) \
+        #       + sparse.block_diag(DyB) @ (Lyx @ sparse.block_diag(DxB) + Lyy @ sparse.block_diag(DyB))
+
+
         return {'rxB': rxB, 'ryB': ryB, 'sxB': sxB, 'syB': syB, 'jacB': jacB, 'surf_jacB': surf_jacB, 'nxB': nxB,
                 'nyB': nyB, 'RB': RB, 'HB': HB, 'BB': BB, 'DxB': DxB, 'DyB': DyB, 'ExB': ExB, 'EyB': EyB, 'QxB': QxB,
-                'QyB': QyB, 'SxB': SxB, 'SyB': SyB}
+                'QyB': QyB, 'SxB': SxB, 'SyB': SyB, 'D2B': D2B}
 
 # mesh = MeshGenerator2D.rectangle_mesh(0.5)
 #

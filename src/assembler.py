@@ -151,7 +151,7 @@ class Assembler:
         jac = jac_mapping['jac']
 
         # edge node location
-        masks = Ref1D.fmask_1d(x_ref, x, tl, tr)
+        masks = Ref1D.fmask_1d(x_ref.copy(), x.copy(), tl.copy(), tr.copy())
         fx = masks['fx']
         fmask = masks['fmask']
 
@@ -177,6 +177,10 @@ class Assembler:
 
         # normals at the faces
         nx = MeshTools1D.normals_1d(nelem)
+
+        # err = np.abs(tl.T @ x**(self.p) - 0)
+        # np.set_printoptions(precision=16)
+        # print(err)
 
         return {'d_mat': d_mat, 'lift': lift, 'rx': rx, 'fscale': fscale, 'vmapM': vmapM, 'vmapP': vmapP, 'xl': xl,
                 'vmapB': vmapB, 'mapB': mapB, 'mapI': mapI, 'mapO': mapO, 'vmapI': vmapI, 'vmapO': vmapO, 'xr': xr,
@@ -261,7 +265,7 @@ class Assembler:
                 'etov': etov, 'r': r, 's': s, 'etoe': etoe, 'etof': etof, 'vx': vx, 'vy': vy}
 
     @staticmethod
-    def assembler_sbp_2d(p, mesh, btype, sbp_family="gamma", p_map=2):
+    def assembler_sbp_2d(p, mesh, btype, sbp_family="gamma", p_map=2, curve_mesh='True'):
 
         # define and set important variables
         nfp = p + 1                         # number of points on each facet
@@ -275,7 +279,23 @@ class Assembler:
         r = sbpref.r
         s = sbpref.s
         nnodes = len(r)
-        bary = sbpref.bary
+
+        # get directional operators
+        Dr = sbpref.Dr
+        Ds = sbpref.Ds
+        Er = sbpref.Er
+        Es = sbpref.Es
+
+        # get norm matrices
+        H = sbpref.H  # volume norm matrix
+        B1 = sbpref.B1  # surface 1 norm matrix
+        B2 = sbpref.B2  # surface 2 norm matrix
+        B3 = sbpref.B3  # surface 3 norm matrix
+
+        # get the extrapolation/interpolation matrix at each face
+        R1 = sbpref.R1
+        R2 = sbpref.R2
+        R3 = sbpref.R3
 
         # obtain mesh data on the physical element
         vx = mesh['vx']
@@ -288,16 +308,35 @@ class Assembler:
         # get the length of the domain in the x and y directions
         Lx = mesh['Lx']  # bR - bL
         Ly = mesh['Ly']  # bT - bB
-        # curve the mesh
-        curvedxy_data = MeshTools2D.curve_mesh2d(r, s, x, y, vx, vy, etov, p_map=p_map, Lx=Lx, Ly=Ly)
-        xycrv = SimpleNamespace(**curvedxy_data)
-        x = xycrv.x
-        y = xycrv.y
-        jac = xycrv.xr * xycrv.ys - xycrv.xs * xycrv.yr
-        rx = xycrv.ys / jac
-        sx = -xycrv.yr / jac
-        ry = -xycrv.xs / jac
-        sy = xycrv.xr / jac
+
+        # curve the mesh and get geometric factors
+        if curve_mesh:
+            curvedxy_data = MeshTools2D.curve_mesh2d(r, s, x, y, vx, vy, etov, p_map=p_map, Lx=Lx, Ly=Ly)
+            xycrv = SimpleNamespace(**curvedxy_data)
+            x = xycrv.x
+            y = xycrv.y
+            jac = xycrv.xr * xycrv.ys - xycrv.xs * xycrv.yr
+            xr = xycrv.xr
+            yr = xycrv.yr
+            xs = xycrv.xs
+            ys = xycrv.ys
+            rx = ys / jac
+            sx = -yr / jac
+            ry = -xs / jac
+            sy = xr / jac
+        else:
+            # get volume geometric factors
+            geo_data = MeshTools2D.geometric_factors_2d(x, y, Dr, Ds)
+            geo = SimpleNamespace(**geo_data)
+            jac = geo.xr * geo.ys - geo.xs * geo.yr
+            xr = geo.xr
+            yr = geo.yr
+            xs = geo.xs
+            ys = geo.ys
+            rx = ys / jac
+            sx = -yr / jac
+            ry = -xs / jac
+            sy = xr / jac
 
         # apply affine mapping to obtain location of nodes on the facets of the physical elements
         # rf = sbpref.rsf[:, 0]
@@ -306,51 +345,25 @@ class Assembler:
         sf = (sbpref.rsf[:, :, 1]).reshape((-1, 1))
         baryf = sbpref.baryf
         xf, yf = MeshTools2D.affine_map_facet_sbp_2d(vx, vy, etov, baryf)
-        # curve the mesh
-        curvedxy_facetdata = MeshTools2D.curve_mesh2d(rf, sf, xf, yf, vx, vy, etov, p_map=p_map, Lx=Lx, Ly=Ly)
-        xyfcrv = SimpleNamespace(**curvedxy_facetdata)
-        xf = xyfcrv.x
-        yf = xyfcrv.y
 
-        # # # obtain the nodes on the edges of the triangles on the physical element
-        # mask = Ref2D_DG.fmask_2d(r, s, x, y)
-        # fx = mask['fx']
-        # fy = mask['fy']
-        # fmask = mask['fmask']
-
-        # get directional operators
-        Dr = sbpref.Dr
-        Ds = sbpref.Ds
-        Er = sbpref.Er
-        Es = sbpref.Es
-
-        # get norm matrices
-        H = sbpref.H        # volume norm matrix
-        B1 = sbpref.B1      # surface 1 norm matrix
-        B2 = sbpref.B2      # surface 2 norm matrix
-        B3 = sbpref.B3      # surface 3 norm matrix
-
-        # get the extrapolation/interpolation matrix at each face
-        R1 = sbpref.R1
-        R2 = sbpref.R2
-        R3 = sbpref.R3
-
-        # get volume geometric factors
-        geo_data = MeshTools2D.geometric_factors_2d(x, y, Dr, Ds)
-        geo = SimpleNamespace(**geo_data)
+        # curve mesh and get facet geometric factors
+        if curve_mesh:
+            curvedxy_facetdata = MeshTools2D.curve_mesh2d(rf, sf, xf, yf, vx, vy, etov, p_map=p_map, Lx=Lx, Ly=Ly)
+            xyfcrv = SimpleNamespace(**curvedxy_facetdata)
+            xf = xyfcrv.x
+            yf = xyfcrv.y
 
         # get normals and surface scaling factor
-        norm2 = MeshTools2D.normals_sbp_2d(geo.rx, geo.ry, geo.sx, geo.sy, geo.jac, R1, R2, R3)
-        nx2 = norm2['nx']
-        ny2 = norm2['ny']
-        surf_jac2 = norm2['surf_jac']
-        # fscale = surf_jac / jac[fmask.reshape((fmask.shape[0] * fmask.shape[1], 1), order='F'), :].reshape(surf_jac.shape)
-
-        norm = MeshTools2D.normals_sbp_2d_method2(xyfcrv.xr, xyfcrv.yr, xyfcrv.xs, xyfcrv.ys)
-        nx = norm['nx']
-        ny = norm['ny']
-        surf_jac = norm['surf_jac']
-        # fscale = surf_jac / jac[fmask.reshape((fmask.shape[0] * fmask.shape[1], 1), order='F'), :].reshape(surf_jac.shape)
+        if not curve_mesh:
+            norm = MeshTools2D.normals_sbp_2d(geo.rx, geo.ry, geo.sx, geo.sy, geo.jac, R1, R2, R3)
+            nx = norm['nx']
+            ny = norm['ny']
+            surf_jac = norm['surf_jac']
+        else:
+            norm = MeshTools2D.normals_sbp_curved_2d(xyfcrv.xr, xyfcrv.yr, xyfcrv.xs, xyfcrv.ys)
+            nx = norm['nx']
+            ny = norm['ny']
+            surf_jac = norm['surf_jac']
 
         # build connectivity matrices
         connect = MeshTools2D.connectivity_sbp_2d(etov)
@@ -376,11 +389,10 @@ class Assembler:
 
         return {'nfp': nfp, 'ns': ns, 'nface': nface, 'nelem': nelem, 'Dr': Dr, 'Ds': Ds, 'H': H, 'B1': B1, 'B2': B2,
                 'B3': B3, 'R1': R1, 'R2': R2, 'R3': R3, 'Er': Er, 'Es': Es, 'rx': rx, 'ry': ry,
-                'sx': sx, 'sy': sy, 'xr': xycrv.xr, 'xs': xycrv.xs, 'yr': xycrv.yr, 'ys': xycrv.ys,
-                'jac': jac, 'nx': nx, 'ny': ny, 'surf_jac': surf_jac, 'bgrp': bgrp, 'x': x, 'y': y, 'etov': etov,
-                'r': r, 's': s, 'etoe': etoe, 'etof': etof, 'vx': vx, 'vy': vy, 'bgrpD': bgrpD, 'bgrpN': bgrpN,
-                'xf': xf, 'yf': yf, 'Lx': Lx, 'Ly': Ly, 'nnodes': nnodes, 'etoe2': etoe2, 'etof2': etof2,
-                'etof_nbr': etof_nbr, 'fscale': None}
+                'sx': sx, 'sy': sy, 'xr': xr, 'xs': xs, 'yr': yr, 'ys': ys, 'jac': jac, 'nx': nx, 'ny': ny,
+                'surf_jac': surf_jac, 'bgrp': bgrp, 'x': x, 'y': y, 'etov': etov, 'r': r, 's': s, 'etoe': etoe,
+                'etof': etof, 'vx': vx, 'vy': vy, 'bgrpD': bgrpD, 'bgrpN': bgrpN, 'xf': xf, 'yf': yf, 'Lx': Lx,
+                'Ly': Ly, 'nnodes': nnodes, 'etoe2': etoe2, 'etof2': etof2, 'etof_nbr': etof_nbr, 'fscale': None}
 
 
 # mesh = MeshGenerator2D.rectangle_mesh(0.25)

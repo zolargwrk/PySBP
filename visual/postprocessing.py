@@ -14,7 +14,7 @@ from solver.advection_diffusion_solver import advec_diff_1d
 
 def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_adjoint=False, save_results=False,
                  calc_cond=False, calc_eigvals=False, dim=2, stencil=('wide', 'narrow'), imp=('trad', 'elem'),
-                 prob=('Diff', 'AdvDiff', 'Adv'), n=25, showMesh=False, p_map=1):
+                 prob=('Diff', 'AdvDiff', 'Adv'), n=25, showMesh=False, p_map=1, curve_mesh=False):
 
     # setup default values based on input
     sbp_families, sats, ps, degrees, stencil, prob = input_defualt(sbp_families, sats, ps, stencil, prob, dim)
@@ -42,7 +42,7 @@ def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_
                     # solve the Poisson problem and obtain data
                     soln = poisson_sbp_2d(ps[p], h, nrefine, sbp_families[f], sats[s], solve_adjoint, plot_fig=False,
                                           calc_condition_num=calc_cond, calc_eigvals=calc_eigvals, showMesh=showMesh,
-                                          p_map=p_map)
+                                          p_map=p_map, curve_mesh=curve_mesh)
 
                     # add data to the leaves of the tree
                     leaf = all_results.children[0].children[f].children[s].children[p]
@@ -106,7 +106,7 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
                        plot_spectrum=False, plot_spectral_radius=False, plot_sparsity=False, run_results=None,
                        save_fig=False):
 
-    path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\visual\\poisson2d_results\\'
+    path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\visual\\poisson2d_results\\temp2\\'
     if run_results is None:
         # solve and obtain results or open saved from file
         with open(path+'results_poisson2D.pickle', 'rb') as infile:
@@ -662,10 +662,10 @@ def make_data_tree(sbp_families, sats, degrees, dim=2, stencil=('wide', 'narrow'
 # fam = ['gamma', 'omega', 'diagE']
 # sat = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG']
 # p = [1, 2, 3, 4]
-fam = ['omega', 'gamma', 'diage']
+fam = ['gamma']
 sat = ['BR2']
 # sat = ['LDG', 'CDG']
-p = [1, 2, 3, 4]
+p = [4]
 p_map = 2
 adj = False
 plt_fam = False
@@ -676,10 +676,11 @@ plt_sparsity = False
 calc_eigs = False
 calc_cond_num = False
 save_figure = False
+curve_mesh = True
 
 soln = None
 soln = save_results(h=3, nrefine=3, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=False,
-                    calc_cond=calc_cond_num, calc_eigvals=calc_eigs, showMesh=False, p_map=p_map)
+                    calc_cond=calc_cond_num, calc_eigvals=calc_eigs, showMesh=False, p_map=p_map, curve_mesh=curve_mesh)
 analyze_results_2d(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat, plot_spectrum=plt_eig,
                 plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity, run_results=soln, save_fig=save_figure)
 # ==================================================================================================================== #

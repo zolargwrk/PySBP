@@ -22,6 +22,10 @@ class TestRef2D_SBP(unittest.TestCase):
 
         # facet Vandermonde matrix
         Vf = oper.Vf
+        # Vf = []
+        # Vf.append(Ref2D_DG.vandermonde_2d(p, oper.rsf[0][:, 0], oper.rsf[0][:, 1]))
+        # Vf.append(Ref2D_DG.vandermonde_2d(p, oper.rsf[1][:, 0], oper.rsf[1][:, 1]))
+        # Vf.append(Ref2D_DG.vandermonde_2d(p, oper.rsf[2][:, 0], oper.rsf[2][:, 1]))
 
         # test derivative operator: Dr, Ds
         errDr = np.max(np.abs(oper.Dr @ V - Vder.vdr))
@@ -32,12 +36,12 @@ class TestRef2D_SBP(unittest.TestCase):
         errEs = np.max(np.abs(oper.Qs + oper.Qs.T - oper.Es))
 
         # test the interpolation/extrapolation matrix: R1, R2, R3
-        errR1 = np.max(np.abs(oper.R1 @ V - Vf[0]))
-        errR2 = np.max(np.abs(oper.R2 @ V - Vf[1]))
-        errR3 = np.max(np.abs(oper.R3 @ V - Vf[2]))
-        # errR1 = np.max(np.abs(oper.R1 @ oper.r.flatten()**p - oper.rsf[0][:, 0]**p))
-        # errR2 = np.max(np.abs(oper.R2 @ oper.r.flatten()**p - oper.rsf[1][:, 0]**p))
-        # errR3 = np.max(np.abs(oper.R3 @ oper.r.flatten()**p - oper.rsf[2][:, 0]**p))
+        # errR1 = np.max(np.abs(oper.R1 @ V - Vf[0]))
+        # errR2 = np.max(np.abs(oper.R2 @ V - Vf[1]))
+        # errR3 = np.max(np.abs(oper.R3 @ V - Vf[2]))
+        errR1 = np.max(np.abs(oper.R1 @ oper.r.flatten()**p - oper.rsf[0][:, 0]**p))
+        errR2 = np.max(np.abs(oper.R2 @ oper.r.flatten()**p - oper.rsf[1][:, 0]**p))
+        errR3 = np.max(np.abs(oper.R3 @ oper.r.flatten()**p - oper.rsf[2][:, 0]**p))
 
         # test accuracy of surface integral: E
         # to obtain the analytical surface integral use the fact that: int(v*du) + int(u*dv) = int_surface(uv)
@@ -50,16 +54,16 @@ class TestRef2D_SBP(unittest.TestCase):
 
         # test the line integral matrix on each facet: B1, B2, B3
         t = 2*p
-        analytical_line_B1 = - np.sqrt(2)/(t+1) * ((-1)**(t+1) - 1)     # line integral of r**t on facet 1
+        analytical_line_B1 = - 1/(t+1) * ((-1)**(t+1) - 1)          # line integral of r**t on facet 1
         line_B1 = np.diag(oper.B1).T @ oper.rsf[0][:, 0]**t
         errB1 = np.abs(line_B1 - analytical_line_B1)
 
-        analytical_line_B2 = 1/(t+1) *(1 - (-1)**(t+1))                 # line integral of s**t on facet 2
-        line_B2 = np.diag(oper.B2).T @ oper.rsf[1][:, 1]**t
+        analytical_line_B2 = np.sqrt(2)/(t+1) *(1 - (-1)**(t+1))     # line integral of r**t on facet 2
+        line_B2 = np.diag(oper.B2).T @ oper.rsf[1][:, 0]**t
         errB2 = np.abs(line_B2 - analytical_line_B2)
 
-        analytical_line_B3 = 1/(t+1) *(1 - (-1)**(t+1))                 # line integral of r**t on facet 3
-        line_B3 = np.diag(oper.B3).T @ oper.rsf[2][:, 0] ** t
+        analytical_line_B3 = 1/(t+1) *(1 - (-1)**(t+1))             # line integral of s**t on facet 3
+        line_B3 = np.diag(oper.B3).T @ oper.rsf[2][:, 1] ** t
         errB3 = np.abs(line_B3 - analytical_line_B3)
 
         # tests the norm matrix: H

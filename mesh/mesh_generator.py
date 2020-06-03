@@ -152,8 +152,8 @@ class MeshGenerator2D:
         #-------------------- meshzoo ---------
         elif meshgenerator == 'meshzoo':
             # nx = int(np.ceil(2 / h ** 2) + 1)
-            vxy, etov = meshzoo.rectangle(xmin=bL, xmax=bR, ymin=bB, ymax=bT, nx=17,
-                                          ny=9, zigzag=True)
+            vxy, etov = meshzoo.rectangle(xmin=bL, xmax=bR, ymin=bB, ymax=bT, nx=11,
+                                          ny=6, zigzag=True)
             vxy = vxy[:, 0:2]
         # --------------------- gmsh -------
         elif meshgenerator == 'gmsh':

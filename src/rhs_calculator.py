@@ -361,7 +361,7 @@ class RHSCalculator:
     def rhs_poisson_sbp_2d(u, xf, yf, DxB, DyB, HB, BB, RB, nxB, nyB, rxB, ryB, sxB, syB, surf_jacB, jacB,
                            etoe, etof, bgrp, bgrpD, bgrpN, flux_type='BR2', uDL_fun=None, uNL_fun=None, uDR_fun=None,
                            uNR_fun=None, uDB_fun=None, uNB_fun=None, uDT_fun=None, uNT_fun=None, bL=None, bR=None,
-                           bB=None, bT=None, LB=None):
+                           bB=None, bT=None, LB=None, eqn='primal'):
 
         # define and set important variables
         nnodes = u.shape[0]     # number of nodes per each element
@@ -393,7 +393,7 @@ class RHSCalculator:
         # get the SATs
         sat_data = SATs.diffusion_sbp_sat_2d_steady(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, DxB, DyB, HB, BB, RB,
                                                     rxB, ryB, sxB, syB, jacB, surf_jacB, nxB, nyB, etoe, etof, bgrp,
-                                                    bgrpD, bgrpN, flux_type, uD, uN)
+                                                    bgrpD, bgrpN, flux_type, uD, uN, eqn=eqn)
         sdata = SimpleNamespace(**sat_data)
 
         # get system matrix

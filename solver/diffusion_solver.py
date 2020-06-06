@@ -542,23 +542,24 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             uDT_fun = lambda x, y: 0
             uNT_fun = lambda x, y: 0
 
-            rhs_data = RHSCalculator.rhs_poisson_sbp_2d(u, adata.xf, adata.yf, phy.DxB, phy.DyB, phy.HB, phy.BB, phy.RB,
+            rhs_data = RHSCalculator.rhs_poisson_sbp_2d(psi, adata.xf, adata.yf, phy.DxB, phy.DyB, phy.HB, phy.BB, phy.RB,
                                                     phy.nxB, phy.nyB, phy.rxB, phy.ryB, phy.sxB,
                                                     phy.syB, phy.surf_jacB, phy.jacB, adata.etoe, adata.etof,
                                                     adata.bgrp, adata.bgrpD, adata.bgrpN, flux_type, uDL_fun, uNL_fun,
                                                     uDR_fun, uNR_fun, uDB_fun, uNB_fun, uDT_fun, uNT_fun, bL, bR, bB,
-                                                    bT, LB=None)
+                                                    bT, LB=None, eqn='adjoint')
             rdata = SimpleNamespace(**rhs_data)
             fB_adj = rdata.fB
             A_adj = rdata.A
             Hg = rdata.Hg
 
             # get source term for adjoint problem
-            # g = ((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y)).flatten(order='F') + fB_adj.flatten(order="F")
-            g = np.ones((nelem*nnodes, 1))
+            # g = np.ones((nelem*nnodes, 1))
+            G = (-np.pi**2/bR**2 - np.pi**2/(4*bT**2)) * np.sin(np.pi/bR * x) * np.cos(np.pi/(2*bT) * y)
+            g = G.T.reshape((-1, 1)) + fB_adj.T.reshape((-1, 1))
 
             # exact adjoint
-            psi_exact = np.sin(np.pi * x) * np.sin(np.pi * y)
+            psi_exact = np.sin(np.pi/bR * x) * np.cos(np.pi/(2*bT) * y)
 
             # solve adjoint problem
             psi = (spsolve(A_adj, g)).reshape((nnodes, nelem), order="F")
@@ -570,18 +571,12 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             errs_adj.append(err_adj)
 
         # calculate functional superconvergece
-        # func = (((-2*np.pi ** 2) * np.sin(np.pi * x) * np.sin(np.pi * y)).reshape((-1, 1), order='F').T \
-        #        @ Hg @ u.reshape((-1, 1), order='F')).flatten()[0]
-        # func_exact = 0
-
-        func = (np.ones((nelem * nnodes, 1)).T @ Hg @ u.flatten(order='F'))[0]
-        func_exact = (-np.cos(np.pi*m*bR) + np.cos(np.pi*n*bL))/(np.pi**2 * m * n) \
-                     * (-np.cos(np.pi*n*bT) + np.cos(np.pi*n*bB)) # obtained using https://www.symbolab.com/solver
-        # func_exact = (-(-1) ** n + 1) / (np.pi ** 2 * n * m) * (-(-1) ** m + 1) # obtained using https://www.symbolab.com/solver
-        # func_exact = 2*np.tanh(np.pi/2)/(np.pi**2)   # obtained using Wolfram Alpha
-
-        # func = np.ones((nelem * nnodes, 1)).T @ Hg @ ((u.flatten(order='F'))**2)
-        # func_exact = (1/np.tanh(np.pi) - np.pi * 1/(np.sinh(np.pi)**2))/(4*np.pi)  # obtained using Wolfram Alpha
+        # func = (np.ones((nelem * nnodes, 1)).T @ Hg @ u.flatten(order='F'))[0]
+        # func_exact = (-np.cos(np.pi*m*bR) + np.cos(np.pi*n*bL))/(np.pi**2 * m * n) \
+        #              * (-np.cos(np.pi*n*bT) + np.cos(np.pi*n*bB)) # obtained using https://www.symbolab.com/solver
+        g = (-np.pi**2/bR**2 - 1/4*np.pi**2/bR**2) * np.sin(np.pi/bR * x) * np.cos(np.pi/(2*bT) * y)
+        func = (g.T.reshape((1, -1)) @ Hg @ u.T.reshape((-1, 1)).flatten())[0]
+        func_exact = 0
 
         err_func = np.abs(func - func_exact)
         errs_func.append(err_func)
@@ -634,6 +629,6 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
     return {'nelems': nelems, 'hs': hs, 'errs_soln': errs_soln, 'eig_vals': eig_vals, 'nnz_elems': nnz_elems,
             'errs_adj': errs_adj, 'errs_func': errs_func, 'cond_nums': cond_nums}
 
-# poisson_sbp_2d(3, 5, 1, 'gamma', 'BR2', plot_fig=False, solve_adjoint=False, showMesh=True, p_map=4, curve_mesh=True)
+# poisson_sbp_2d(2, 5, 3, 'gamma', 'BR2', plot_fig=True, solve_adjoint=True, showMesh=True, p_map=2, curve_mesh=True)
 # diffusion_sbp_2d(1, 0.5, 1, 'gamma', 'BR1', plot_fig=False)
 # poisson_2d(1, 0.5, 1,'BR2')

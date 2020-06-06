@@ -1035,7 +1035,7 @@ class MeshTools2D:
             x_lag2, y_lag2 = func(x_lag, y_lag)
         else:
             # use function from Jesse Chan et.al. 2019 paper: Efficient Entropy Stable Gauss Collocation Methods
-            alpha = 1/16
+            alpha = 1/32
             x_lag2 = x_lag + Lx*alpha*np.cos(np.pi/Lx * (x_lag - Lx/2)) * np.cos(3*np.pi/Ly * y_lag)
             y_lag2 = y_lag + Ly*alpha*np.sin(4*np.pi/Lx * (x_lag2 - Lx/2)) * np.cos(np.pi/Ly * y_lag)
 

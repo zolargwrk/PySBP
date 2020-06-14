@@ -1021,7 +1021,7 @@ class MeshTools2D:
         return {'etoe2': etoe2, 'etof2': etof2, 'etof_nbr': etof_nbr}
 
     @staticmethod
-    def curve_mesh2d(r, s, x, y, vx, vy, etov, p_map=2, Lx=1, Ly=1, func=None):
+    def curve_mesh2d(r, s, x, y, vx, vy, etov, p_map=2, Lx=1, Ly=1, curve_mesh=True, func=None):
 
         # obtain degree p Lagrange finite element nodes on reference element
         x_ref, y_ref = Ref2D_DG.nodes_2d(p_map)         # on equilateral triangle element
@@ -1035,7 +1035,7 @@ class MeshTools2D:
             x_lag2, y_lag2 = func(x_lag, y_lag)
         else:
             # use function from Jesse Chan et.al. 2019 paper: Efficient Entropy Stable Gauss Collocation Methods
-            alpha = 1/32
+            alpha = 1/16
             x_lag2 = x_lag + Lx*alpha*np.cos(np.pi/Lx * (x_lag - Lx/2)) * np.cos(3*np.pi/Ly * y_lag)
             y_lag2 = y_lag + Ly*alpha*np.sin(4*np.pi/Lx * (x_lag2 - Lx/2)) * np.cos(np.pi/Ly * y_lag)
 
@@ -1077,10 +1077,13 @@ class MeshTools2D:
 
             if func is not None:
                 xcurved, ycurved = func(x, y)
-            else:
+            elif curve_mesh:
                 # map to curved element with out polynomial interpolation (used for plotting purposes only)
                 xcurved = x + Lx * alpha * np.cos(np.pi / Lx * (x - Lx / 2)) * np.cos(3 * np.pi / Ly * y)
                 ycurved = y + Ly * alpha * np.sin(4 * np.pi / Lx * (xcurved - Lx / 2)) * np.cos(np.pi / Ly * y)
+            else:
+                xcurved = x
+                ycurved = y
 
         return {'x': xcurved, 'y': ycurved, 'xr': xr, 'xs': xs, 'yr': yr, 'ys': ys}
 
@@ -1130,6 +1133,7 @@ class MeshTools2D:
 
         # get volume norm matrix and its inverse on physical elements
         HB = jacB @ np.block([H] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        # HB = np.block([H] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
 
         # get surface norm matrix for each facet of each element
         BB1 = (surf_jac1B * np.block([B1] * nelem).T.reshape(nelem, nfp, nfp).transpose(0, 2, 1))

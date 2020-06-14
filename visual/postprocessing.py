@@ -106,7 +106,7 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
                        plot_spectrum=False, plot_spectral_radius=False, plot_sparsity=False, plot_adj_by_family=False,
                        plot_adj_by_sat=False, run_results=None, save_fig=False):
 
-    path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\visual\\poisson2d_results\\temp3\\'
+    path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\visual\\poisson2d_results\\temp4\\'
     if run_results is None:
         # solve and obtain results or open saved from file
         with open(path+'results_poisson2D.pickle', 'rb') as infile:
@@ -227,82 +227,82 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
                 plt.show()
                 plt.close()
 
-        # plot adjoint by sbp family, i.e., 1 family with varying SAT types
-        if plot_adj_by_family:
-            for p in range(len(ps)):
-                for f in range(len(sbp_families)):
-                    for s in range(len(sats)):
+    # plot adjoint by sbp family, i.e., 1 family with varying SAT types
+    if plot_adj_by_family:
+        for p in range(len(ps)):
+            for f in range(len(sbp_families)):
+                for s in range(len(sats)):
 
-                        # get results from saved tree file
-                        res = all_results.children[0].children[f].children[s].children[p].children[0].results
-                        r = SimpleNamespace(**res)
+                    # get results from saved tree file
+                    res = all_results.children[0].children[f].children[s].children[p].children[0].results
+                    r = SimpleNamespace(**res)
 
-                        # set refinement levels where the convergence rates calculation begins and ends
-                        begin = len(r.hs) - 3
-                        end = len(r.hs)
+                    # set refinement levels where the convergence rates calculation begins and ends
+                    begin = len(r.hs) - 3
+                    end = len(r.hs)
 
-                        # calculate adjoint convergence rates
-                        conv_adj = np.abs(
-                            np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_adj[begin:end]), 1)[0])
+                    # calculate adjoint convergence rates
+                    conv_adj = np.abs(
+                        np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_adj[begin:end]), 1)[0])
 
-                        # plot solution convergence rates
-                        plt.figure(1)
-                        plt.loglog(r.hs, r.errs_adj, pltsetup.markers[s], linewidth=pltsetup.lw,
-                                   markersize=pltsetup.ms,
-                                   label='SBP-{} $|$ {} $|$ {} $|$r={:.2f}'.format(pltsetup.sbp_fam[sbp_families[f]],
-                                                                                   pltsetup.sat_name[sats[s]],
-                                                                                   degrees[p], conv_adj))
-                        plt.xlabel(r'$h$')
-                        plt.ylabel(r'error in adjoint')
-                        plt.legend()
-                        plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
-                        plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
-                        plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
+                    # plot solution convergence rates
+                    plt.figure(1)
+                    plt.loglog(r.hs, r.errs_adj, pltsetup.markers[s], linewidth=pltsetup.lw,
+                               markersize=pltsetup.ms,
+                               label='SBP-{} $|$ {} $|$ {} $|$r={:.2f}'.format(pltsetup.sbp_fam[sbp_families[f]],
+                                                                               pltsetup.sat_name[sats[s]],
+                                                                               degrees[p], conv_adj))
+                    plt.xlabel(r'$h$')
+                    plt.ylabel(r'error in adjoint')
+                    plt.legend()
+                    plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
+                    plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
+                    plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
 
-                        if save_fig:
-                            plt.savefig(path + '\\adj_conv_rates\\errs_adj_VarOper_{}_p{}.pdf'.format(sbp_families[f],
-                                                                                                        ps[p]),
-                                        format='pdf')
+                    if save_fig:
+                        plt.savefig(path + '\\adj_conv_rates\\errs_adj_VarOper_{}_p{}.pdf'.format(sbp_families[f],
+                                                                                                    ps[p]),
+                                    format='pdf')
 
-                    plt.show()
-                    plt.close()
+                plt.show()
+                plt.close()
 
-        # plot solution by sat type, i.e., 1 SAT type and varying SBP families
-        if plot_adj_by_sat:
-            for p in range(0, len(ps)):
-                for s in range(0, len(sats)):
-                    for f in range(0, len(sbp_families)):
+    # plot solution by sat type, i.e., 1 SAT type and varying SBP families
+    if plot_adj_by_sat:
+        for p in range(0, len(ps)):
+            for s in range(0, len(sats)):
+                for f in range(0, len(sbp_families)):
 
-                        # get results from saved tree file
-                        res = all_results.children[0].children[f].children[s].children[p].children[0].results
-                        r = SimpleNamespace(**res)
+                    # get results from saved tree file
+                    res = all_results.children[0].children[f].children[s].children[p].children[0].results
+                    r = SimpleNamespace(**res)
 
-                        # set refinement levels where the convergence rates calculation begins and ends
-                        begin = len(r.hs) - 3
-                        end = len(r.hs)
+                    # set refinement levels where the convergence rates calculation begins and ends
+                    begin = len(r.hs) - 3
+                    end = len(r.hs)
 
-                        # calculate solution convergence rates
-                        conv_adj = np.abs(
-                            np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_adj[begin:end]), 1)[0])
+                    # calculate solution convergence rates
+                    conv_adj = np.abs(
+                        np.polyfit(np.log10(r.hs[begin:end]), np.log10(r.errs_adj[begin:end]), 1)[0])
 
-                        # plot solution convergence rates
-                        plt.figure(3)
-                        plt.loglog(r.hs, r.errs_adj, pltsetup.markers[f], linewidth=pltsetup.lw,
-                                   markersize=pltsetup.ms,
-                                   label='SBP-{}| {}| {}| r={:.2f}'.format(pltsetup.sbp_fam[sbp_families[f]],
-                                                                           pltsetup.sat_name[sats[s]], degrees[p],
-                                                                           conv_adj))
-                        plt.xlabel(r'$h$')
-                        plt.ylabel(r'error in adjoint')
-                        plt.legend()
-                        plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
-                        plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
-                        plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
-                        if save_fig:
-                            plt.savefig(path + '\\adj_conv_rates\\errs_adj_VarSAT_{}_p{}.pdf'.format(sats[s], ps[p]),
-                                        format='pdf')
-                    plt.show()
-                    plt.close()
+                    # plot solution convergence rates
+                    plt.figure(3)
+                    plt.loglog(r.hs, r.errs_adj, pltsetup.markers[f], linewidth=pltsetup.lw,
+                               markersize=pltsetup.ms,
+                               label='SBP-{}| {}| {}| r={:.2f}'.format(pltsetup.sbp_fam[sbp_families[f]],
+                                                                       pltsetup.sat_name[sats[s]], degrees[p],
+                                                                       conv_adj))
+                    plt.xlabel(r'$h$')
+                    plt.ylabel(r'error in adjoint')
+                    plt.legend()
+                    plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
+                    plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
+                    plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
+                    if save_fig:
+                        plt.savefig(path + '\\adj_conv_rates\\errs_adj_VarSAT_{}_p{}.pdf'.format(sats[s], ps[p]),
+                                    format='pdf')
+                plt.show()
+                plt.close()
 
     # plot spectrum of the system matrix
     if plot_spectrum:
@@ -739,13 +739,12 @@ def make_data_tree(sbp_families, sats, degrees, dim=2, stencil=('wide', 'narrow'
 # fam = ['gamma', 'omega', 'diagE']
 # sat = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG']
 # p = [1, 2, 3, 4]
-fam = ['gamma', 'omega']
-sat = ['BR2', 'BO']
-# sat = ['LDG', 'CDG']
-p = [3]
+fam = ['gamma', 'omega', 'diage']
+sat = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG']
+p = [1, 2, 3, 4]
 p_map = 2
 adj = True
-plt_fam = False
+plt_fam = True
 plt_sat = True
 plt_adj_fam = True
 plt_adj_sat = True
@@ -754,11 +753,11 @@ plt_rho = False
 plt_sparsity = False
 calc_eigs = False
 calc_cond_num = False
-save_figure = False
+save_figure = True
 curve_mesh = True
 
 soln = None
-soln = save_results(h=5, nrefine=4, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=False,
+soln = save_results(h=4, nrefine=4, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=False,
                     calc_cond=calc_cond_num, calc_eigvals=calc_eigs, showMesh=False, p_map=p_map, curve_mesh=curve_mesh)
 analyze_results_2d(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat, plot_spectrum=plt_eig,
                    plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity,  plot_adj_by_sat=plt_adj_sat,

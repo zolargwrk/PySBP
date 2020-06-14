@@ -48,6 +48,8 @@ def mytriplot(ax, *args, **kwargs):
         if val is not None:
             kw[key] = kwargs.get(key, val)
 
+    curve_mesh = kw['curve_mesh']
+
     # Draw lines without markers.
     # Note 1: If we drew markers here, most markers would be drawn more than
     #         once as they belong to several edges.
@@ -56,7 +58,8 @@ def mytriplot(ax, *args, **kwargs):
     #         as it considerably speeds-up code execution.
     linestyle = kw['linestyle']
     kw_lines = {
-        **kw,
+        'lw': kw['lw'],
+        'linestyle': kw['linestyle'],
         'marker': 'None',  # No marker to draw.
         'zorder': kw.get('zorder', 1),  # Path default zorder is used.
     }
@@ -65,7 +68,8 @@ def mytriplot(ax, *args, **kwargs):
         tri_lines_x = np.insert(x[edges], 2, np.nan, axis=1)
         tri_lines_y = np.insert(y[edges], 2, np.nan, axis=1)
 
-        tri_lines_x2, tri_lines_y2 = add_points(r, s, tri_lines_x, tri_lines_y, x, y, etov, p_map=p_map, Lx=Lx, Ly=Ly)
+        tri_lines_x2, tri_lines_y2 = add_points(r, s, tri_lines_x, tri_lines_y, x, y, etov, p_map=p_map, Lx=Lx, Ly=Ly,
+                                                curve_mesh=curve_mesh)
 
         tri_lines = ax.plot(tri_lines_x2.ravel(), tri_lines_y2.ravel(), **kw_lines)
     else:
@@ -74,7 +78,9 @@ def mytriplot(ax, *args, **kwargs):
     # Draw markers separately.
     marker = kw['marker']
     kw_markers = {
-        **kw,
+        'lw': kw['lw'],
+        'marker': kw['marker'],
+        'color': kw['color'],
         'linestyle': 'None',  # No line to draw.
     }
     if marker not in [None, 'None', '', ' ']:
@@ -84,7 +90,7 @@ def mytriplot(ax, *args, **kwargs):
 
     return tri_lines + tri_markers
 
-def add_points(r, s, tri_lines_x, tri_lines_y, vx, vy, etov, p_map=2, Lx=1, Ly=1):
+def add_points(r, s, tri_lines_x, tri_lines_y, vx, vy, etov, p_map=2, Lx=1, Ly=1, curve_mesh=True):
     """ Adds more nodes between the vertices of the triangles and applies mesh curvature
     :arg tri_line_x - n X 3 matrix where the first two columns contain the x coordinates of connected vertices
     :arg tri_line_y - n X 3 matrix where the first two columns contain the y coordinates of connected vertices"""
@@ -110,7 +116,8 @@ def add_points(r, s, tri_lines_x, tri_lines_y, vx, vy, etov, p_map=2, Lx=1, Ly=1
         # etov_elem = etov[j].reshape((1, -1))
         # vx_elem = vx[etov_elem].reshape((-1, 1))
         # vy_elem = vy[etov_elem].reshape((-1, 1))
-        curved_data = MeshTools2D.curve_mesh2d(r, s, x.reshape((-1, 1)), y.reshape(-1, 1), vx, vy, etov, p_map, Lx, Ly)
+        curved_data = MeshTools2D.curve_mesh2d(r, s, x.reshape((-1, 1)), y.reshape(-1, 1), vx, vy, etov, p_map, Lx, Ly,
+                                               curve_mesh=curve_mesh)
         x = curved_data['x']
         y = curved_data['y']
 

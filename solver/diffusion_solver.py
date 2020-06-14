@@ -511,10 +511,13 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         rdata = SimpleNamespace(**rhs_data)
         fB = rdata.fB
         A = rdata.A
+        # A = sparse.block_diag(phy.jacB) @ A
         Hg = rdata.Hg
+        # Hg = sparse.block_diag(phy.jacB) @ rdata.Hg
 
         # add contribution of the source term from the boundaries
         f = f + fB.flatten(order='F')
+        # f = sparse.block_diag(phy.jacB) @ f
 
         # evaluate the exact solution at nodal points
         u_exact = exact_fun(x, y) #np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
@@ -571,12 +574,12 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             errs_adj.append(err_adj)
 
         # calculate functional superconvergece
-        # func = (np.ones((nelem * nnodes, 1)).T @ Hg @ u.flatten(order='F'))[0]
-        # func_exact = (-np.cos(np.pi*m*bR) + np.cos(np.pi*n*bL))/(np.pi**2 * m * n) \
-        #              * (-np.cos(np.pi*n*bT) + np.cos(np.pi*n*bB)) # obtained using https://www.symbolab.com/solver
-        g = (-np.pi**2/bR**2 - 1/4*np.pi**2/bR**2) * np.sin(np.pi/bR * x) * np.cos(np.pi/(2*bT) * y)
-        func = (g.T.reshape((1, -1)) @ Hg @ u.T.reshape((-1, 1)).flatten())[0]
-        func_exact = 0
+        func = (np.ones((nelem * nnodes, 1)).T @ Hg @ u.flatten(order='F'))[0]
+        func_exact = (-np.cos(np.pi*m*bR) + np.cos(np.pi*n*bL))/(np.pi**2 * m * n) \
+                     * (-np.cos(np.pi*n*bT) + np.cos(np.pi*n*bB)) # obtained using https://www.symbolab.com/solver
+        # g = (-np.pi**2/bR**2 - 1/4*np.pi**2/bT**2) * np.sin(np.pi/bR * x) * np.cos(np.pi/(2*bT) * y)
+        # func = (g.T.reshape((1, -1)) @ Hg @ u.T.reshape((-1, 1)).flatten())[0]
+        # func_exact = 0
 
         err_func = np.abs(func - func_exact)
         errs_func.append(err_func)
@@ -623,12 +626,12 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             showFacetNodes = True
             showVolumeNodes = True
             MeshPlot.plot_mesh_2d(h, r, s, x, y, xf, yf, vx, vy, etov, p_map, Lx, Ly, showFacetNodes, showVolumeNodes,
-                                  saveMeshPlot=False)
+                                  saveMeshPlot=False, curve_mesh=curve_mesh)
 
 
     return {'nelems': nelems, 'hs': hs, 'errs_soln': errs_soln, 'eig_vals': eig_vals, 'nnz_elems': nnz_elems,
             'errs_adj': errs_adj, 'errs_func': errs_func, 'cond_nums': cond_nums}
 
-# poisson_sbp_2d(2, 5, 3, 'gamma', 'BR2', plot_fig=True, solve_adjoint=True, showMesh=True, p_map=2, curve_mesh=True)
+# poisson_sbp_2d(2, 0.5, 1, 'gamma', 'LDG', plot_fig=True, solve_adjoint=False, showMesh=True, p_map=2, curve_mesh=True)
 # diffusion_sbp_2d(1, 0.5, 1, 'gamma', 'BR1', plot_fig=False)
 # poisson_2d(1, 0.5, 1,'BR2')

@@ -40,7 +40,7 @@ class MeshPlot:
 
     @staticmethod
     def plot_mesh_2d(h, r, s, x, y, xf, yf, vx, vy, etov, p_map=2, Lx=1, Ly=1, showFacetNodes=False,
-                     showVolumeNodes=False, saveMeshPlot=False):
+                     showVolumeNodes=False, saveMeshPlot=False, curve_mesh=True):
 
         # xc, yc = MeshTools2D.curve_mesh2d(x, y, Lx=Lx, Ly=Ly, func=None)
         # vx, vy = MeshTools2D.curve_mesh2d(vx, vy, Lx=Lx, Ly=Ly, func=None)
@@ -50,7 +50,7 @@ class MeshPlot:
         triangles = etov.tolist()
         plt.plot()
         ax = plt.gca()
-        mytriplot(ax, vx, vy, triangles, 'b-', r, s, etov, p_map, Lx, Ly, lw=1, linestyle='-')
+        mytriplot(ax, vx, vy, triangles, 'b-', r, s, etov, p_map, Lx, Ly, curve_mesh=curve_mesh, lw=1, linestyle='-')
         if showFacetNodes:
             plt.scatter(xf, yf, marker='s', c='w', s=12, edgecolors='r', linewidths=1)
         if showVolumeNodes:

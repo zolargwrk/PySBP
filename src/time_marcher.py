@@ -38,8 +38,8 @@ class TimeMarcher:
         x2 = np.array([np.abs(xl- x[0, :]), np.abs(x[1, :] - x[0, :])]).flatten()
         x2[np.abs(x2) < 1e-12] = 0.0
         xmin = np.min(x2[np.nonzero(x2)])
-        # dt = (cfl / abs(a)) * xmip.abs(xl n    # advection
-        dt = cfl*(xmin**2)     # diffusion
+        dt = 1/2*(cfl / abs(a)) * xmin    # advection
+        # dt = cfl*(xmin**2)     # diffusion
         nstep = int(np.ceil(tf/(0.5*dt)))
         dt = tf/nstep
 
@@ -55,13 +55,16 @@ class TimeMarcher:
         for i in range(0, nstep):
             for j in range(0, 5):
                 t_local = t + rk4c[j]*dt
-                # rhs = rhs_calculator(u, rdata.x, t_local, a, rdata.xl, rdata.xr, rdata.d_mat, rdata.vmapM, rdata.vmapP,
-                #                      rdata.mapI, rdata.mapO, rdata.vmapI, rdata.tl, rdata.tr, rdata.rx,
-                #                      rdata.lift, rdata.fscale, rdata.nx, u_bndry_fun, flux_type, boundary_type)
-                rhs = rhs_calculator(u, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx, rdata.rx,
-                                     rdata.fscale, rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO, rdata.vmapI,
-                                     rdata.vmapO, flux_type, self.sat_type, boundary_type, rdata.db_mat, rdata.d2_mat,
-                                     b, self.app, uD_left, uD_right, uN_left, uN_right)
+                # advection
+                rhs = rhs_calculator(u, rdata.x, t_local, a, rdata.xl, rdata.xr, rdata.d_mat, rdata.vmapM, rdata.vmapP,
+                                     rdata.mapI, rdata.mapO, rdata.vmapI, rdata.tl, rdata.tr, rdata.rx,
+                                     rdata.lift, rdata.fscale, rdata.nx, u_bndry_fun, flux_type, boundary_type)
+
+                # diffusion
+                # rhs = rhs_calculator(u, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx, rdata.rx,
+                #                      rdata.fscale, rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO, rdata.vmapI,
+                #                      rdata.vmapO, flux_type, self.sat_type, boundary_type, rdata.db_mat, rdata.d2_mat,
+                #                      b, self.app, uD_left, uD_right, uN_left, uN_right)
 
                 res = rk4a[j]*res + dt*rhs
                 u = u + rk4b[j]*res

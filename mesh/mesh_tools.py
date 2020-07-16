@@ -1227,7 +1227,7 @@ class MeshTools2D:
 # vx = mesh['vx']
 # vy = mesh['vy']
 # etov = mesh['etov']
-# nelem = mesh['nelem']
+# nelem = mesh['nelemD2B.toarray()[24:30, 24:30]']
 # bgrp0= mesh['bgrp']
 # edge = mesh['edge']
 #

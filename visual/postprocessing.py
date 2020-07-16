@@ -739,10 +739,10 @@ def make_data_tree(sbp_families, sats, degrees, dim=2, stencil=('wide', 'narrow'
 # fam = ['gamma', 'omega', 'diagE']
 # sat = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG']
 # p = [1, 2, 3, 4]
-fam = ['gamma', 'omega', 'diage']
-sat = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG']
-p = [1, 2, 3, 4]
-p_map = 2
+fam = ['omega', 'diage']
+sat = ['BR2', 'BR1', 'LDG', 'CDG', 'BO', 'CNG']
+p = [2]
+p_map = 1
 adj = True
 plt_fam = True
 plt_sat = True
@@ -753,11 +753,11 @@ plt_rho = False
 plt_sparsity = False
 calc_eigs = False
 calc_cond_num = False
-save_figure = True
+save_figure = False
 curve_mesh = True
 
 soln = None
-soln = save_results(h=4, nrefine=4, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=False,
+soln = save_results(h=3.5, nrefine=4, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=False,
                     calc_cond=calc_cond_num, calc_eigvals=calc_eigs, showMesh=False, p_map=p_map, curve_mesh=curve_mesh)
 analyze_results_2d(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat, plot_spectrum=plt_eig,
                    plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity,  plot_adj_by_sat=plt_adj_sat,

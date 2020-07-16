@@ -15,7 +15,7 @@ class MeshGenerator1D:
 
     @staticmethod
     def line_mesh(p, xl, xr, n, nelem, quad_type=0, b=1, app=1):
-        """Creates equidistance nodes for a given interval
+        """Creates equidistant nodes for a given interval
         Inputs: p  - degree of operator
                 xl - left end point
                 xr - right end point
@@ -39,6 +39,13 @@ class MeshGenerator1D:
                 convty      - connectivity of elements (actual coordinate values)
                 b           - variable coefficient for 2nd derivative implmentation
         """
+        n_given = n
+        if quad_type == 'LGL' or quad_type == 'LG' or quad_type == 'LGL-Dense' or quad_type == 'LGR':
+            n_req = p + 1
+            if n_given != n_req:
+                Warning("Mismatch between number of nodes per element provided by user and required by scheme. "
+                        "The value of n is changed to n=p-1.")
+                n = n_req
 
         # obtain the mesh distribution for the scheme of choice on reference element [-1, 1]
         if quad_type == 'CC':

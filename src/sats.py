@@ -1151,9 +1151,9 @@ class SATs:
         elif flux_type == 'IP':
             NotImplemented('The IP method is not implemented yet.')
         elif flux_type == 'CDG':
-            eta = 1/2; coefT2 = -1/2; coefT3 = -1/2; etaD = 1; mu = 0
+            eta = 2; coefT2 = -1/2; coefT3 = -1/2; etaD = 1; mu = 0
         elif flux_type == 'LDG':
-            eta = 1/2; coefT2 = -1/2; coefT3 = -1/2; coefT5 = 1/4; coefT6 = 1/4; etaD = 1; mu = 0
+            eta = 2; coefT2 = -1/2; coefT3 = -1/2; coefT5 = 1/4; coefT6 = 1/4; etaD = 1; mu = 0
         elif flux_type == 'BR1':
             eta = 1/4;  coefT2 = -1/2; coefT3 = 1/2; coefT5 = 1/4; coefT6 = 1/4; etaD = 1
 

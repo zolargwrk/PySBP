@@ -189,10 +189,13 @@ class Ref2D_DG:
         warp2 = Ref2D_DG.warp_factor(p, lambda_1 - lambda_3)
         warp3 = Ref2D_DG.warp_factor(p, lambda_2 - lambda_1)
 
+        # get optimized alpha
+        alpha = Ref2D_DG.alpha_optimized(p)
+
         # warp and blend
-        w1 = warp1 * b1
-        w2 = warp2 * b2
-        w3 = warp3 * b3
+        w1 = warp1 * b1 * (1 + (alpha*lambda_1)**2)
+        w2 = warp2 * b2 * (1 + (alpha*lambda_2)**2)
+        w3 = warp3 * b3 * (1 + (alpha*lambda_3)**2)
 
         # x and y coordinates of the warped and blended nodes
         x = x + w1 + np.cos(2*np.pi/3)*w2 + np.cos(4*np.pi/3)*w3
@@ -202,6 +205,17 @@ class Ref2D_DG:
         y_ref = y
 
         return x_ref, y_ref
+
+    @ staticmethod
+    def alpha_optimized(p):
+        alphas = [0, 0, 1.4152, 0.1001, 0.2751, 0.9808, 1.0999, 1.2832, 1.3648, 1.4773, 1.4959, 1.5743, 1.5770,
+                  1.6223, 1.6258]
+        if p <= 15:
+            alpha = alphas[p-1]
+        else:
+            alpha = 5/3
+
+        return alpha
 
     @staticmethod
     def xytors(x, y):

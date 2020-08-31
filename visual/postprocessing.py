@@ -14,7 +14,7 @@ from solver.advection_diffusion_solver import advec_diff_1d
 
 def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_adjoint=False, save_results=False,
                  calc_cond=False, calc_eigvals=False, dim=2, stencil=('wide', 'narrow'), imp=('trad', 'elem'),
-                 prob=('Diff', 'AdvDiff', 'Adv'), n=25, showMesh=False, p_map=1, curve_mesh=False):
+                 prob=('Diff', 'AdvDiff', 'Adv'), n=25, showMesh=False, p_map=1, curve_mesh=False, plot_fig=False):
 
     # setup default values based on input
     sbp_families, sats, ps, degrees, stencil, prob = input_defualt(sbp_families, sats, ps, stencil, prob, dim)
@@ -40,7 +40,7 @@ def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_
                 for p in range(0, len(ps)):
 
                     # solve the Poisson problem and obtain data
-                    soln = poisson_sbp_2d(ps[p], h, nrefine, sbp_families[f], sats[s], solve_adjoint, plot_fig=False,
+                    soln = poisson_sbp_2d(ps[p], h, nrefine, sbp_families[f], sats[s], solve_adjoint, plot_fig=plot_fig,
                                           calc_condition_num=calc_cond, calc_eigvals=calc_eigvals, showMesh=showMesh,
                                           p_map=p_map, curve_mesh=curve_mesh)
 
@@ -739,14 +739,14 @@ def make_data_tree(sbp_families, sats, degrees, dim=2, stencil=('wide', 'narrow'
 # fam = ['gamma', 'omega', 'diagE']
 # sat = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG']
 # p = [1, 2, 3, 4]
-fam = ['omega', 'diage']
-sat = ['BR2', 'BR1', 'LDG', 'CDG', 'BO', 'CNG']
+fam = ['omega']
+sat = ['BR1','BR2','LDG']
 p = [2]
-p_map = 1
-adj = True
-plt_fam = True
+p_map = 2
+adj = False
+plt_fam = False
 plt_sat = True
-plt_adj_fam = True
+plt_adj_fam = False
 plt_adj_sat = True
 plt_eig = False
 plt_rho = False
@@ -756,9 +756,13 @@ calc_cond_num = False
 save_figure = False
 curve_mesh = True
 
+plt_soln = False
+showMesh = False
+
 soln = None
-soln = save_results(h=3.5, nrefine=4, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=False,
-                    calc_cond=calc_cond_num, calc_eigvals=calc_eigs, showMesh=False, p_map=p_map, curve_mesh=curve_mesh)
+soln = save_results(h=5, nrefine=3, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=False,
+                    calc_cond=calc_cond_num, calc_eigvals=calc_eigs, showMesh=showMesh, p_map=p_map, curve_mesh=curve_mesh,
+                    plot_fig=plt_soln)
 analyze_results_2d(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat, plot_spectrum=plt_eig,
                    plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity,  plot_adj_by_sat=plt_adj_sat,
                    plot_adj_by_family=plt_adj_fam, run_results=soln, save_fig=save_figure)

@@ -244,7 +244,7 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
     return
 
 # diffusion_solver_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine, refine_type, boundary_type=None, b=1, n=1):
-# u = poisson_1d(2, 0, 1, 1, 'LG', 'BR2', 1, 'ntrad', 'nPeriodic', 'sbp_sat', poisson1D_problem_input, a=0, n=16, app=1)
+# u = poisson_1d(3, 0, 1, 1, 'LG', 'BR2', 1, 'ntrad', 'nPeriodic', 'sbp_sat', poisson1D_problem_input, a=0, n=16, app=1)
 
 
 #
@@ -447,6 +447,9 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
     nnz_elems = list()
     eig_vals = list()
 
+    errs_test = list()
+    errs_test2 = list()
+
     # refine mesh
     for refine in range(0, nrefine):
         if refine == 0:
@@ -564,6 +567,80 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             # exact adjoint
             psi_exact = np.sin(np.pi/bR * x) * np.cos(np.pi/(2*bT) * y)
 
+            # --------------------------
+            # # get divergence of the gradient (second derivative term)
+            # DxB = phy.DxB
+            # DyB = phy.DyB
+            # BB = phy.BB
+            # HB = phy.HB
+            # nxB = phy.nxB
+            # nyB = phy.nyB
+            # RB = phy.RB
+            # xf = adata.xf
+            # yf = adata.yf
+            # # get derivative operator on each facet
+            # Dgk1B = (nxB[0] * RB[0] @ (DxB) + nyB[0] * RB[0] @ (DyB))
+            # Dgk2B = (nxB[1] * RB[1] @ (DxB) + nyB[1] * RB[1] @ (DyB))
+            # Dgk3B = (nxB[2] * RB[2] @ (DxB) + nyB[2] * RB[2] @ (DyB))
+            # Dgk = [Dgk1B, Dgk2B, Dgk3B]
+            #
+            # # get the derivative of the exact solution at the facets
+            # # face id
+            # fid1 = np.arange(0, nfp)
+            # fid2 = np.arange(nfp, 2 * nfp)
+            # fid3 = np.arange(2 * nfp, 3 * nfp)
+            # wgx = m*np.cos(m*np.pi*xf) * np.sin(n*np.pi*yf)
+            # wgy = n*np.sin(m*np.pi*xf) * np.cos(n*np.pi*yf)
+            # # get the normal derivative exact solution on each facet
+            # wgx1B = wgx[fid1, :].T.reshape((nelem, nfp, 1))
+            # wgy1B = wgy[fid1, :].T.reshape((nelem, nfp, 1))
+            # wgx2B = wgx[fid2, :].T.reshape((nelem, nfp, 1))
+            # wgy2B = wgy[fid2, :].T.reshape((nelem, nfp, 1))
+            # wgx3B = wgx[fid3, :].T.reshape((nelem, nfp, 1))
+            # wgy3B = wgy[fid3, :].T.reshape((nelem, nfp, 1))
+            #
+            # wgxB = [wgx1B, wgx2B, wgx3B]
+            # wgyB = [wgy1B, wgy2B, wgy3B]
+            #
+            # # get the exact solution on each facet
+            # ug = np.sin(m*np.pi*xf)*np.sin(n*np.pi*yf)
+            # ug1B = ug[fid1, :].T.reshape((nelem, nfp, 1))
+            # ug2B = ug[fid2, :].T.reshape((nelem, nfp, 1))
+            # ug3B = ug[fid3, :].T.reshape((nelem, nfp, 1))
+            #
+            # ugB = [ug1B, ug2B, ug3B]
+            #
+            # D2Bg = sparse.csr_matrix((np.block([sparse.block_diag(phy.DxB), sparse.block_diag(phy.DyB)])
+            #                          @ np.block([[sparse.block_diag(phy.DxB)], [sparse.block_diag(phy.DyB)]]))[0, 0])
+            # vol_term1g = psi_exact.reshape((-1, 1), order='F').T @ Hg @ D2Bg @ u_exact.reshape((-1, 1), order='F')
+            # vol_term2g = psi_exact.reshape((-1, 1), order='F').T @ D2Bg.T @ Hg @  u_exact.reshape((-1, 1), order='F')
+            # source_term = psi_exact.reshape((-1, 1), order='F').T @ Hg @ f.reshape((-1,1), order='F')
+            # nface = 3
+            # facet_term1 = 0
+            # facet_term2 = 0
+            # errs_test_elem = np.zeros((nelem,1))
+            #
+            # for elem in range(0, nelem):
+            #     D2B = (np.block([DxB[elem], DyB[elem]]) @ np.block([[DxB[elem]], [DyB[elem]]]))
+            #     vol_term1 = psi_exact[:, elem].T @ HB[elem] @ D2B @ u_exact[:, elem]
+            #     vol_term2 = psi_exact[:, elem].T @  D2B.T @ HB[elem] @ u_exact[:, elem]
+            #     facet_term1_elem = 0
+            #     facet_term2_elem = 0
+            #     for face in range(0, nface):
+            #         facet_term1_elem += psi_exact[:, elem].T @ Dgk[face][elem].T @ BB[face][elem] @ ugB[face][elem]
+            #         facet_term2_elem += psi_exact[:, elem].T @ RB[face][elem].T @ BB[face][elem] @ \
+            #                             (nxB[face][elem]*wgxB[face][elem] + nyB[face][elem]*wgyB[face][elem])
+            #     facet_term1 += facet_term1_elem
+            #     facet_term2 += facet_term2_elem
+            #
+            #     err = vol_term1 - vol_term2 + facet_term1_elem - facet_term2_elem
+            #     errs_test_elem[elem]= err
+            # # errs_test.append(np.abs(err_vol + facet_term1 - facet_term2))
+            # errs_test.append(np.abs(np.sum(errs_test_elem)))
+            # errs_test2.append(np.abs(vol_term1g + source_term))
+
+            #------------------------------
+
             # solve adjoint problem
             psi = (spsolve(A_adj, g)).reshape((nnodes, nelem), order="F")
 
@@ -628,10 +705,19 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             MeshPlot.plot_mesh_2d(h, r, s, x, y, xf, yf, vx, vy, etov, p_map, Lx, Ly, showFacetNodes, showVolumeNodes,
                                   saveMeshPlot=False, curve_mesh=curve_mesh)
 
-
+    #------------------
+    # err1 = np.asarray(errs_test).flatten()
+    # print(err1)
+    # conv_test1 = np.abs(np.polyfit(np.log10(hs), np.log10(err1), 1)[0])
+    # print(conv_test1)
+    # err2 = np.asarray(errs_test2).flatten()
+    # print(err2)
+    # conv_test2 = np.abs(np.polyfit(np.log10(hs), np.log10(err2), 1)[0])
+    # print(conv_test2)
+    #---------------
     return {'nelems': nelems, 'hs': hs, 'errs_soln': errs_soln, 'eig_vals': eig_vals, 'nnz_elems': nnz_elems,
             'errs_adj': errs_adj, 'errs_func': errs_func, 'cond_nums': cond_nums}
 
-poisson_sbp_2d(2, 0.5, 1, 'omega', 'LDG', plot_fig=True, solve_adjoint=False, showMesh=True, p_map=2, curve_mesh=True)
+# poisson_sbp_2d(2, 0.5, 1, 'diage', 'BR2', plot_fig=True, solve_adjoint=False, showMesh=True, p_map=2, curve_mesh=True)
 # diffusion_sbp_2d(1, 0.5, 1, 'gamma', 'BR1', plot_fig=False)
 # poisson_2d(1, 0.5, 1,'BR2')

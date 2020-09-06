@@ -567,80 +567,6 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             # exact adjoint
             psi_exact = np.sin(np.pi/bR * x) * np.cos(np.pi/(2*bT) * y)
 
-            # --------------------------
-            # # get divergence of the gradient (second derivative term)
-            # DxB = phy.DxB
-            # DyB = phy.DyB
-            # BB = phy.BB
-            # HB = phy.HB
-            # nxB = phy.nxB
-            # nyB = phy.nyB
-            # RB = phy.RB
-            # xf = adata.xf
-            # yf = adata.yf
-            # # get derivative operator on each facet
-            # Dgk1B = (nxB[0] * RB[0] @ (DxB) + nyB[0] * RB[0] @ (DyB))
-            # Dgk2B = (nxB[1] * RB[1] @ (DxB) + nyB[1] * RB[1] @ (DyB))
-            # Dgk3B = (nxB[2] * RB[2] @ (DxB) + nyB[2] * RB[2] @ (DyB))
-            # Dgk = [Dgk1B, Dgk2B, Dgk3B]
-            #
-            # # get the derivative of the exact solution at the facets
-            # # face id
-            # fid1 = np.arange(0, nfp)
-            # fid2 = np.arange(nfp, 2 * nfp)
-            # fid3 = np.arange(2 * nfp, 3 * nfp)
-            # wgx = m*np.cos(m*np.pi*xf) * np.sin(n*np.pi*yf)
-            # wgy = n*np.sin(m*np.pi*xf) * np.cos(n*np.pi*yf)
-            # # get the normal derivative exact solution on each facet
-            # wgx1B = wgx[fid1, :].T.reshape((nelem, nfp, 1))
-            # wgy1B = wgy[fid1, :].T.reshape((nelem, nfp, 1))
-            # wgx2B = wgx[fid2, :].T.reshape((nelem, nfp, 1))
-            # wgy2B = wgy[fid2, :].T.reshape((nelem, nfp, 1))
-            # wgx3B = wgx[fid3, :].T.reshape((nelem, nfp, 1))
-            # wgy3B = wgy[fid3, :].T.reshape((nelem, nfp, 1))
-            #
-            # wgxB = [wgx1B, wgx2B, wgx3B]
-            # wgyB = [wgy1B, wgy2B, wgy3B]
-            #
-            # # get the exact solution on each facet
-            # ug = np.sin(m*np.pi*xf)*np.sin(n*np.pi*yf)
-            # ug1B = ug[fid1, :].T.reshape((nelem, nfp, 1))
-            # ug2B = ug[fid2, :].T.reshape((nelem, nfp, 1))
-            # ug3B = ug[fid3, :].T.reshape((nelem, nfp, 1))
-            #
-            # ugB = [ug1B, ug2B, ug3B]
-            #
-            # D2Bg = sparse.csr_matrix((np.block([sparse.block_diag(phy.DxB), sparse.block_diag(phy.DyB)])
-            #                          @ np.block([[sparse.block_diag(phy.DxB)], [sparse.block_diag(phy.DyB)]]))[0, 0])
-            # vol_term1g = psi_exact.reshape((-1, 1), order='F').T @ Hg @ D2Bg @ u_exact.reshape((-1, 1), order='F')
-            # vol_term2g = psi_exact.reshape((-1, 1), order='F').T @ D2Bg.T @ Hg @  u_exact.reshape((-1, 1), order='F')
-            # source_term = psi_exact.reshape((-1, 1), order='F').T @ Hg @ f.reshape((-1,1), order='F')
-            # nface = 3
-            # facet_term1 = 0
-            # facet_term2 = 0
-            # errs_test_elem = np.zeros((nelem,1))
-            #
-            # for elem in range(0, nelem):
-            #     D2B = (np.block([DxB[elem], DyB[elem]]) @ np.block([[DxB[elem]], [DyB[elem]]]))
-            #     vol_term1 = psi_exact[:, elem].T @ HB[elem] @ D2B @ u_exact[:, elem]
-            #     vol_term2 = psi_exact[:, elem].T @  D2B.T @ HB[elem] @ u_exact[:, elem]
-            #     facet_term1_elem = 0
-            #     facet_term2_elem = 0
-            #     for face in range(0, nface):
-            #         facet_term1_elem += psi_exact[:, elem].T @ Dgk[face][elem].T @ BB[face][elem] @ ugB[face][elem]
-            #         facet_term2_elem += psi_exact[:, elem].T @ RB[face][elem].T @ BB[face][elem] @ \
-            #                             (nxB[face][elem]*wgxB[face][elem] + nyB[face][elem]*wgyB[face][elem])
-            #     facet_term1 += facet_term1_elem
-            #     facet_term2 += facet_term2_elem
-            #
-            #     err = vol_term1 - vol_term2 + facet_term1_elem - facet_term2_elem
-            #     errs_test_elem[elem]= err
-            # # errs_test.append(np.abs(err_vol + facet_term1 - facet_term2))
-            # errs_test.append(np.abs(np.sum(errs_test_elem)))
-            # errs_test2.append(np.abs(vol_term1g + source_term))
-
-            #------------------------------
-
             # solve adjoint problem
             psi = (spsolve(A_adj, g)).reshape((nnodes, nelem), order="F")
 
@@ -669,8 +595,10 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         # calculate eigen value, condition number, and number of nonzero elements
         if calc_eigvals:
             eig_val = np.linalg.eigvals(A.toarray())
+            max_eig = (np.max(eig_val)).real
         else:
-            eig_val = sparse.linalg.eigs(A)[0]
+            eig_val = sparse.linalg.eigs(A, which='LR')[0]
+            max_eig = (np.max(eig_val)).real
         eig_vals.append(eig_val)
 
         nnz_elem = A.count_nonzero()
@@ -686,8 +614,9 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
 
         # visualize result
         print("error_soln =", "{:.4e}".format(err_soln), "; error_func =", "{:.4e}".format(err_func), "; nelem =", nelem,
-              "; h =", "{:.4f}".format(h),"; ", sbp_family, "; ", flux_type, "; p =", p, "; cond_num =", "{:.4e}".format(cond_num),
-                  "; nnz_elem =", nnz_elem, "; min_Jacobian =", "{:.4f}".format(np.min((sparse.block_diag(phy.jacB).diagonal()))))
+                "; h =", "{:.4f}".format(h),"; ", sbp_family, "; ", flux_type, "; p =", p, "; cond_num =", "{:.2e}".format(cond_num),
+                "; max_eig =", "{:.2e}".format(max_eig), "; nnz_elem =", nnz_elem, "; min_Jac =",
+                "{:.2f}".format(np.min((sparse.block_diag(phy.jacB).diagonal()))))
         if solve_adjoint is True:
             print("error_adj =", "{:.4e}".format(err_adj))
 
@@ -705,16 +634,6 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             MeshPlot.plot_mesh_2d(h, r, s, x, y, xf, yf, vx, vy, etov, p_map, Lx, Ly, showFacetNodes, showVolumeNodes,
                                   saveMeshPlot=False, curve_mesh=curve_mesh)
 
-    #------------------
-    # err1 = np.asarray(errs_test).flatten()
-    # print(err1)
-    # conv_test1 = np.abs(np.polyfit(np.log10(hs), np.log10(err1), 1)[0])
-    # print(conv_test1)
-    # err2 = np.asarray(errs_test2).flatten()
-    # print(err2)
-    # conv_test2 = np.abs(np.polyfit(np.log10(hs), np.log10(err2), 1)[0])
-    # print(conv_test2)
-    #---------------
     return {'nelems': nelems, 'hs': hs, 'errs_soln': errs_soln, 'eig_vals': eig_vals, 'nnz_elems': nnz_elems,
             'errs_adj': errs_adj, 'errs_func': errs_func, 'cond_nums': cond_nums}
 

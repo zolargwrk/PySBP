@@ -739,19 +739,19 @@ def make_data_tree(sbp_families, sats, degrees, dim=2, stencil=('wide', 'narrow'
 # fam = ['gamma', 'omega', 'diagE']
 # sat = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG']
 # p = [1, 2, 3, 4]
-fam = ['omega']
-sat = ['BR1','BR2','LDG']
-p = [2]
-p_map = 2
+fam = ['gamma','diage','omega']
+sat = ['BR1','BR2']
+p = [2,3,4]
+p_map = 1
 adj = False
 plt_fam = False
-plt_sat = True
+plt_sat = False
 plt_adj_fam = False
-plt_adj_sat = True
+plt_adj_sat = False
+calc_eigs = True
 plt_eig = False
 plt_rho = False
 plt_sparsity = False
-calc_eigs = False
 calc_cond_num = False
 save_figure = False
 curve_mesh = True
@@ -760,7 +760,7 @@ plt_soln = False
 showMesh = False
 
 soln = None
-soln = save_results(h=5, nrefine=3, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=False,
+soln = save_results(h=2, nrefine=1, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=False,
                     calc_cond=calc_cond_num, calc_eigvals=calc_eigs, showMesh=showMesh, p_map=p_map, curve_mesh=curve_mesh,
                     plot_fig=plt_soln)
 analyze_results_2d(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat, plot_spectrum=plt_eig,

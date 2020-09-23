@@ -10,6 +10,7 @@ from src.assembler import Assembler
 from types import SimpleNamespace
 from solver.plot_figure import plot_figure_1d, plot_figure_2d, plot_conv_fig
 from scipy.sparse.linalg import spsolve
+from src.calc_tools import CalcTools
 
 class RHSCalculator:
 
@@ -381,6 +382,11 @@ class RHSCalculator:
             LxyB = np.block([Z] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
             LyxB = np.block([Z] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
             LyyB = np.block([I] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        else:
+            LxxB = CalcTools.matrix_to_3D_block_diag((LB[0, 0].diagonal()).reshape((nnodes, nelem), order='F'))
+            LxyB = CalcTools.matrix_to_3D_block_diag((LB[0, 1].diagonal()).reshape((nnodes, nelem), order='F'))
+            LyxB = CalcTools.matrix_to_3D_block_diag((LB[1, 0].diagonal()).reshape((nnodes, nelem), order='F'))
+            LyyB = CalcTools.matrix_to_3D_block_diag((LB[1, 1].diagonal()).reshape((nnodes, nelem), order='F'))
 
         # get divergence of the gradient (second derivative term)
         D2B = sparse.csr_matrix((np.block([sparse.block_diag(DxB), sparse.block_diag(DyB)]) @ LB
@@ -400,7 +406,7 @@ class RHSCalculator:
         A = (D2B - sdata.sI)
 
         return {'A': A, 'fB': sdata.fB, 'Hg': sdata.Hg, 'D2B': D2B, 'LxxB': LxxB, 'LxyB': LxyB, 'LyxB': LyxB,
-                'LyyB': LyyB, 'LB': LB, 'uD': uD, 'uN': uN}
+                'LyyB': LyyB, 'LB': LB, 'uD': uD, 'uN': uN, 'BD': sdata.BD, 'BN': sdata.BN}
 
 
     @staticmethod

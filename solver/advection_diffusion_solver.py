@@ -393,6 +393,8 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
             err = calc_err(u, u_exact, rx, h_mat)
             errs.append(err)
 
+            nnz_elem = A.count_nonzero()
+
             # calculate functional output and exact functional
             g = (ps.adjoint_source_term(x)).reshape((n*nelem, 1), order='F')
             J = ps.calc_functional(u, g, h_mat, rx)
@@ -457,6 +459,9 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
             err_adj = calc_err(psi, psi_exact, rx, h_mat)
             errs_adj.append(err_adj)
 
+        print("error_soln =", "{:.4e}".format(err), "; error_func =", "{:.4e}".format(err_func), "; nelem =", nelem,
+              "; ", quad_type, "; ", flux_type_vis, "; p =", p, "; nnz_elem =", nnz_elem)
+
     # plot error
     if choose_outs.prob == 'primal' or choose_outs.prob == 'all':
         if choose_outs.plot_err == 1 or choose_outs.func_conv == 1:
@@ -492,7 +497,6 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
             print(np.asarray(conv_adj))
             print(np.asarray(errs_adj))
             plot_conv_fig(hs, errs_adj, conv_start, conv_end)
-
 
     return {'p': p, 'b': b, 'a': a, 'nelems': nelems, 'ns': ns, 'quad_type': quad_type, 'flux_type_vis': flux_type_vis,
             'errs': errs, 'errs_func': errs_func, 'errs_adj': errs_adj, 'cond_num': cond_num}

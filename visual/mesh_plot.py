@@ -39,8 +39,8 @@ class MeshPlot:
         return
 
     @staticmethod
-    def plot_mesh_2d(h, r, s, x, y, xf, yf, vx, vy, etov, p_map=2, Lx=1, Ly=1, showFacetNodes=False,
-                     showVolumeNodes=False, saveMeshPlot=False, curve_mesh=True):
+    def plot_mesh_2d(nelem, r, s, x, y, xf, yf, vx, vy, etov, p_map=2, Lx=1, Ly=1, showFacetNodes=False,
+                     showVolumeNodes=False, saveMeshPlot=False, curve_mesh=True, sbp_family=''):
 
         # xc, yc = MeshTools2D.curve_mesh2d(x, y, Lx=Lx, Ly=Ly, func=None)
         # vx, vy = MeshTools2D.curve_mesh2d(vx, vy, Lx=Lx, Ly=Ly, func=None)
@@ -58,8 +58,8 @@ class MeshPlot:
         ax.set_aspect('equal')
 
         if saveMeshPlot:
-            path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\visual\\poisson2d_results\\temp\\'
-            plt.savefig(path + 'h_{:.2f}_pmap_{}.pdf'.format(h, p_map), format='pdf')
+            path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\visual\\poisson2d_results\\mesh\\'
+            plt.savefig(path + 'nelem_{}_pmap_{}_{}.pdf'.format(nelem, p_map, sbp_family), format='pdf')
 
         plt.show()
 

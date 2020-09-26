@@ -496,13 +496,14 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         # get the source term for primal problem
         m = 1/8
         n = 1/8
-        # f0 = (- (m ** 2 * np.pi ** 2) * np.sin(m * np.pi * x) * np.sin(n * np.pi * y) \
-        #      - (n ** 2 * np.pi ** 2) * np.sin(m * np.pi * x) * np.sin(n * np.pi * y)).flatten(order='F')
 
         f0 = (-np.pi**2*m**2*(4*x + 1)*np.sin(np.pi*m*x)*np.sin(np.pi*n*y)
               + 2*np.pi**2*m*n*y*np.cos(np.pi*m*x)*np.cos(np.pi*n*y) + 5*np.pi*m*np.sin(np.pi*n*y)*np.cos(np.pi*m*x)
               - np.pi**2*n**2*(y**2 + 1)*np.sin(np.pi*m*x)*np.sin(np.pi*n*y)
               + 2*np.pi*n*y*np.sin(np.pi*m*x)*np.cos(np.pi*n*y)).flatten(order='F')
+
+        # f0 = (-np.pi ** 2 * m ** 2 * np.sin(np.pi * m * x) * np.sin(np.pi * n * y) \
+        #      - np.pi ** 2 * n ** 2 * np.sin(np.pi * m * x) * np.sin(np.pi * n * y)).flatten(order='F')
 
         # get function for the exact solution
         exact_fun = lambda x, y: np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
@@ -570,30 +571,49 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         # plot_figure_2d(x, y, u-u_exact)
 
         # adjoint problem
-        if solve_adjoint is True:
-            psi = np.zeros(u.shape)
-            # define boundary conditions on a rectangular domain
-            # psiDL_fun = lambda x, y: np.sin(m*np.pi * x) * np.cos(n*np.pi * y)
-            # psiNL_fun = lambda x, y: -(x**2 + 1)*m*np.pi*np.cos(m*np.pi * x) * np.cos(n*np.pi * y) \
-            #                          + (x*y)*n*np.pi*np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
-            # psiDR_fun = lambda x, y: np.sin(m*np.pi * x) * np.cos(n*np.pi * y)
-            # psiNR_fun = lambda x, y: np.pi*m*(x**2 + 1)*np.cos(np.pi*m*x)*np.cos(np.pi*n*y) \
-            #                          - np.pi*n*x*y*np.sin(np.pi*m*x)*np.sin(np.pi*n*y)
-            # psiDB_fun = lambda x, y: np.sin(m*np.pi * x) * np.cos(n*np.pi * y)
-            # psiNB_fun = lambda x, y: -(x*y)*m*np.cos(m*np.pi*x) * np.cos(n*np.pi * y) \
-            #                          + (y**2+1)*n*np.pi*np.sin(m*np.pi * x)*np.sin(n*np.pi*y)
-            # psiDT_fun = lambda x, y: np.sin(m*np.pi * x) * np.cos(n*np.pi * y)
-            # psiNT_fun = lambda x, y: (x*y)*m*np.cos(m*np.pi*x) * np.cos(n*np.pi * y) \
-            #                          - (y**2+1)*n*np.pi*np.sin(m*np.pi * x)*np.sin(n*np.pi*y)
-            psiDL_fun = lambda x, y: x + y
-            psiNL_fun = lambda x, y: -4*x - y - 1
-            psiDR_fun = lambda x, y: x + y
-            psiNR_fun = lambda x, y: 4*x + y + 1
-            psiDB_fun = lambda x, y: x + y
-            psiNB_fun = lambda x, y: -y**2 - y - 1
-            psiDT_fun = lambda x, y: x + y
-            psiNT_fun = lambda x, y: y**2 + y + 1
+        psi = np.zeros(u.shape)
+        # define boundary conditions on a rectangular domain
+        psiDL_fun = lambda x, y: x + y
+        psiNL_fun = lambda x, y: -4*x - y - 1
+        psiDR_fun = lambda x, y: x + y
+        psiNR_fun = lambda x, y: 4*x + y + 1
+        psiDB_fun = lambda x, y: x + y
+        psiNB_fun = lambda x, y: -y**2 - y - 1
+        psiDT_fun = lambda x, y: x + y
+        psiNT_fun = lambda x, y: y**2 + y + 1
 
+        # set boundary conditions
+        psiD, psiN = MeshTools2D.set_bndry_sbp_2D(xf, yf, adata.bgrpD, adata.bgrpN, bL, bR, bB, bT, psiDL_fun, psiNL_fun,
+                                              psiDR_fun, psiNR_fun, psiDB_fun, psiNB_fun, psiDT_fun, psiNT_fun)
+        psiD = psiD.flatten(order='F')
+        psiN = psiN.flatten(order='F')
+
+        # get facet quadrature at the boundary
+        BD = rdata.BD
+        BN = rdata.BN
+
+        # get U on Gamma^N and n\dot (lambda nabla U) on Gamma^D
+        # (note that uSol and uGrad are not the same as uD and uN in the primal problem)
+        uSolN, uGradD = MeshTools2D.set_bndry_sbp_2D(xf, yf, adata.bgrpN, adata.bgrpD, bL, bR, bB, bT,
+                                                     uDL_fun, uNL_fun, uDR_fun, uNR_fun, uDB_fun, uNB_fun, uDT_fun,
+                                                     uNT_fun)
+        uSolN = uSolN.flatten(order='F')
+        uGradD = uGradD.flatten(order='F')
+
+        g0 = (2 * y + 5).flatten(order='F')
+
+        # calculate functional superconvergece
+        # func = (np.ones((nelem * nnodes, 1)).T @ Hg @ u.flatten(order='F'))[0]
+        # func_exact = (-np.cos(np.pi*m*bR) + np.cos(np.pi*n*bL))/(np.pi**2 * m * n) \
+        #              * (-np.cos(np.pi*n*bT) + np.cos(np.pi*n*bB)) # obtained using https://www.symbolab.com/solver
+
+        func = (g0.T @ Hg @ u.flatten(order='F')) + (-uGradD.T @ BD @ psiD) + (uSolN.T @ BN @ psiN)
+
+        func_exact = 194.2166199256895709
+        err_func = np.abs(func - func_exact)
+        errs_func.append(err_func)
+
+        if solve_adjoint is True:
             rhs_data = RHSCalculator.rhs_poisson_sbp_2d(psi, adata.xf, adata.yf, phy.DxB, phy.DyB, phy.HB, phy.BB, phy.RB,
                                                     phy.nxB, phy.nyB, phy.rxB, phy.ryB, phy.sxB,
                                                     phy.syB, phy.surf_jacB, phy.jacB, adata.etoe, adata.etof,
@@ -604,17 +624,6 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             gB = rdata.fB
             A_adj = rdata.A
             Hg = rdata.Hg
-            psiD = (rdata.uD).flatten(order='F')
-            psiN = (rdata.uN).flatten(order='F')
-            BD = rdata.BD
-            BN = rdata.BN
-
-            # get U on Gamma^N and n\dot (lambda nabla U) on Gamma^D
-            # (note that uSol and uGrad are not the same as uD and uN in the primal problem)
-            uSolN, uGradD = MeshTools2D.set_bndry_sbp_2D(xf, yf, adata.bgrpN, adata.bgrpD, bL, bR, bB, bT,
-                                                  uDL_fun, uNL_fun, uDR_fun, uNR_fun, uDB_fun, uNB_fun, uDT_fun, uNT_fun)
-            uSolN = uSolN.flatten(order='F')
-            uGradD = uGradD.flatten(order='F')
 
             # get source term for adjoint problem
             # G = (-np.pi**2/bR**2 - np.pi**2/(4*bT**2)) * np.sin(np.pi/bR * x) * np.cos(np.pi/(2*bT) * y)
@@ -622,7 +631,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             #     + 2*np.pi**2*m*n*x*y*np.sin(np.pi*n*y)*np.cos(np.pi*m*x) - 3*np.pi*m*x*np.cos(np.pi*m*x)*np.cos(np.pi*n*y)
             #     + np.pi**2*n**2*(y**2 + 1)*np.sin(np.pi*m*x)*np.cos(np.pi*n*y)
             #     + 3*np.pi*n*y*np.sin(np.pi*m*x)*np.sin(np.pi*n*y)).flatten(order='F')
-            g0 = (2*y + 5).flatten(order='F')
+
             g = g0 + gB.flatten(order='F')
 
             # exact adjoint
@@ -640,17 +649,6 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
 
             # plot_figure_2d(x, y, psi-psi_exact)
 
-        # calculate functional superconvergece
-        # func = (np.ones((nelem * nnodes, 1)).T @ Hg @ u.flatten(order='F'))[0]
-        # func_exact = (-np.cos(np.pi*m*bR) + np.cos(np.pi*n*bL))/(np.pi**2 * m * n) \
-        #              * (-np.cos(np.pi*n*bT) + np.cos(np.pi*n*bB)) # obtained using https://www.symbolab.com/solver
-
-        func = (g0.T @ Hg @ u.flatten(order='F')) + (-uGradD.T @ BD @ psiD) + (uSolN.T @ BN @ psiN)
-
-        func_exact = 194.2166199256895709
-        err_func = np.abs(func - func_exact)
-        errs_func.append(err_func)
-
         # get number of elements and calculate element size
         nelems.append(nelem)
         h = 1 / np.sqrt(nelem / 2)
@@ -661,8 +659,8 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             eig_val = np.linalg.eigvals(A.toarray())
             max_eig = (np.max(eig_val)).real
         else:
-            # eig_val = sparse.linalg.eigs(A, which='LR')[0]
-            eig_val = 0
+            eig_val = sparse.linalg.eigs(A, which='LR')[0]
+            # eig_val = 0
             max_eig = (np.max(eig_val)).real
         eig_vals.append(eig_val)
 
@@ -675,7 +673,6 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         else:
             cond_num = 0
         cond_nums.append(cond_num)
-
 
         # visualize result
         print("error_soln =", "{:.4e}".format(err_soln), "; error_func =", "{:.4e}".format(err_func), "; nelem =", nelem,

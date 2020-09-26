@@ -448,7 +448,7 @@ class SATs:
                 eta = 2
                 T1 = (eta / 4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
             else:
-                eta = 2
+                eta = 1
                 T1 = (eta/4*(tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
             T2k = (-1/2)
             T3k = (1/2)
@@ -456,8 +456,8 @@ class SATs:
             T3v = (1/2)
             T5k = (-1/4*(tr.T @ b_mat @ h_inv @ tl))[0, 0]
             T5v = (-1/4*(tl.T @ b_mat @ h_inv @ tr))[0, 0]
-            T6k = (1/4*(tl.T @ b_mat @ h_inv @ tr))[0, 0]
-            T6v = (1/4*(tr.T @ b_mat @ h_inv @ tl))[0, 0]
+            T6k = (1/4*(tr.T @ b_mat @ h_inv @ tl))[0, 0]
+            T6v = (1/4*(tl.T @ b_mat @ h_inv @ tr))[0, 0]
 
         elif flux_type == 'BRZ':
             eta = nface
@@ -471,8 +471,8 @@ class SATs:
             T3v = (1 / 2)
             T5k = (-1 / 4 * (tr.T @ b_mat @ h_inv @ tl))[0, 0]
             T5v = (-1 / 4 * (tl.T @ b_mat @ h_inv @ tr))[0, 0]
-            T6k = (1 / 4 * (tr.T @ b_mat @ h_inv @ tr))[0, 0]
-            T6v = (1 / 4 * (tl.T @ b_mat @ h_inv @ tl))[0, 0]
+            T6k = (1 / 4 * (tr.T @ b_mat @ h_inv @ tl))[0, 0]
+            T6v = (1 / 4 * (tl.T @ b_mat @ h_inv @ tr))[0, 0]
 
         elif flux_type == 'BR2':
             if app == 2:
@@ -596,10 +596,10 @@ class SATs:
 
             # set boundary conditions
             sat_diags[0,:,:] = h_inv @ (TD_left * (tl @ tl.T)  - sD_left * Dgv.T  @ tl.T +sN_left* tl @ Dgv
-                                        + T1 * (tr @ tr.T) #+ T5k * (tl @ tr.T)
+                                        + T1 * (tr @ tr.T) + T5k * (tl @ tr.T)
                                         + T3k * (tr @ Dgk) + T2k * (Dgk.T  @ tr.T))
             sat_diags[nelem-1, :, :] = h_inv @ (TD_right * (tr @ tr.T) - sD_right * Dgk.T @ tr.T + sN_right * tr @ Dgk
-                                                + T1 * (tl @ tl.T) #+ T5v * (tr @ tl.T)
+                                                + T1 * (tl @ tl.T) + T5v * (tr @ tl.T)
                                                 + T3v * (tl @ Dgv) + T2v * (Dgv.T @ tl.T))
 
             # build SAT matrix
@@ -1127,15 +1127,15 @@ class SATs:
         Ugk1B =  ((nx1B * R1B) @ (HB_inv @ LxxB) @ ((nx1B * R1B).transpose(0, 2, 1))
                 + (nx1B * R1B) @ (HB_inv @ LxyB) @ ((ny1B * R1B).transpose(0, 2, 1))
                 + (ny1B * R1B) @ (HB_inv @ LyxB) @ ((nx1B * R1B).transpose(0, 2, 1))
-                + (ny1B * R1B) @ (HB_inv @ LyyB) @ ((ny1B * R1B).transpose(0, 2, 1)))*face_wt1B
+                + (ny1B * R1B) @ (HB_inv @ LyyB) @ ((ny1B * R1B).transpose(0, 2, 1)))#*face_wt1B
         Ugk2B =  ((nx2B * R2B) @ (HB_inv @ LxxB) @ ((nx2B * R2B).transpose(0, 2, 1))
                 + (nx2B * R2B) @ (HB_inv @ LxyB) @ ((ny2B * R2B).transpose(0, 2, 1))
                 + (ny2B * R2B) @ (HB_inv @ LyxB) @ ((nx2B * R2B).transpose(0, 2, 1))
-                + (ny2B * R2B) @ (HB_inv @ LyyB) @ ((ny2B * R2B).transpose(0, 2, 1)))*face_wt2B
+                + (ny2B * R2B) @ (HB_inv @ LyyB) @ ((ny2B * R2B).transpose(0, 2, 1)))#*face_wt2B
         Ugk3B =  ((nx3B * R3B) @ (HB_inv @ LxxB) @ ((nx3B * R3B).transpose(0, 2, 1))
                 + (nx3B * R3B) @ (HB_inv @ LxyB) @ ((ny3B * R3B).transpose(0, 2, 1))
                 + (ny3B * R3B) @ (HB_inv @ LyxB) @ ((nx3B * R3B).transpose(0, 2, 1))
-                + (ny3B * R3B) @ (HB_inv @ LyyB) @ ((ny3B * R3B).transpose(0, 2, 1)))*face_wt3B
+                + (ny3B * R3B) @ (HB_inv @ LyyB) @ ((ny3B * R3B).transpose(0, 2, 1)))#*face_wt3B
 
         Ugk = [Ugk1B, Ugk2B, Ugk3B]
 
@@ -1150,9 +1150,9 @@ class SATs:
 
         # SAT coefficients for different methods
         eta = 1/4; coefT2 = -1/2; coefT3 = 1/2; coefT4 = 0; etaD = 1
-        sigma = 1
+
         if flux_type == 'BR2':
-            eta = 1/4*sigma; coefT2 = -1/2; coefT3 = 1/2; etaD = 1
+            eta = 1/4; coefT2 = -1/2; coefT3 = 1/2; etaD = 1
         elif flux_type == 'BO':
             eta = 0; coefT2 = 1/2; coefT3 = 1/2; etaD = 1
         elif flux_type == 'NIPG':
@@ -1166,7 +1166,7 @@ class SATs:
         elif flux_type == 'LDG':
             eta = 1; coefT2 = -1/2; coefT3 = -1/2; coefT5 = 1/(16*np.sqrt(2)); coefT6 = 1/(16*np.sqrt(2)); etaD = 1; mu = 0
         elif flux_type == 'BR1':
-            eta = 1*sigma;  coefT2 = -1/2; coefT3 = 1/2; coefT5 = 1/4; coefT6 = 1/4; etaD = 1
+            eta = 1/4*1;  coefT2 = -1/2; coefT3 = 1/2; coefT5 = 1/4; coefT6 = 1/4; etaD = 1
 
         # T4 coefficient
         T4gk1B = coefT4 * BB1

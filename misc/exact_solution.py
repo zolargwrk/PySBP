@@ -21,14 +21,14 @@ def poisson_exact_input_2d():
     # psi = sympy.sin(m*sympy.pi * x) * sympy.cos(n*sympy.pi * y)
     psi = x + y
 
-    # Lxx = 4 * x + 1
-    # Lxy = y
-    # Lyx = y
-    # Lyy = y ** 2 + 1
-    Lxx = 1
-    Lxy = 0
-    Lyx = 0
-    Lyy = 1
+    Lxx = 4 * x + 1
+    Lxy = y
+    Lyx = y
+    Lyy = y ** 2 + 1
+    # Lxx = 1
+    # Lxy = 0
+    # Lyx = 0
+    # Lyy = 1
 
     return {'u': u, 'psi': psi, 'Lxx': Lxx, 'Lxy': Lxy, 'Lyx': Lyx, 'Lyy': Lyy}
 
@@ -56,12 +56,12 @@ def poisson_get_exact_2d():
     psiNB = -input.Lyx * (input.psi).diff(x) - input.Lyy *(input.psi).diff(y)
     psiNT = input.Lyx * (input.psi).diff(x) + input.Lyy * (input.psi).diff(y)
 
-    func_exactVol = sympy.integrate(g*input.u, (x, 0, 20), (y, -5, 5)).subs(m, 1/8).subs(n, 1/8)
+    func_exactVol = sympy.integrate(g*input.u, (x, 0, 20), (y, -5, 5)).subs(m, 1/3).subs(n, 1/3)
 
-    func_exactDB = sympy.integrate(-input.psi.subs(y, -5) * uGradDB.subs(y, -5), (x, 0, 20)).subs(m, 1/8).subs(n, 1/8)
-    func_exactDL = sympy.integrate(-input.psi.subs(x, 0) * uGradDL.subs(x, 0), (y, -5, 5)).subs(m, 1/8).subs(n, 1/8)
-    func_exactDT = sympy.integrate(-input.psi.subs(y, 5) * uGradDT.subs(y, 5), (x, 0, 20)).subs(m, 1/8).subs(n, 1/8)
-    func_exactNR = sympy.integrate(psiNR.subs(x, 20) * input.u.subs(x, 20), (y, -5, 5)).subs(m, 1/8).subs(n, 1/8)
+    func_exactDB = sympy.integrate(-input.psi.subs(y, -5) * uGradDB.subs(y, -5), (x, 0, 20)).subs(m, 1/3).subs(n, 1/3)
+    func_exactDL = sympy.integrate(-input.psi.subs(x, 0) * uGradDL.subs(x, 0), (y, -5, 5)).subs(m, 1/3).subs(n, 1/3)
+    func_exactDT = sympy.integrate(-input.psi.subs(y, 5) * uGradDT.subs(y, 5), (x, 0, 20)).subs(m, 1/3).subs(n, 1/3)
+    func_exactNR = sympy.integrate(psiNR.subs(x, 20) * input.u.subs(x, 20), (y, -5, 5)).subs(m, 1/3).subs(n, 1/3)
 
     func_exact = (func_exactVol + func_exactDB + func_exactDL + func_exactDT + func_exactNR).evalf()
 

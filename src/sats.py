@@ -1127,15 +1127,15 @@ class SATs:
         Ugk1B =  ((nx1B * R1B) @ (HB_inv @ LxxB) @ ((nx1B * R1B).transpose(0, 2, 1))
                 + (nx1B * R1B) @ (HB_inv @ LxyB) @ ((ny1B * R1B).transpose(0, 2, 1))
                 + (ny1B * R1B) @ (HB_inv @ LyxB) @ ((nx1B * R1B).transpose(0, 2, 1))
-                + (ny1B * R1B) @ (HB_inv @ LyyB) @ ((ny1B * R1B).transpose(0, 2, 1)))#*face_wt1B
+                + (ny1B * R1B) @ (HB_inv @ LyyB) @ ((ny1B * R1B).transpose(0, 2, 1)))*face_wt1B
         Ugk2B =  ((nx2B * R2B) @ (HB_inv @ LxxB) @ ((nx2B * R2B).transpose(0, 2, 1))
                 + (nx2B * R2B) @ (HB_inv @ LxyB) @ ((ny2B * R2B).transpose(0, 2, 1))
                 + (ny2B * R2B) @ (HB_inv @ LyxB) @ ((nx2B * R2B).transpose(0, 2, 1))
-                + (ny2B * R2B) @ (HB_inv @ LyyB) @ ((ny2B * R2B).transpose(0, 2, 1)))#*face_wt2B
+                + (ny2B * R2B) @ (HB_inv @ LyyB) @ ((ny2B * R2B).transpose(0, 2, 1)))*face_wt2B
         Ugk3B =  ((nx3B * R3B) @ (HB_inv @ LxxB) @ ((nx3B * R3B).transpose(0, 2, 1))
                 + (nx3B * R3B) @ (HB_inv @ LxyB) @ ((ny3B * R3B).transpose(0, 2, 1))
                 + (ny3B * R3B) @ (HB_inv @ LyxB) @ ((nx3B * R3B).transpose(0, 2, 1))
-                + (ny3B * R3B) @ (HB_inv @ LyyB) @ ((ny3B * R3B).transpose(0, 2, 1)))#*face_wt3B
+                + (ny3B * R3B) @ (HB_inv @ LyyB) @ ((ny3B * R3B).transpose(0, 2, 1)))*face_wt3B
 
         Ugk = [Ugk1B, Ugk2B, Ugk3B]
 
@@ -1150,7 +1150,7 @@ class SATs:
 
         # SAT coefficients for different methods
         eta = 1/4; coefT2 = -1/2; coefT3 = 1/2; coefT4 = 0; etaD = 1
-
+        sigma = 1
         if flux_type == 'BR2':
             eta = 1/4; coefT2 = -1/2; coefT3 = 1/2; etaD = 1
         elif flux_type == 'BO':
@@ -1162,11 +1162,11 @@ class SATs:
         elif flux_type == 'IP':
             NotImplemented('The IP method is not implemented yet.')
         elif flux_type == 'CDG':
-            eta = 1; coefT2 = -1/2; coefT3 = -1/2; etaD = 1; mu = 0
+            eta = 1*sigma; coefT2 = -1/2; coefT3 = -1/2; etaD = 1; mu = 0
         elif flux_type == 'LDG':
-            eta = 1; coefT2 = -1/2; coefT3 = -1/2; coefT5 = 1/(16*np.sqrt(2)); coefT6 = 1/(16*np.sqrt(2)); etaD = 1; mu = 0
+            eta = 1*sigma; coefT2 = -1/2; coefT3 = -1/2; coefT5 = 1/(16*np.sqrt(2)); coefT6 = 1/(16*np.sqrt(2)); etaD = 1; mu = 0
         elif flux_type == 'BR1':
-            eta = 1/4*1;  coefT2 = -1/2; coefT3 = 1/2; coefT5 = 1/4; coefT6 = 1/4; etaD = 1
+            eta = 1*sigma;  coefT2 = -1/2; coefT3 = 1/2; coefT5 = 1/4; coefT6 = 1/4; etaD = 1
 
         # T4 coefficient
         T4gk1B = coefT4 * BB1

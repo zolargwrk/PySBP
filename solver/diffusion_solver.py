@@ -664,7 +664,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             max_eig = (np.max(eig_val)).real
         eig_vals.append(eig_val)
 
-        nnz_elem = A.count_nonzero()
+        nnz_elem = (np.abs(A)>1e-12).count_nonzero()
         nnz_elems.append(nnz_elem)
 
         # calculate the condition number (note that it can be evaluated as the ratio of the maximum to the minimum singular value of A)

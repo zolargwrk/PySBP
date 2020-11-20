@@ -1137,7 +1137,7 @@ class Ref2D_SBP:
         r = rs_data[:, 0].reshape(len(rs_data[:, 0]), 1)
         s = rs_data[:, 1].reshape(len(rs_data[:, 1]), 1)
 
-        return {'r': r, 's': s}
+        return {'r': r, 's': s, 'nnodes': nnodes}
 
     @staticmethod
     def make_sbp_operators2D(p, sbp_family="gamma"):

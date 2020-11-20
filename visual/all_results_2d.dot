@@ -1,31 +1,11 @@
 digraph tree {
     "all_results";
     "sbp_family";
-    "diage";
-    "BR1";
-    "p4";
-    "BR2";
-    "p4";
+    "omega";
     "LDG";
-    "p4";
-    "CDG";
-    "p4";
-    "BO";
-    "p4";
-    "CNG";
-    "p4";
+    "p2";
     "all_results" -> "sbp_family";
-    "sbp_family" -> "diage";
-    "diage" -> "BR1";
-    "diage" -> "BR2";
-    "diage" -> "LDG";
-    "diage" -> "CDG";
-    "diage" -> "BO";
-    "diage" -> "CNG";
-    "BR1" -> "p4";
-    "BR2" -> "p4";
-    "LDG" -> "p4";
-    "CDG" -> "p4";
-    "BO" -> "p4";
-    "CNG" -> "p4";
+    "sbp_family" -> "omega";
+    "omega" -> "LDG";
+    "LDG" -> "p2";
 }

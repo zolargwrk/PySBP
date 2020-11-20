@@ -449,6 +449,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
     errs_func = list()
     hs = list()
     nelems = list()
+    nnodes_list = list()
     cond_nums = list()
     nnz_elems = list()
     eig_vals = list()
@@ -502,9 +503,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
               - np.pi**2*n**2*(y**2 + 1)*np.sin(np.pi*m*x)*np.sin(np.pi*n*y)
               + 2*np.pi*n*y*np.sin(np.pi*m*x)*np.cos(np.pi*n*y)).flatten(order='F')
 
-        # f0 = (-np.pi ** 2 * m ** 2 * np.sin(np.pi * m * x) * np.sin(np.pi * n * y) \
-        #      - np.pi ** 2 * n ** 2 * np.sin(np.pi * m * x) * np.sin(np.pi * n * y)).flatten(order='F')
-
+        # f0 = 2*(x**0).flatten(order='F')
         # get function for the exact solution
         exact_fun = lambda x, y: np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
 
@@ -651,7 +650,8 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
 
         # get number of elements and calculate element size
         nelems.append(nelem)
-        h = 1 / np.sqrt(nelem / 2)
+        nnodes_list.append(nnodes)
+        h = 20 / np.sqrt(nelem)
         hs.append(h)
 
         # calculate eigen value, condition number, and number of nonzero elements
@@ -659,8 +659,8 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             eig_val = np.linalg.eigvals(A.toarray())
             max_eig = (np.max(eig_val)).real
         else:
-            eig_val = sparse.linalg.eigs(A, which='LR')[0]
-            # eig_val = 0
+            # eig_val = sparse.linalg.eigs(A, which='LR')[0]
+            eig_val = 0
             max_eig = (np.max(eig_val)).real
         eig_vals.append(eig_val)
 
@@ -697,7 +697,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
                                   saveMeshPlot=False, curve_mesh=curve_mesh, sbp_family=sbp_family)
 
     return {'nelems': nelems, 'hs': hs, 'errs_soln': errs_soln, 'eig_vals': eig_vals, 'nnz_elems': nnz_elems,
-            'errs_adj': errs_adj, 'errs_func': errs_func, 'cond_nums': cond_nums}
+            'errs_adj': errs_adj, 'errs_func': errs_func, 'cond_nums': cond_nums, 'nnodes': nnodes_list}
 
 # poisson_sbp_2d(2, 0.5, 1, 'diage', 'BR2', plot_fig=True, solve_adjoint=False, showMesh=True, p_map=2, curve_mesh=True)
 # diffusion_sbp_2d(1, 0.5, 1, 'gamma', 'BR1', plot_fig=False)

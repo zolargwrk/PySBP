@@ -157,9 +157,9 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
         prob = 'primal'
         # prob = 'adjoint'
         # prob = 'all'
-        func_conv = 0
+        func_conv = 1
         plot_sol = 0
-        plot_err = 0
+        plot_err = 1
         show_eig = 0
         return {'prob': prob, 'func_conv': func_conv, 'plot_sol': plot_sol, 'plot_err': plot_err, 'show_eig': show_eig}
 
@@ -183,19 +183,20 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
 
     def boundary_conditions(xl, xr):
         uD_left = np.cos(60 * xl)  # None      # Dirichlet boundary at the left boundary
-        uD_right = np.cos(60 * xr)  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
+        uD_right = None #np.cos(60 * xr)  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
         uN_left = None  # -60*np.sin(60*xl) #None     # Neumann boundary at the left boundary
-        uN_right = None  # -60*np.sin(60*xr)  # None    # Neumann boundary at the right boundary
+        uN_right = -60*np.sin(60*xr)  # None    # Neumann boundary at the right boundary
         return {'uD_left': uD_left, 'uD_right': uD_right, 'uN_left': uN_left, 'uN_right': uN_right}
 
     def source_term(x):
         a = var_coef_inv()
         b = var_coef_vis()
-        f = -a*60*np.sin(60*x) + b*3600 * np.cos(60 * x)
+        f = 60**2 * b* np.cos(60*x) #-a*60*np.sin(60*x) + b*3600 * np.cos(60 * x)
         return f
 
     def adjoint_source_term(x):
-        g = np.cos(60*x)
+        b = var_coef_vis()
+        g = 100*b*np.sin(10*x) #np.cos(60*x)
         return g
 
     def adjoint_bndry (xl, xr):
@@ -232,14 +233,16 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
         return psi
 
     def exact_functional(xl, xr):
-        J_exact = (xr/2 + 1/240 * np.sin(120*xr)) - (xl/2 + 1/240 * np.sin(120*xl))
+        b = var_coef_vis()
+        J_exact = b*1/7 * (7*np.cos(50) - 5*np.cos(70) - 2) + 10*b*np.cos(10)*np.cos(60) #(xr/2 + 1/240 * np.sin(120*xr)) - (xl/2 + 1/240 * np.sin(120*xl))
         return J_exact
 
     def calc_functional(u, g, h_mat, rx):
+        b = var_coef_vis()
         rx_global = np.diag(1 / rx[0, :], 0)  # geometric factor rx = 1/jac
         h_mat_global = sparse.block_diag([h_mat])  # concatenate norm matrix to form global
         rh = sparse.kron(rx_global, h_mat_global)
-        J = (np.ones((1, rh.shape[0])) @ rh @ (g * u))[0][0]
+        J = (np.ones((1, rh.shape[0])) @ rh @ (g * u))[0][0] + 10*b*np.cos(10)*u[-1][0]
         return J
 
     return {'var_coef_vis': var_coef_vis, 'var_coef_inv': var_coef_inv,'exact_solution': exact_solution,

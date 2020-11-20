@@ -18,17 +18,18 @@ def poisson_exact_input_2d():
 
     # change u and Lambda to problem definition
     u = sympy.sin(m*sympy.pi*x) * sympy.sin(n*sympy.pi*y)
+    u = x**2
     # psi = sympy.sin(m*sympy.pi * x) * sympy.cos(n*sympy.pi * y)
     psi = x + y
 
-    Lxx = 4 * x + 1
-    Lxy = y
-    Lyx = y
-    Lyy = y ** 2 + 1
-    # Lxx = 1
-    # Lxy = 0
-    # Lyx = 0
-    # Lyy = 1
+    # Lxx = 4 * x + 1
+    # Lxy = y
+    # Lyx = y
+    # Lyy = y ** 2 + 1
+    Lxx = 1
+    Lxy = 0
+    Lyx = 0
+    Lyy = 1
 
     return {'u': u, 'psi': psi, 'Lxx': Lxx, 'Lxy': Lxy, 'Lyx': Lyx, 'Lyy': Lyy}
 

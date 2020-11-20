@@ -1162,11 +1162,11 @@ class SATs:
         elif flux_type == 'IP':
             NotImplemented('The IP method is not implemented yet.')
         elif flux_type == 'CDG':
-            eta = 1*sigma; coefT2 = -1/2; coefT3 = -1/2; etaD = 1; mu = 0
+            eta = 1/2 ; coefT2 = -1/2; coefT3 = -1/2; etaD = 1; mu = 0
         elif flux_type == 'LDG':
-            eta = 1*sigma; coefT2 = -1/2; coefT3 = -1/2; coefT5 = 1/(16*np.sqrt(2)); coefT6 = 1/(16*np.sqrt(2)); etaD = 1; mu = 0
+            eta = 1; coefT2 = -1/2; coefT3 = -1/2; coefT5 = 1/16; coefT6 = 1/16; etaD = 1; mu = 0
         elif flux_type == 'BR1':
-            eta = 1*sigma;  coefT2 = -1/2; coefT3 = 1/2; coefT5 = 1/4; coefT6 = 1/4; etaD = 1
+            eta = 1/2;  coefT2 = -1/2; coefT3 = 1/2; coefT5 = 1/16; coefT6 = 1/16; etaD = 1
 
         # T4 coefficient
         T4gk1B = coefT4 * BB1
@@ -1425,12 +1425,12 @@ class SATs:
                                     += HB_inv[elem_nbr] @ (RB[face_gamma_nbr][elem_nbr].T @ np.fliplr(np.flipud(coefT5*T5ek[face][face_other[i]][elem]))
                                                         @ (RB[nbr_face_other][nbr_elem_other]))
 
-                            #------------------
-                            # eigtest = np.linalg.eigvals(face_wtB[face_other[i]][elem]*Ugk[face][elem] - Ugxik[face][face_other[i]][elem] \
-                            #         @ np.linalg.inv(1/face_wtB[face_other[i]][elem]*Ugk[face_other[i]][elem]) @ Ugxik[face_other[i]][face][elem])
-                            # if any(eigtest <= 0):
-                            #     print(eigtest)
-                            #------------------
+                                #------------------
+                                # eigtest = np.linalg.eigvals(face_wtB[face_other[i]][elem]*Ugk[face][elem] - Ugxik[face][face_other[i]][elem] \
+                                #         @ np.linalg.inv(1/face_wtB[face_other[i]][elem]*Ugk[face_other[i]][elem]) @ Ugxik[face_other[i]][face][elem])
+                                # if any(eigtest <= 0):
+                                #     print(eigtest)
+                                #------------------
 
                     # add LDG sat terms to interior facets
                     if flux_type == 'LDG':
@@ -1439,14 +1439,14 @@ class SATs:
                                     not any(np.array_equal(np.array([elem, face_other[i]]), rowB) for rowB in bgrpB):
 
                                 # calculate coefficient based on the \betak and \betav values at the facets
-                                T5 = coefT5 * (1 + betak[face][elem] - np.flipud(betav[face_gamma_nbr][elem_nbr])) \
-                                     * (1 + betak[face_other[i]][elem] - np.flipud(betav[etof[elem, face_other[i]]][etoe[elem, face_other[i]]]))
+                                T5 = coefT5 * (1 + betak[face][elem] - np.flipud(betak[face_gamma_nbr][elem_nbr])) \
+                                     * (1 + betak[face_other[i]][elem] - np.flipud(betak[etof[elem, face_other[i]]][etoe[elem, face_other[i]]]))
                                 T5 = np.diag(T5.flatten())
                                 # add T5 term
                                 sI[elem * nnodes:(elem + 1) * nnodes, elem * nnodes:(elem + 1) * nnodes] \
                                     += HB_inv[elem] @ (RB[face][elem].T @ (T5 @ T5ek[face][face_other[i]][elem])
                                             @ RB[face_other[i]][elem])
-                                # add T6 term (note T5 = -T6, so we have -coefT6 here)
+                                # add T6 term
                                 sI[elem_nbr * nnodes:(elem_nbr + 1) * nnodes, elem * nnodes:(elem + 1) * nnodes] \
                                     += HB_inv[elem_nbr] @ (RB[face_gamma_nbr][elem_nbr].T
                                                            @ np.fliplr(np.flipud(-T5 @ T5ek[face][face_other[i]][elem]))
@@ -1455,11 +1455,10 @@ class SATs:
                                 nbr_elem_other = etoe[elem, face_other[i]]
                                 nbr_face_other = etof[elem, face_other[i]]
                                 # subtract T5
-                                sI[elem * nnodes:(elem + 1) * nnodes,
-                                nbr_elem_other * nnodes:(nbr_elem_other + 1) * nnodes] \
+                                sI[elem * nnodes:(elem + 1) * nnodes, nbr_elem_other * nnodes:(nbr_elem_other + 1) * nnodes] \
                                     += HB_inv[elem] @ (RB[face][elem].T @ (-T5 @ T5ek[face][face_other[i]][elem])
                                             @ np.flipud(RB[nbr_face_other][nbr_elem_other]))
-                                # subtract T6 (again T5 = -T6, so no negative on coefT6 here)
+                                # subtract T6
                                 sI[elem_nbr * nnodes:(elem_nbr + 1) * nnodes, nbr_elem_other * nnodes:(nbr_elem_other + 1) * nnodes] \
                                     += HB_inv[elem_nbr] @ (RB[face_gamma_nbr][elem_nbr].T
                                                            @ np.fliplr(np.flipud(T5 @ T5ek[face][face_other[i]][elem]))
@@ -1522,8 +1521,8 @@ class SATs:
                                     not any(np.array_equal(np.array([elem, face_other[i]]), rowB) for rowB in bgrpB):
 
                                 # calculate coefficient based on the \betak and \betav values at the facets
-                                T5 = coefT5 * (1 + betak[face][elem] - np.flipud(betav[face_gamma_nbr][elem_nbr])) \
-                                     * (1 + betak[face_other[i]][elem] - np.flipud(betav[etof[elem, face_other[i]]][etoe[elem, face_other[i]]]))
+                                T5 = coefT5 * (1 + betak[face][elem] - np.flipud(betak[face_gamma_nbr][elem_nbr])) \
+                                     * (1 + betak[face_other[i]][elem] - np.flipud(betak[etof[elem, face_other[i]]][etoe[elem, face_other[i]]]))
                                 T5 = np.diag(T5.flatten())
                                 # add T5 term
                                 sI[elem * nnodes:(elem + 1) * nnodes, elem * nnodes:(elem + 1) * nnodes] \

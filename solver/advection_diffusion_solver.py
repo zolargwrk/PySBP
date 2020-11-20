@@ -475,14 +475,14 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
                 conv_end = nrefine - 1
                 conv = calc_conv(hs, errs, conv_start, conv_end)
                 print(np.asarray(conv))
-                print(np.asarray(errs))
+                # print(np.asarray(errs))
                 plot_conv_fig(hs, errs, conv_start, conv_end)
             if choose_outs.func_conv == 1:
                 conv_start = 1
                 conv_end = nrefine - 2
                 conv_func = calc_conv(hs, errs_func, conv_start, conv_end)
                 print(np.asarray(conv_func))
-                print(np.asarray(errs_func))
+                # print(np.asarray(errs_func))
                 plot_conv_fig(hs, errs_func, conv_start, conv_end)
 
     if choose_outs.prob == 'adjoint' or choose_outs.prob == 'all':
@@ -501,4 +501,7 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
     return {'p': p, 'b': b, 'a': a, 'nelems': nelems, 'ns': ns, 'quad_type': quad_type, 'flux_type_vis': flux_type_vis,
             'errs': errs, 'errs_func': errs_func, 'errs_adj': errs_adj, 'cond_num': cond_num}
 
-# u = advec_diff_1d(2, 0, 1, 4, 'CSBP', 'upwind', 'BR1', 7, 'ntrad', 'nPeriodic', 'sbp_sat', advec_diff1D_problem_input, n=25, app=1)
+#advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_type_vis='BR1', nrefine=1, refine_type=None,
+#                  boundary_type=None, sat_type='sbp_sat', advec_diff1D_problem_input=None, a=0, b=1, n=1, app=1):
+#CSBP_Mattsson2004
+u = advec_diff_1d(4, 0, 1, 4, 'CSBP_Mattsson2004', 'upwind', 'BR2', 6, 'ntrad', 'nPeriodic', 'sbp_sat', advec_diff1D_problem_input, n=25, app=2)

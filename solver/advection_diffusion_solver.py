@@ -367,7 +367,7 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
             bndry_conds = ps.boundary_conditions(xl, xr)
             bc = SimpleNamespace(**bndry_conds)
 
-            A_vis, fB_vis = RHSCalculator.rhs_poisson_1d_steady(n, nelem, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx,
+            A_vis, fB_vis, TD_left, TD_right = RHSCalculator.rhs_poisson_1d_steady(n, nelem, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx,
                                                         rdata.rx, rdata.fscale, rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO,
                                                         rdata.vmapI, rdata.vmapO, flux_type_vis, sat_type, boundary_type, rdata.db_mat,
                                                         rdata.d2_mat, b, app, bc.uD_left, bc.uD_right, bc.uN_left, bc.uN_right)
@@ -397,7 +397,7 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
 
             # calculate functional output and exact functional
             g = (ps.adjoint_source_term(x)).reshape((n*nelem, 1), order='F')
-            J = ps.calc_functional(u, g, h_mat, rx)
+            J = ps.calc_functional(u, g, h_mat, rx,  rdata.db_mat, rdata.tr, rdata.tl, TD_left, TD_right)
             J_exact = ps.exact_functional(xl, xr)
             err_func = np.abs(J - J_exact)
             errs_func.append(err_func)
@@ -469,21 +469,22 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
                 hs = (xr - xl) / (np.asarray(dofs))
             else:
                 hs = (xr - xl) / (np.asarray(nelems))
+                # hs = (xr - xl) / (np.asarray(dofs))
 
             if choose_outs.plot_err == 1:
                 conv_start = 2
-                conv_end = nrefine - 1
+                conv_end = nrefine - 0
                 conv = calc_conv(hs, errs, conv_start, conv_end)
-                print(np.asarray(conv))
+                # print(np.asarray(conv))
                 # print(np.asarray(errs))
-                plot_conv_fig(hs, errs, conv_start, conv_end)
+                # plot_conv_fig(hs, errs, conv_start, conv_end)
             if choose_outs.func_conv == 1:
-                conv_start = 1
-                conv_end = nrefine - 2
+                conv_start = 2
+                conv_end = nrefine - 0
                 conv_func = calc_conv(hs, errs_func, conv_start, conv_end)
-                print(np.asarray(conv_func))
+                # print(np.asarray(conv_func))
                 # print(np.asarray(errs_func))
-                plot_conv_fig(hs, errs_func, conv_start, conv_end)
+                # plot_conv_fig(hs, errs_func, conv_start, conv_end)
 
     if choose_outs.prob == 'adjoint' or choose_outs.prob == 'all':
         if choose_outs.plot_err == 1:
@@ -504,4 +505,4 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
 #advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_type_vis='BR1', nrefine=1, refine_type=None,
 #                  boundary_type=None, sat_type='sbp_sat', advec_diff1D_problem_input=None, a=0, b=1, n=1, app=1):
 #CSBP_Mattsson2004
-u = advec_diff_1d(4, 0, 1, 4, 'CSBP_Mattsson2004', 'upwind', 'BR2', 6, 'ntrad', 'nPeriodic', 'sbp_sat', advec_diff1D_problem_input, n=25, app=2)
+# u = advec_diff_1d(2, 0, 1, 2, 'HGT', 'upwind', 'BR2', 6, 'ntrad', 'nPeriodic', 'sbp_sat', advec_diff1D_problem_input, n=28, app=2)

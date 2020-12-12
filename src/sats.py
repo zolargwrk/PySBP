@@ -102,9 +102,10 @@ class SATs:
             # A = db_inv.T @ d_mat.T @ h_mat @ d_mat @ db_inv
 
             # construct the A matrix for CSBP_Mattsson2004 operators
-            e_mat = np.zeros((n,n))
-            e_mat[0, 0] = -1
-            e_mat[n-1,n-1] = 1
+            # e_mat = np.zeros((n,n))
+            # e_mat[0, 0] = -1
+            # e_mat[n-1,n-1] = 1
+            e_mat = tr@tr.T - tl@tl.T
             A = db_inv.T @(e_mat @ b_mat @ db_mat - h_mat @ d2_mat)@ db_inv
 
             M = np.linalg.pinv(A)
@@ -154,7 +155,7 @@ class SATs:
             T6v = (1 / 4 * (tl.T @ b_mat @ h_inv @ tl))[0, 0]
 
         elif flux_type == 'BR2':
-            eta = 2.1
+            eta = 2
             if app == 2:
                 T1 = (eta/4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
             else:
@@ -195,10 +196,12 @@ class SATs:
             T2v = (1 / 2)
             T3v = (1 / 2)
         elif flux_type == 'CNG':
-            eta = nface
-            he = rx[0, 0]
-            mu = eta/he
-            T1 = mu
+            eta = 2
+            if app == 2:
+                T1 = (eta / 16 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
+            else:
+                T1 = (eta / 16 * (tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
+
             T3k = 1/2
             T3v = 1/2
         elif flux_type == 'LDG' or flux_type == 'CDG':
@@ -417,6 +420,14 @@ class SATs:
         h_inv = np.linalg.inv(h_mat)
         b_mat = np.diag(b.flatten())
 
+        # calculate normal derivative at the interfaces
+        if app == 2:
+            Dgk = nx[0, 1] * (tr.T @ b_mat @ db_mat)  # D_{\gamma k}
+            Dgv = nx[0, 0] * (tl.T @ b_mat @ db_mat)  # D_{\gamma v}
+        else:
+            Dgk = nx[0, 1] * (tr.T @ b_mat @ d_mat)  # D_{\gamma k}
+            Dgv = nx[0, 0] * (tl.T @ b_mat @ d_mat)  # D_{\gamma v}
+
         if app ==2:
             db_inv = np.linalg.inv(db_mat)
             # A = db_inv.T @ d_mat.T @ h_mat @ d_mat @ db_inv
@@ -425,8 +436,9 @@ class SATs:
             e_mat = tr @ tr.T - tl @ tl.T
 
             if b_mat[0,0] !=0:
-                A = db_inv.T @ (e_mat @ db_mat - h_mat @ (1/b_mat[0,0] * d2_mat)) @ db_inv
-                M = b_mat[0, 0] * np.linalg.pinv(A)
+                A = db_inv.T @ (e_mat @ b_mat @ db_mat - h_mat @ d2_mat) @ db_inv
+                M = np.linalg.pinv(A)
+                # kk = np.diag(1/rx[:,0].flatten()) @ M # kk is constant for each operator
             else:
                 M = 0*db_mat
 
@@ -517,13 +529,16 @@ class SATs:
             T2v = (1 / 2)
             T3v = (1 / 2)
         elif flux_type == 'CNG':
+            eta = 2
             if app == 2:
-                T1 = (1/ 8 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
+                T1 = (eta/ 16 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
             else:
-                T1 = (1 / 8 * (tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
+                T1 = (eta/ 16 * (tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
 
             T3k = 1/2
             T3v = 1/2
+            T2k = 0
+            T2v = 0
 
         elif flux_type == 'LDG' or flux_type == 'CDG':
             eta = 2
@@ -554,18 +569,11 @@ class SATs:
 
         if app == 2:
             TD_left = sD_left * 2 * (tl.T @ M @ tl)[0, 0]
-            TD_right =sD_right * 2 * (tr.T @ M @ tr)[0, 0]
+            TD_right = sD_right * 2 * (tr.T @ M @ tr)[0, 0]
         else:
             TD_left = sD_left *2 * (tl.T @ b_mat @ h_inv @ tl)[0, 0]  # Dirichlet boundary flux coefficient at the left bc
             TD_right = sD_right * 2 * (tr.T @ b_mat @ h_inv @ tr)[0, 0]  # Dirichlet boundary flux coefficient at the right bc
 
-        # calculate normal derivative at the interfaces
-        if app==2:
-            Dgk = nx[0, 1] * (tr.T @ b_mat  @ db_mat)  # D_{\gamma k}
-            Dgv = nx[0, 0] * (tl.T @ b_mat @  db_mat)  # D_{\gamma v}
-        else:
-            Dgk = nx[0, 1]*(tr.T @ b_mat @ d_mat)   # D_{\gamma k}
-            Dgv = nx[0, 0]*(tl.T @ b_mat @  d_mat)   # D_{\gamma v}
 
         sat_p1 = 0
         sat_p2 = 0
@@ -662,7 +670,7 @@ class SATs:
         # plt.savefig(path + 'sparsity_{}.pdf'.format(flux_type), format='pdf')
         # plt.close()
         # # plt.show()
-        return sI, fB
+        return sI, fB, TD_left, TD_right
 
     @staticmethod
     def advection_sbp_sats_1d_steady(n, nelem, h_mat, tl, tr, rx, a=1, uD_left=None, uD_right=None, flux_type='upwind'):
@@ -1575,6 +1583,9 @@ class SATs:
         # construct SAT matrix that multiplies the Dirichlet boundary vector
         sD = sparse.lil_matrix((nelem*nnodes, nelem*nfp*nface), dtype=np.float64)
         BD = sparse.lil_matrix((nelem*nfp*nface, nelem*nfp*nface), dtype=np.float64)
+        Dgk_D = sparse.lil_matrix((nelem*nfp*nface, nelem*nnodes), dtype=np.float64)
+        Rgk_D = sparse.lil_matrix((nelem*nfp*nface, nelem*nnodes), dtype=np.float64)
+        TDgk_D = sparse.lil_matrix((nelem*nfp*nface, nelem*nfp*nface), dtype=np.float64)
         for i in range(0, len(bgrpD)):
             elem = bgrpD[i, 0]
             face = bgrpD[i, 1]
@@ -1583,6 +1594,9 @@ class SATs:
                                                                             +Dgk[face][elem].T @ BB[face][elem])
             BD[(elem*nface*nfp+nfp*face):(elem*nface*nfp+nfp*(face+1)), (elem*nface*nfp+nfp*face):(elem*nface*nfp+nfp*(face+1))] += BB[face][elem]
 
+            Dgk_D[(elem*nface*nfp+nfp*face):(elem*nface*nfp+nfp*(face+1)), (elem*nnodes):((elem+1)*nnodes)] = Dgk[face][elem]
+            Rgk_D[(elem*nface*nfp+nfp*face):(elem*nface*nfp+nfp*(face+1)), (elem*nnodes):((elem+1)*nnodes)] = RB[face][elem]
+            TDgk_D[(elem*nface*nfp+nfp*face):(elem*nface*nfp+nfp*(face+1)), (elem*nface*nfp+nfp*face):(elem*nface*nfp+nfp*(face+1))] = TDgk[face][elem]
 
         sD_mat = sD.tocsr()
         fD = (sD_mat @ uD.flatten(order="F")).reshape(-1, 1)
@@ -1590,6 +1604,7 @@ class SATs:
         # construct SAT matrix that multiplies the Neumann boundary vector
         sN = sparse.lil_matrix((nelem*nnodes, nelem*nfp*nface), dtype=np.float64)
         BN = sparse.lil_matrix((nelem*nfp*nface, nelem*nfp*nface), dtype=np.float64)
+        Rgk_N = sparse.lil_matrix((nelem*nfp*nface, nelem*nnodes), dtype=np.float64)
         for i in range(0, len(bgrpN)):
             elem = bgrpN[i, 0]
             face = bgrpN[i, 1]
@@ -1597,10 +1612,13 @@ class SATs:
                                                                 (RB[face][elem].T @ BB[face][elem])
             BN[(elem*nface*nfp+nfp*face):(elem*nface*nfp+nfp*(face+1)), (elem*nface*nfp+nfp*face):(elem*nface*nfp+nfp*(face+1))] += BB[face][elem]
 
+            Rgk_N[(elem*nface*nfp+nfp*face):(elem*nface*nfp+nfp*(face+1)), (elem*nnodes):((elem+1)*nnodes)] = RB[face][elem]
+
         sN_mat = sN.tocsr()
         fN = (sN_mat @ uN.flatten(order="F")).reshape(-1, 1)
 
         fB = fD + fN
         Hg = sparse.block_diag(HB)
 
-        return {'sI': sI_mat, 'fB': fB, 'Hg': Hg, 'Dgk': Dgk, 'BD': BD, 'BN': BN}
+        return {'sI': sI_mat, 'fB': fB, 'Hg': Hg, 'Dgk': Dgk, 'BD': BD, 'BN': BN, 'Dgk_D': Dgk_D, 'Rgk_D': Rgk_D,
+                'TDgk_D': TDgk_D, 'Rgk_N': Rgk_N}

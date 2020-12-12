@@ -178,25 +178,25 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
         return a
 
     def exact_solution(x):
-        u_exact = np.cos(60*x)
+        u_exact = np.cos(30*x)
         return u_exact
 
     def boundary_conditions(xl, xr):
-        uD_left = np.cos(60 * xl)  # None      # Dirichlet boundary at the left boundary
-        uD_right = None #np.cos(60 * xr)  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
+        uD_left = np.cos(30 * xl)  # None      # Dirichlet boundary at the left boundary
+        uD_right = None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
         uN_left = None  # -60*np.sin(60*xl) #None     # Neumann boundary at the left boundary
-        uN_right = -60*np.sin(60*xr)  # None    # Neumann boundary at the right boundary
+        uN_right = -30*np.sin(30*xr)  # None    # Neumann boundary at the right boundary
         return {'uD_left': uD_left, 'uD_right': uD_right, 'uN_left': uN_left, 'uN_right': uN_right}
 
     def source_term(x):
         a = var_coef_inv()
         b = var_coef_vis()
-        f = 60**2 * b* np.cos(60*x) #-a*60*np.sin(60*x) + b*3600 * np.cos(60 * x)
+        f = 30**2 * b* np.cos(30*x) #-a*60*np.sin(60*x) + b*3600 * np.cos(60 * x)
         return f
 
     def adjoint_source_term(x):
         b = var_coef_vis()
-        g = 100*b*np.sin(10*x) #np.cos(60*x)
+        g = np.cos(30*x) #100*b*np.sin(10*x) #np.cos(60*x)
         return g
 
     def adjoint_bndry (xl, xr):
@@ -208,8 +208,8 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
             psiN_left = None  # -60*np.sin(60*xr) #None     # Neumann boundary at the left boundary
             psiN_right = None  # -60*np.sin(60*xl)  # None    # Neumann boundary at the right boundary
         else:
-            psiD_left = -np.cos(60 * xl) / a  # None      # Dirichlet boundary at the left boundary
-            psiD_right = np.cos(60 * xr) / a  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
+            psiD_left = -np.cos(30 * xl) / a  # None      # Dirichlet boundary at the left boundary
+            psiD_right = np.cos(30 * xr) / a  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
             psiN_left = None  # -60*np.sin(60*xr) #None     # Neumann boundary at the left boundary
             psiN_right = None  # -60*np.sin(60*xl)  # None    # Neumann boundary at the right boundary
 
@@ -234,15 +234,34 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
 
     def exact_functional(xl, xr):
         b = var_coef_vis()
-        J_exact = b*1/7 * (7*np.cos(50) - 5*np.cos(70) - 2) + 10*b*np.cos(10)*np.cos(60) #(xr/2 + 1/240 * np.sin(120*xr)) - (xl/2 + 1/240 * np.sin(120*xl))
+        # J_exact = b*1/7 * (7*np.cos(50) - 5*np.cos(70) - 2) + 10*b*np.cos(10)*np.cos(60) #(xr/2 + 1/240 * np.sin(120*xr)) - (xl/2 + 1/240 * np.sin(120*xl))
+        # J_exact = 8*np.sin(100) + 40*np.sin(20) + 5*np.cos(40) - 5/2 *np.cos(80) - 5/2 + (20*np.cos(20) - 40*np.sin(40))*np.cos(60)
+        J_exact = 1/2 + 1/120 * np.sin(60) + 1/(30**2) * (np.cos(30) - 30*np.sin(30)*np.cos(30) - (np.cos(30))**2) # + 1/(30)*(1-np.cos(30))*np.sin(30) #
         return J_exact
 
-    def calc_functional(u, g, h_mat, rx):
+    def calc_functional(u, g, h_mat, rx,  db_mat, tr, tl, TD_left, TD_right):
         b = var_coef_vis()
         rx_global = np.diag(1 / rx[0, :], 0)  # geometric factor rx = 1/jac
         h_mat_global = sparse.block_diag([h_mat])  # concatenate norm matrix to form global
         rh = sparse.kron(rx_global, h_mat_global)
-        J = (np.ones((1, rh.shape[0])) @ rh @ (g * u))[0][0] + 10*b*np.cos(10)*u[-1][0]
+        Dgv = rx[:, 0]*(-(tl.T @ db_mat)) # directional derivative at the left most facet (Dirichlet boundary)
+        Dgk = rx[:, -1] * (tr.T @ db_mat)  # directional derivative at the right most facet (Dirichlet boundary)
+        nelem = int(len(u)/len(tr))
+        nnodes = len(tr)
+        # boundary data
+        uD_left = 1
+        # uD_right = np.cos(30)
+        psiD_left = 1/(30**2) * (1 - np.cos(30))
+        # psiD_right = 1/(30**2) * (1 - np.cos(30))
+        psiN = 1/(30**2) * (1 - 30*np.sin(30) - np.cos(30))
+
+        uh = np.reshape(u,(nnodes,nelem), order='F')
+        J = (g.T @ rh @ u)[0][0] \
+            - psiD_left * (Dgv @ uh[:, 0])[0]\
+            + psiD_left * TD_left*(tl.T @ uh[:,0] - uD_left)[0]\
+            + psiN * (tr.T @ uh[:, -1])[0]
+            # - psiD_right * (Dgk @ uh[:, -1])[0] \
+            # + psiD_right * TD_right * (tr.T @ uh[:, -1] - uD_right)[0]
         return J
 
     return {'var_coef_vis': var_coef_vis, 'var_coef_inv': var_coef_inv,'exact_solution': exact_solution,

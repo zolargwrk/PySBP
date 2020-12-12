@@ -235,18 +235,18 @@ class RHSCalculator:
             b = b * np.ones(n)
 
         # scale the matrices (the ones given are for the reference element)
-        d2_mat = rx[0, 0] * rx[0, 0] * d2_mat
+        d2_mat = ((np.diag(rx[:, 0]))**2) @ d2_mat
         Ablock = [d2_mat]*nelem
 
         # get SBP SAT terms
-        sI, fB = SATs.diffusion_sbp_sat_1d_steady(n, nelem, d_mat, d2_mat, h_mat, tl, tr, nx, rx,
+        sI, fB, TD_left, TD_right = SATs.diffusion_sbp_sat_1d_steady(n, nelem, d_mat, d2_mat, h_mat, tl, tr, nx, rx,
                                                   flux_type, boundary_type, db_mat, b, app,
                                                   uD_left, uD_right, uN_left, uN_right)
 
         A1 = sparse.block_diag(Ablock)
         A = -A1 + sI
 
-        return A, fB
+        return A, fB, TD_left, TD_right
 
     @ staticmethod
     def rhs_advection_1d_steady(n, nelem, d_mat, h_mat, tl, tr, rx, a=1, uD_left=None, uD_right=None, flux_type='upwind'):
@@ -406,7 +406,8 @@ class RHSCalculator:
         A = (D2B - sdata.sI)
 
         return {'A': A, 'fB': sdata.fB, 'Hg': sdata.Hg, 'D2B': D2B, 'LxxB': LxxB, 'LxyB': LxyB, 'LyxB': LyxB,
-                'LyyB': LyyB, 'LB': LB, 'uD': uD, 'uN': uN, 'BD': sdata.BD, 'BN': sdata.BN}
+                'LyyB': LyyB, 'LB': LB, 'uD': uD, 'uN': uN, 'BD': sdata.BD, 'BN': sdata.BN, 'Dgk_D': sdata.Dgk_D,
+                'Rgk_D': sdata.Rgk_D, 'TDgk_D': sdata.TDgk_D, 'Rgk_N': sdata.Rgk_N}
 
 
     @staticmethod

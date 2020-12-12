@@ -101,6 +101,14 @@ def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_
                                     pickle.dump(all_results, outfile)
 
     elif dim == 1:
+        app = []  # wide or narrow stencil application
+        for j in range(len(stencil)):
+            if sten[j] == 'wide':
+                app.append(1)
+            elif sten[j] == 'narrow':
+                app.append(2)
+
+        app = sorted(app)
         # solve problem and add result to tree leaves
         for f in range(len(sbp_families)):
             for t in range(len(stencil)):  # wide or narrow stencil
@@ -120,9 +128,28 @@ def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_
                                     b = 0
 
                                 # solve the Poisson problem and obtain data
-                                soln = advec_diff_1d(ps[p], 0, 1, 2, sbp_families[f], 'upwind', sats[s], nrefine,
+                                if sbp_families[f] in ['LG', 'LGL']:
+                                    nelem = 5
+                                    app_correct = 1
+                                elif sbp_families[f] in ['CSBP', 'CSBP', 'CSBP_Mattsson2004', 'HGTL', 'HGT']:
+                                    nelem = 1
+                                    if ps[p]==1:
+                                        n = 10
+                                    elif ps[p]==2:
+                                        n = 15
+                                    elif ps[p]==3:
+                                        n = 20
+                                    elif ps[p]==4:
+                                        n = 25
+
+                                    app_correct = app[t]
+                                else:
+                                    nelem = 2
+                                    app_correct = app[t]
+
+                                soln = advec_diff_1d(ps[p], 0, 1, nelem, sbp_families[f], 'upwind', sats[s], nrefine,
                                                      imp[i], 'nPeriodic', 'sbp_sat', advec_diff1D_problem_input, a, b,
-                                                     n, app=t+1)
+                                                     n, app_correct)
 
                                 # add data to the leaves of the tree
                                 leaf = all_results.children[0].children[f].children[t].children[i].children[s].\
@@ -218,12 +245,12 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
 
                     # plot solution convergence rates
                     plt.figure(1)
-                    label_fam_sol = 'SBP-{} $\;$ {} $\;$ $p={}$ $\;$ $r={:.2f}$'.format(
-                        pltsetup.sbp_fam[sbp_families[f]], pltsetup.sat_name[sats[s]], ps[p], conv_soln)
-                    label_fam_func = 'SBP-{} $\;$ {} $\;$ $p={}$ $\;$ $r={:.2f}$'.format(
-                        pltsetup.sbp_fam[sbp_families[f]], pltsetup.sat_name[sats[s]], ps[p], conv_func)
-                    # label_fam_sol='{}(${:.2f}$)'.format(pltsetup.sat_name[sats[s]], conv_soln)
-                    # label_fam_func='{}(${:.2f}$)'.format(pltsetup.sat_name[sats[s]], conv_func)
+                    # label_fam_sol = 'SBP-{} $\;$ {} $\;$ $p={}$ $\;$ $r={:.2f}$'.format(
+                    #     pltsetup.sbp_fam[sbp_families[f]], pltsetup.sat_name[sats[s]], ps[p], conv_soln)
+                    # label_fam_func = 'SBP-{} $\;$ {} $\;$ $p={}$ $\;$ $r={:.2f}$'.format(
+                    #     pltsetup.sbp_fam[sbp_families[f]], pltsetup.sat_name[sats[s]], ps[p], conv_func)
+                    label_fam_sol='{}(${:.2f}$)'.format(pltsetup.sat_name[sats[s]], conv_soln)
+                    label_fam_func='{}(${:.2f}$)'.format(pltsetup.sat_name[sats[s]], conv_func)
                     plt.loglog(r.hs, r.errs_soln, pltsetup.markers[s], linewidth=pltsetup.lw, markersize=pltsetup.ms,
                                label=label_fam_sol)
                     plt.xlabel(r'$h$')
@@ -381,7 +408,7 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
                     plt.gca().xaxis.set_minor_locator(LogLocator(base=10, subs=[2, 4, 6, 8]))
 
                     # annotation.slope_marker((1.8 - ((7-p)/10)*(p+1), 1),
-                    #                         slope=p + 2,
+                    #                         slope=p + 6,
                     #                         size_frac=0.2,
                     #                         text_kwargs={'color': 'k', 'fontsize': 12})
 
@@ -688,10 +715,10 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
                         rref = SimpleNamespace(**resref)
 
                         # add condition number to row of the table
-                        # row.append(r.cond_nums[refine])
+                        row.append(r.cond_nums[refine])
 
                         # uncomment the line below for relative spectral radius
-                        row.append(r.cond_nums[refine]/rref.cond_nums[refine])
+                        # row.append(r.cond_nums[refine]/rref.cond_nums[refine])
                     row_list.append(row)
             cond_list.append(row_list)
             row_list = []
@@ -919,8 +946,14 @@ def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=
         # solve and obtain results or open saved from file
         with open(path+'results_poisson1D.pickle', 'rb') as infile:
             all_results = pickle.load(infile)
+
+        pmin = np.min(ps) - 1
+        pmax = np.max(ps)
     else:
         all_results = run_results
+
+        pmin = 0
+        pmax = len(ps)
 
     dim = 1
     # setup default values based on input
@@ -929,6 +962,10 @@ def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=
     # setup plot options
     pltsetup_dict = plot_setup(sbp_families, sats, dim, stencil)
     pltsetup = SimpleNamespace(**pltsetup_dict)
+
+    # SAT and SBP family list in saved data
+    sat_saved_list = ['BR1', 'BR2', 'LDG', 'BO', 'CNG']
+    sbp_famliy_saved_list =  ['CSBP', 'CSBP_Mattsson2004', 'LGL', 'LG', 'HGTL']
 
     imp_app=[]  # traditional or element type refinement
     for j in range(len(imp)):
@@ -944,135 +981,222 @@ def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=
     for j in range(len(stencil)):
         if sten[j] == 'wide':
             app.append(0)
-        elif sten[j] == 'narrow':
+        elif sten[j] == 'narrow' and len(app)==1:
             app.append(1)
+        elif sten[j] == 'narrow' and len(app)==0:
+            app.append(0)
     app = sorted(app)
 
     # plot solution by sbp family, i.e., 1 family with varying SAT types
     if plot_by_family:
         for pr in range(len(prob)):
             for i in range(len(imp)):   # traditional or element type refinement
-                for p in range(len(ps)):
+                for p in range(pmin, pmax):
                     for f in range(len(sbp_families)):
                         for s in range(len(sats)):
                             for t in range(len(stencil)):   # wide or narrow stencil
+                                if run_results is None:
+                                    # SAT and SBP family list in saved data
+                                    fmod = sbp_famliy_saved_list.index(sbp_families[f])
+                                    smod = sat_saved_list.index(sats[s])
+                                else:
+                                    fmod = f
+                                    smod = s
                                 # get results from saved tree file
-                                res = all_results.children[0].children[f].children[app[t]].children[imp_app[i]].\
-                                    children[s].children[ps[p]-1].children[pr].children[0].results
+                                res = all_results.children[0].children[fmod].children[app[t]].children[imp_app[i]].\
+                                    children[smod].children[p].children[pr].children[0].results
                                 # calculate degrees of freedom and add it to res dictionary
                                 res['dof'] = np.asarray([x*y for x, y in zip(res['nelems'], res['ns'])])
                                 r = SimpleNamespace(**res)
 
                                 # set refinement levels where the convergence rates calculation begins and ends
-                                begin = len(r.dof) - 3
-                                end = len(r.dof)
-
+                                begin = (len(r.dof)) - 5    # -6 gives the 4th step for a 9 step total
+                                end = (len(r.dof)) - 2      # -3 gives the 6th step for a 9 step total
                                 # calculate solution convergence rates
                                 conv_soln = np.abs(np.polyfit(np.log10(r.dof[begin:end]),
                                                               np.log10(r.errs[begin:end]), 1)[0])
 
+                                # set refinement levels where the convergence rates calculation begins and ends
+                                begin = (len(r.dof)) - 5  # -5 gives the 4th step for a 9 step total
+                                end = (len(r.dof)) - 2    # -3 gives the 6th step for a 9 step total
                                 # calculate functional convergence rates
                                 conv_func = np.abs(np.polyfit(np.log10(r.dof[begin:end]),
                                                               np.log10(r.errs_func[begin:end]), 1)[0])
 
                                 # plot solution convergence rates
                                 plt.figure(1)
-                                plt.loglog(1/r.dof, r.errs, pltsetup.markers[2*s+t], linewidth=pltsetup.lw,
-                                           markersize=pltsetup.ms, label='{}-{}-{} $|$ {} $|$ {} $|$r={:.2f}'.
+                                # plt.loglog(1/r.dof, r.errs, pltsetup.markers[2*s+t], linewidth=pltsetup.lw,
+                                #            markersize=pltsetup.ms, label='{}-{}-{} $|$ {} $|$ {} $|$r={:.2f}'.
+                                #            format(pltsetup.sbp_fam[sbp_families[f]],
+                                #                   pltsetup.stencil_shortname[stencil[t]], imp[i],
+                                #                   pltsetup.sat_name[sats[s]], degrees[p], conv_soln))
+                                fill_type = ['full', 'none', 'full']
+                                line_type = [2, 3, 2]
+                                marker_type = [pltsetup.markers[2 * s + t], pltsetup.markers1[2 * s + t], pltsetup.markers2[2 * s + t]]
+                                markersize_type = [8, pltsetup.ms, pltsetup.ms]
+                                plt.loglog(1 / r.dof, r.errs, marker_type[f], linewidth=line_type[f],
+                                           markersize=markersize_type[f], fillstyle=fill_type[f], label='{}-{} {} ({:.2f})'.
                                            format(pltsetup.sbp_fam[sbp_families[f]],
-                                                  pltsetup.stencil_shortname[stencil[t]], imp[i],
-                                                  pltsetup.sat_name[sats[s]], degrees[p], conv_soln))
-                                plt.xlabel(r'$1/dof$')
+                                                  pltsetup.stencil_shortname[stencil[t]],
+                                                  pltsetup.sat_name[sats[s]], conv_soln))
+                                plt.xlabel(r'1/dof')
                                 plt.ylabel(r'solution error')
-                                plt.legend()
-                                plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
-                                plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
-                                plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
+                                plt.legend(ncol=2, labelspacing=0.1, columnspacing=0.7, handletextpad=0.1)
+                                plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.3f}'))
+                                # plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.4f}'))
+                                plt.gca().axes.tick_params(which='minor', width=1, length=6, labelsize=22)
+                                plt.gca().axes.tick_params(which='major', width=2, length=12, labelsize=22)
+                                plt.gca().xaxis.set_minor_locator(LogLocator(base=10, subs=[1, 2, 3, 4, 5, 6, 7, 8, 9]))
 
+                                # annotation.slope_marker((0.005, 1e-3),
+                                #                         slope=(ps[p]+1)+ 2,
+                                #                         size_frac=0.2,
+                                #                         text_kwargs={'color': 'k', 'fontsize': 12})
                                 if save_fig:
-                                    plt.savefig(path + '\\soln_conv_rates\\errs_soln_VarOper_{}_p{}.pdf'.
-                                                format(sbp_families[f], ps[p]), format='pdf')
+                                    plt.savefig(path + '\\soln_conv_rates\\errs_soln_VarOper_p{}.pdf'.
+                                                format(ps[p]), format='pdf', bbox_inches='tight')
 
                                 # plot functional convergence rates
                                 plt.figure(2)
-                                plt.loglog(1/r.dof, r.errs_func, pltsetup.markers[2*s+t], linewidth=pltsetup.lw,
-                                           markersize=pltsetup.ms, label='{}-{}-{} $|${}$|${}$|$ r={:.2f}'.
+                                plt.loglog(1 / r.dof, r.errs_func, marker_type[f], linewidth=line_type[f],
+                                           markersize=markersize_type[f], fillstyle=fill_type[f], label='{}-{} {} ({:.2f})'.
                                            format(pltsetup.sbp_fam[sbp_families[f]],
-                                            pltsetup.stencil_shortname[stencil[t]], imp[i],
-                                                  pltsetup.sat_name[sats[s]], degrees[p], conv_func))
-                                plt.xlabel(r'$1/dof$')
+                                                  pltsetup.stencil_shortname[stencil[t]],
+                                                  pltsetup.sat_name[sats[s]], conv_func))
+                                # plt.loglog(1/r.dof, r.errs_func, pltsetup.markers[2*s+t], linewidth=pltsetup.lw,
+                                #            markersize=pltsetup.ms, label='{}-{} {}'.
+                                #            format(pltsetup.sbp_fam[sbp_families[f]],
+                                #             pltsetup.stencil_shortname[stencil[t]],
+                                #                   pltsetup.sat_name[sats[s]]))
+                                plt.xlabel(r'1/dof')
                                 plt.ylabel(r'functional error')
-                                plt.legend()
-                                plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
-                                plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
-                                plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
+                                plt.legend(ncol=2, labelspacing=0.1, columnspacing=0.7, handletextpad=0.1)
+                                plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.3f}'))
+                                # plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.4f}'))
+                                plt.gca().axes.tick_params(which='minor', width=1, length=6, labelsize=22)
+                                plt.gca().axes.tick_params(which='major', width=2, length=12, labelsize=22)
+                                plt.gca().xaxis.set_minor_locator(LogLocator(base=10, subs=[1, 2, 3, 4, 5, 6, 7, 8, 9]))
+
+                                # annotation.slope_marker((0.005, 1e-3),
+                                #                         slope=2*(ps[p]),
+                                #                         size_frac=0.2,
+                                #                         text_kwargs={'color': 'k', 'fontsize': 12})
                                 if save_fig:
-                                    plt.savefig(path + '\\func_conv_rates\\errs_func_VarOper_{}_p{}.pdf'.
-                                                format(sbp_families[f], ps[p]), format='pdf')
-                    plt.show()
-                    plt.close()
+                                    plt.savefig(path + '\\func_conv_rates\\errs_func_VarOper_p{}.pdf'.
+                                                format(ps[p]), format='pdf', bbox_inches='tight')
+                plt.show()
+                plt.close()
 
     # plot solution by sat type, i.e., 1 SAT type and varying SBP families
     if plot_by_sat:
         for pr in range(len(prob)):
             for i in range(len(imp)):   # traditional or element type refinement
-                for p in range(len(ps)):
+                for p in range(pmin, pmax):
                     for s in range(len(sats)):
                         for f in range(len(sbp_families)):
                             for t in range(len(stencil)):   # wide or narrow stencil
-                                # get results from saved tree file
-                                res = all_results.children[0].children[f].children[t].children[imp_app[i]].children[s].\
-                                    children[ps[p]-1].children[pr].children[0].results
+                                if run_results is None:
+                                    # SAT and SBP family list in saved data
+                                    fmod = sbp_famliy_saved_list.index(sbp_families[f])
+                                    smod = sat_saved_list.index(sats[s])
+                                else:
+                                    fmod = f
+                                    smod = s
+                                    # get results from saved tree file
+                                res = all_results.children[0].children[fmod].children[app[t]].children[imp_app[i]]. \
+                                    children[smod].children[p].children[pr].children[0].results
                                 # calculate degrees of freedom and add it to res dictionary
-                                res['dof'] = np.asarray([x*y for x, y in zip(res['nelems'], res['ns'])])
+                                res['dof'] = np.asarray([x * y for x, y in zip(res['nelems'], res['ns'])])
                                 r = SimpleNamespace(**res)
 
                                 # set refinement levels where the convergence rates calculation begins and ends
                                 begin = len(r.dof) - 3
-                                end = len(r.dof)
-
+                                end = len(r.dof) - 0
                                 # calculate solution convergence rates
                                 conv_soln = np.abs(np.polyfit(np.log10(r.dof[begin:end]),
                                                               np.log10(r.errs[begin:end]), 1)[0])
 
+                                # set refinement levels where the convergence rates calculation begins and ends
+                                begin = len(r.dof) - 3
+                                end = len(r.dof) - 0
                                 # calculate functional convergence rates
                                 conv_func = np.abs(np.polyfit(np.log10(r.dof[begin:end]),
                                                               np.log10(r.errs_func[begin:end]), 1)[0])
 
                                 # plot solution convergence rates
                                 plt.figure(1)
-                                plt.loglog(1/r.dof, r.errs, pltsetup.markers[2*f+t], linewidth=pltsetup.lw,
-                                           markersize=pltsetup.ms, label='{}-{}-{} $|$ {} $|$ {} $|$r={:.2f}'.
+                                # plt.loglog(1/r.dof, r.errs, pltsetup.markers[2*f+t], linewidth=pltsetup.lw,
+                                #            markersize=pltsetup.ms, label='{}-{}-{} $|$ {} $|$ {} $|$r={:.2f}'.
+                                #            format(pltsetup.sbp_fam[sbp_families[f]],
+                                #                   pltsetup.stencil_shortname[stencil[t]], imp[i],
+                                #                   pltsetup.sat_name[sats[s]], degrees[p], conv_soln))
+                                # plt.xlabel(r'$1/dof$')
+                                # plt.ylabel(r'solution error')
+                                # plt.legend()
+                                # plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
+                                # plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
+                                # plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
+
+                                fill_type = ['none', 'full', 'none']
+                                line_type = [2, 3, 2]
+                                marker_type = [pltsetup.markers[2 * (f+s) + t], pltsetup.markers3[2 * (f+s) + t],
+                                               pltsetup.markers2[2 * (f+s) + t]]
+                                markersize_type = [8, pltsetup.ms, pltsetup.ms]
+                                plt.loglog(1 / r.dof, r.errs, marker_type[s], linewidth=line_type[f],
+                                           markersize=10, fillstyle=fill_type[t],
+                                           label='{}-{} {} ({:.2f})'.
                                            format(pltsetup.sbp_fam[sbp_families[f]],
-                                                  pltsetup.stencil_shortname[stencil[t]], imp[i],
-                                                  pltsetup.sat_name[sats[s]], degrees[p], conv_soln))
-                                plt.xlabel(r'$1/dof$')
+                                                  pltsetup.stencil_shortname[stencil[t]],
+                                                  pltsetup.sat_name[sats[s]], conv_soln))
+                                plt.xlabel(r'1/dof')
                                 plt.ylabel(r'solution error')
-                                plt.legend()
-                                plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
-                                plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
-                                plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
+                                plt.legend(ncol=2, labelspacing=0.1, columnspacing=0.7, handletextpad=0.1)
+                                plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.3f}'))
+                                # plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.4f}'))
+                                plt.gca().axes.tick_params(which='minor', width=1, length=6, labelsize=22)
+                                plt.gca().axes.tick_params(which='major', width=2, length=12, labelsize=22)
+                                plt.gca().xaxis.set_minor_locator(LogLocator(base=10, subs=[1, 2, 3, 4, 5, 6, 7, 8, 9]))
 
                                 if save_fig:
                                     plt.savefig(path + '\\soln_conv_rates\\errs_soln_VarSAT_{}_p{}.pdf'.
-                                                format(sbp_families[f], ps[p]), format='pdf')
+                                                format('BR2', ps[p]), format='pdf', bbox_inches='tight')
 
                                 # plot functional convergence rates
                                 plt.figure(2)
-                                plt.loglog(1/r.dof, r.errs_func, pltsetup.markers[2*f+t], linewidth=pltsetup.lw,
-                                           markersize=pltsetup.ms, label='{}-{}-{} $|${}$|${}$|$ r={:.2f}'.
+                                # plt.loglog(1/r.dof, r.errs_func, pltsetup.markers[2*f+t], linewidth=pltsetup.lw,
+                                #            markersize=pltsetup.ms, label='{}-{}-{} $|${}$|${}$|$ r={:.2f}'.
+                                #            format(pltsetup.sbp_fam[sbp_families[f]],
+                                #                   pltsetup.stencil_shortname[stencil[t]], imp[i],
+                                #                   pltsetup.sat_name[sats[s]], degrees[p], conv_func))
+                                # plt.xlabel(r'$1/dof$')
+                                # plt.ylabel(r'functional error')
+                                # plt.legend()
+                                # plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
+                                # plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
+                                # plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
+                                fill_type = ['none', 'full', 'none']
+                                line_type = [2, 3, 2]
+                                marker_type = [pltsetup.markers[2 * (f + s) + t], pltsetup.markers3[2 * (f + s) + t],
+                                               pltsetup.markers2[2 * (f + s) + t]]
+                                markersize_type = [8, pltsetup.ms, pltsetup.ms]
+                                plt.loglog(1 / r.dof, r.errs_func, marker_type[s], linewidth=line_type[f],
+                                           markersize=10, fillstyle=fill_type[t],
+                                           label='{}-{} {} ({:.2f})'.
                                            format(pltsetup.sbp_fam[sbp_families[f]],
-                                                  pltsetup.stencil_shortname[stencil[t]], imp[i],
-                                                  pltsetup.sat_name[sats[s]], degrees[p], conv_func))
-                                plt.xlabel(r'$1/dof$')
+                                                  pltsetup.stencil_shortname[stencil[t]],
+                                                  pltsetup.sat_name[sats[s]], conv_func))
+                                plt.xlabel(r'1/dof')
                                 plt.ylabel(r'functional error')
-                                plt.legend()
-                                plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
-                                plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
-                                plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
-                                if save_fig:
+                                plt.legend(ncol=2, labelspacing=0.1, columnspacing=0.7, handletextpad=0.1)
+                                plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.3f}'))
+                                # plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.4f}'))
+                                plt.gca().axes.tick_params(which='minor', width=1, length=6, labelsize=22)
+                                plt.gca().axes.tick_params(which='major', width=2, length=12, labelsize=22)
+                                plt.gca().xaxis.set_minor_locator(LogLocator(base=10, subs=[1, 2, 3, 4, 5, 6, 7, 8, 9]))
+
+                            if save_fig:
                                     plt.savefig(path + '\\func_conv_rates\\errs_func_VarSAT_{}_p{}.pdf'.
-                                                format(sbp_families[f], ps[p]), format='pdf')
+                                                format('BR2', ps[p]), format='pdf', bbox_inches='tight')
                     plt.show()
                     plt.close()
 
@@ -1145,9 +1269,11 @@ def plot_setup(sbp_families, sats, dim=2, stencil=None):
         if 'CSBP' in sbp_families:
             sbp_fam['CSBP'] = 'CSBP1'
         if 'CSBP_Mattsson2004' in sbp_families:
-            sbp_fam['CSBP_Mattsson2004'] = 'CSBP2'
+            sbp_fam['CSBP_Mattsson2004'] = 'CSBP'
         if 'HGTL' in sbp_families:
-            sbp_fam['HGTL'] = 'HGTL1'
+            sbp_fam['HGTL'] = 'HGTL'
+        if 'HGT' in sbp_families:
+            sbp_fam['HGT'] = 'HGT'
         if 'LG' in sbp_families:
             sbp_fam['LG'] = 'LG'
         if 'LGL' in sbp_families:
@@ -1160,7 +1286,19 @@ def plot_setup(sbp_families, sats, dim=2, stencil=None):
         if 'narrow' in stencil:
             stencil_shortname['narrow'] = 'N'
 
-        markers = ['--*g', '-*g', '--sy', '-sy', ':<r', '-<r', '-.ob', '-ob', '--dm', '-dm', ':hc', '-hc', '--X','-X']
+        markers = [':sg', ':sg', ':*k', ':*k', ':or', ':or', ':<b', ':b', '--dm', '-dm', ':hc', '-hc', '--X','-X']
+        # markers = ['--sg', '-sg', '--*y', '-*y', ':or', '-or', '-.<b', '-<b', '--dm', '-dm', ':hc', '-hc', '--X','-X']
+        markers1 = ['-.sg', '-.sg', '-.*k', '-.*k', '-.or', '-.or', '-.<b', '-.<b', '--dm', '-dm', ':hc', '-hc', '--X','-X']
+        markers2 = ['-xg', '-xg', '-+k', '-+k', '-2r', '-2r', '-1b', '-1b', '--dm', '-dm', ':hc', '-hc', '--X', '-X']
+        # markers1 = ['--*b', '--xk', '--or', '--<g', '--Xm', '--dc', '--s']
+        # markers2 = ['-*b', '-xk', '-or', '-<g', '-Xm', '-dc', '-s']
+        markers3 = ['-.<b', '-.<b', '-.hm', '-.hm', '-.db', '-.db', '-.<c', '-.<c', '--dm', '-dm', ':hc', '-hc', '--X','-X']
+        markers4 = ['-.*b', '-.xk', '-.or', '-.<g', '-.Xm', '-.dc', '-.s']
+        markers5 = ['-*b', '-xk', '-or', '-<g', '-Xm', '-dc', '-s']
+        markers6 = [':*b', '-.Xk', '--or', ':<g', ':Xm', ':dc', ':s']
+        markers_all = [markers1, markers2, markers3, markers4]
+        marker_lines = ['--', '-', ':', '-.']
+        marker_shapes = ['dg', 'Xk', 'or', '<b', 'xm', '*c', 's']
 
     # dictionary to hold names of SATs
     sat_name = {}
@@ -1186,16 +1324,17 @@ def plot_setup(sbp_families, sats, dim=2, stencil=None):
               'legend.fontsize': 24,
               'xtick.labelsize': 24,
               'ytick.labelsize': 24,
-              'text.usetex': False,         # True works only if results are read from pickle saved file
+              'text.usetex': True,         # True works only if results are read from pickle saved file
               'font.family': 'serif',
-              'figure.figsize': [12, 9]}
+              'figure.figsize': [12,8]} #[12,6],[6,8]
     plt.rcParams.update(params)
     lw = 4  # lineweight
     ms = 15  # markersize
 
     return {'sbp_fam': sbp_fam, 'sat_name': sat_name, 'markers': markers, 'params': params, 'lw': lw, 'ms': ms,
             'stencil_shortname': stencil_shortname, 'markers_all': markers_all, 'marker_lines': marker_lines,
-            'marker_shapes': marker_shapes, 'markers5': markers5, 'markers6': markers6}
+            'marker_shapes': marker_shapes, 'markers1': markers1, 'markers2': markers2, 'markers3': markers3,
+            'markers4': markers4, 'markers5': markers5, 'markers6': markers6}
 
 
 def make_data_tree(sbp_families, sats, degrees, dim=2, stencil=('wide', 'narrow'), imp=('trad', 'elem'),
@@ -1265,17 +1404,16 @@ def nnz_estimate(sbp_family, sat, p, nelems, dim=2):
 # give parameters for 2D solver and analyzer
 # fam = ['gamma', 'omega', 'diage']
 # sat = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG']
-# p = [1, 2, 3, 4]
-fam = ['omega']
-sat = ['LDG']
-# sat = ['BR1']
-p = [2]
+# p = [1,2,3,4]
+fam = ['gamma']
+sat = ['BR1']
+p = [1,2,3,4]
 p_map = 2
 
 # ------ plots --------
-plt_fam = True
+plt_fam = False
 plt_sat = False
-plt_sat_all = False
+plt_sat_all = True
 plt_adj_fam = False
 plt_adj_sat = False
 plt_eig = False
@@ -1297,37 +1435,37 @@ modify_saved = True
 adj = False
 calc_eigs = False
 calc_cond_num = False
-curve_mesh = False
+curve_mesh = True
 
-# soln = None
-soln = save_results(h=4, nrefine=3, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=save_runs,
-                    calc_cond=calc_cond_num, calc_eigvals=calc_eigs, showMesh=showMesh, p_map=p_map, curve_mesh=curve_mesh,
-                    plot_fig=plt_soln, modify_saved=modify_saved)
-analyze_results_2d(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat,  plot_by_sat_all=plt_sat_all,
-                   plot_spectrum=plt_eig, plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity,
-                   plot_adj_by_sat=plt_adj_sat, plot_adj_by_family=plt_adj_fam, tabulate_cond_num=tab_cond,
-                   tabulate_density = tab_density, tabulate_nnz = tab_nnz, run_results=soln, save_fig=save_figure)
+soln = None
+# soln = save_results(h=8, nrefine=4, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=save_runs,
+#                     calc_cond=calc_cond_num, calc_eigvals=calc_eigs, showMesh=showMesh, p_map=p_map, curve_mesh=curve_mesh,
+#                     plot_fig=plt_soln, modify_saved=modify_saved)
+# analyze_results_2d(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat,  plot_by_sat_all=plt_sat_all,
+#                    plot_spectrum=plt_eig, plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity,
+#                    plot_adj_by_sat=plt_adj_sat, plot_adj_by_family=plt_adj_fam, tabulate_cond_num=tab_cond,
+#                    tabulate_density = tab_density, tabulate_nnz = tab_nnz, run_results=soln, save_fig=save_figure)
 # ==================================================================================================================== #
 
 # ===============================================   1D-plots  ======================================================== #
 # give parameters for 1D solver and analyzer
-opers = ['LG']
-# opers = ['CSBP', 'CSBP', 'CSBP_Mattsson2004', 'HGTL']
-# sat = ['BR1', 'BR2', 'LDG', 'BO', 'CNG']
-sat = ['BR1', 'BR2']
-p = [1, 2, 3, 4]
-# p = [3, 4]
-# sten = ['wide', 'narrow']
-sten = ['wide']
+opers = ['CSBP_Mattsson2004']
+# opers = ['CSBP', 'CSBP_Mattsson2004', 'LGL', 'LG', 'HGTL']
+# sat = ['BR2', 'LDG', 'BO', 'CNG']
+sat = ['BR2', 'LDG']
+p = [1]
+# p = [1, 2, 3, 4]
+sten = ['wide', 'narrow']
+# sten = ['narrow']
 degree = ['p1', 'p2', 'p3', 'p4']
 # app = ['wide', 'narrow']
-app =['wide']
+# app =['wide']
 # imp_type = ['trad', 'elem']
 imp_type = ['elem']
 prob_type = ['Diff']
 
 adj = False
-plt_fam = True
+plt_fam = False
 plt_sat = True
 plt_eig = False
 plt_rho = False
@@ -1335,10 +1473,10 @@ plt_sparsity = False
 calc_eigs = False
 save_figure = False
 
-# soln = None
-# soln = save_results(nrefine=8, sbp_families=opers, sats=sat, ps=p, solve_adjoint=False, save_results=False,
-#                  calc_cond=False, calc_eigvals=False, dim=1, stencil= app, imp=imp_type, prob=prob_type, n=25)
-# analyze_results_1d(sats=sat, sbp_families=opers, ps=p, stencil=sten, imp=imp_type, prob=prob_type, plot_by_family=plt_fam,
-#                    plot_by_sat=plt_sat, plot_spectrum=plt_eig, plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity,
-#                    run_results=soln, save_fig=save_figure)
+soln = None
+soln = save_results(nrefine=9, sbp_families=opers, sats=sat, ps=p, solve_adjoint=False, save_results=False,
+                 calc_cond=False, calc_eigvals=False, dim=1, stencil= sten, imp=imp_type, prob=prob_type)
+analyze_results_1d(sats=sat, sbp_families=opers, ps=p, stencil=sten, imp=imp_type, prob=prob_type, plot_by_family=plt_fam,
+                   plot_by_sat=plt_sat, plot_spectrum=plt_eig, plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity,
+                   run_results=soln, save_fig=save_figure)
 # ==================================================================================================================== #

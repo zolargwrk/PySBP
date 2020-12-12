@@ -140,7 +140,7 @@ class MeshTools1D:
     def hrefine_uniform_1d(rhs_data):
         # unpack data
         rdata = SimpleNamespace(**rhs_data)
-        fx = rdata.fx   # the facet vertex coordinate value of the reference elemment
+        fx = rdata.fx   # the facet vertex coordinate value of the reference element
         x = rdata.x     # physical coordinate
         x_ref = rdata.x_ref
         n = rdata.n     # number of degrees of freedom on the reference element
@@ -150,7 +150,7 @@ class MeshTools1D:
 
         # add vertices at the center of the elements
         velem = np.sort(np.hstack([fx.reshape((1, np.prod(fx.shape))).flatten(), xc.flatten()]))
-        velem = np.unique(np.floor(1e12*velem)/1e12)    # identify unique vertices
+        velem = np.unique(velem.round(decimals=10)) #np.unique(np.floor(1e12*velem)/1e12)    # identify unique vertices
 
         # renumber the vertices
         nv = len(velem)   # update the total number of vertices

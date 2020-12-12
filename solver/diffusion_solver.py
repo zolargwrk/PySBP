@@ -590,7 +590,17 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         # get facet quadrature at the boundary
         BD = rdata.BD
         BN = rdata.BN
+        Dgk_D = rdata.Dgk_D
+        Rgk_D = rdata.Rgk_D
+        TDgk_D = rdata.TDgk_D
+        Rgk_N = rdata.Rgk_N
 
+        # get U on Gamma^D and n\dot (lambda nabla U) on Gamma^N
+        uD, uN = MeshTools2D.set_bndry_sbp_2D(xf, yf, adata.bgrpD, adata.bgrpN, bL, bR, bB, bT,
+                                                     uDL_fun, uNL_fun, uDR_fun, uNR_fun, uDB_fun, uNB_fun, uDT_fun,
+                                                     uNT_fun)
+        uD = uD.flatten(order='F')
+        uN = uN.flatten(order='F')
         # get U on Gamma^N and n\dot (lambda nabla U) on Gamma^D
         # (note that uSol and uGrad are not the same as uD and uN in the primal problem)
         uSolN, uGradD = MeshTools2D.set_bndry_sbp_2D(xf, yf, adata.bgrpN, adata.bgrpD, bL, bR, bB, bT,
@@ -606,7 +616,9 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         # func_exact = (-np.cos(np.pi*m*bR) + np.cos(np.pi*n*bL))/(np.pi**2 * m * n) \
         #              * (-np.cos(np.pi*n*bT) + np.cos(np.pi*n*bB)) # obtained using https://www.symbolab.com/solver
 
-        func = (g0.T @ Hg @ u.flatten(order='F')) + (-uGradD.T @ BD @ psiD) + (uSolN.T @ BN @ psiN)
+        # func = (g0.T @ Hg @ u.flatten(order='F')) + (-uGradD.T @ BD @ psiD) + (uSolN.T @ BN @ psiN)
+        func = (g0.T @ Hg @ u.flatten(order='F')) + (-psiD.T @ BD @ (Dgk_D @ u.flatten(order='F'))) \
+                + (psiN.T @ BN @ (Rgk_N @ u.flatten(order='F'))) + psiD.T @ TDgk_D @ (Rgk_D @ u.flatten(order='F') - uD)
 
         func_exact = 194.2166199256895709
         err_func = np.abs(func - func_exact)

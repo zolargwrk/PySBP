@@ -439,6 +439,13 @@ class SATs:
                 A = db_inv.T @ (e_mat @ b_mat @ db_mat - h_mat @ d2_mat) @ db_inv
                 M = np.linalg.pinv(A)
                 # kk = np.diag(1/rx[:,0].flatten()) @ M # kk is constant for each operator
+
+                # # In Eriksson's paper, we have Erk = M^{-1} = S A^{-1} S and q as
+                # Erk = db_mat @ np.linalg.pinv(e_mat @ b_mat @ db_mat - h_mat @ d2_mat) @ db_mat.T
+                # q_Erk = 1/((nelem*len(h_mat) -1) - (nelem-1)) * (tl.T @ Erk @ tl)
+                # qh = 1/((nelem*len(h_mat) -1) - (nelem-1)) *(tl.T @ M @ tl)
+                # print(np.abs(qh-q_Erk))
+                # nlsp = sp.linalg.null_space(M)
             else:
                 M = 0*db_mat
 

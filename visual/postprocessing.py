@@ -1010,15 +1010,15 @@ def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=
                                 r = SimpleNamespace(**res)
 
                                 # set refinement levels where the convergence rates calculation begins and ends
-                                begin = (len(r.dof)) - 5    # -6 gives the 4th step for a 9 step total
-                                end = (len(r.dof)) - 2      # -3 gives the 6th step for a 9 step total
+                                begin = (len(r.dof)) - 3    # -6 gives the 4th step for a 9 step total
+                                end = (len(r.dof)) - 0      # -3 gives the 6th step for a 9 step total
                                 # calculate solution convergence rates
                                 conv_soln = np.abs(np.polyfit(np.log10(r.dof[begin:end]),
                                                               np.log10(r.errs[begin:end]), 1)[0])
 
                                 # set refinement levels where the convergence rates calculation begins and ends
-                                begin = (len(r.dof)) - 5  # -5 gives the 4th step for a 9 step total
-                                end = (len(r.dof)) - 2    # -3 gives the 6th step for a 9 step total
+                                begin = (len(r.dof)) - 3  # -5 gives the 4th step for a 9 step total
+                                end = (len(r.dof)) - 0    # -3 gives the 6th step for a 9 step total
                                 # calculate functional convergence rates
                                 conv_func = np.abs(np.polyfit(np.log10(r.dof[begin:end]),
                                                               np.log10(r.errs_func[begin:end]), 1)[0])
@@ -1095,6 +1095,7 @@ def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=
                     for s in range(len(sats)):
                         for f in range(len(sbp_families)):
                             for t in range(len(stencil)):   # wide or narrow stencil
+                                # if not ((sbp_families[f] == 'LGL' or sbp_families[f] == 'LG') and stencil[t]=='narrow'):
                                 if run_results is None:
                                     # SAT and SBP family list in saved data
                                     fmod = sbp_famliy_saved_list.index(sbp_families[f])
@@ -1110,15 +1111,15 @@ def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=
                                 r = SimpleNamespace(**res)
 
                                 # set refinement levels where the convergence rates calculation begins and ends
-                                begin = len(r.dof) - 3
-                                end = len(r.dof) - 0
+                                begin = len(r.dof) - 6
+                                end = len(r.dof) - 3
                                 # calculate solution convergence rates
                                 conv_soln = np.abs(np.polyfit(np.log10(r.dof[begin:end]),
                                                               np.log10(r.errs[begin:end]), 1)[0])
 
                                 # set refinement levels where the convergence rates calculation begins and ends
-                                begin = len(r.dof) - 3
-                                end = len(r.dof) - 0
+                                begin = len(r.dof) - 6
+                                end = len(r.dof) - 3
                                 # calculate functional convergence rates
                                 conv_func = np.abs(np.polyfit(np.log10(r.dof[begin:end]),
                                                               np.log10(r.errs_func[begin:end]), 1)[0])
@@ -1138,12 +1139,12 @@ def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=
                                 # plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
 
                                 fill_type = ['none', 'full', 'none']
-                                line_type = [2, 3, 2]
-                                marker_type = [pltsetup.markers[2 * (f+s) + t], pltsetup.markers3[2 * (f+s) + t],
-                                               pltsetup.markers2[2 * (f+s) + t]]
-                                markersize_type = [8, pltsetup.ms, pltsetup.ms]
+                                line_type = [2, 3, 2, 2, 2]
+                                marker_type = [pltsetup.markers[2 * (f) + t], pltsetup.markers1[2 * (f) + t],
+                                               pltsetup.markers2[2 * (f) + t]]
+                                markersize_type = [16, 8] #, pltsetup.ms, pltsetup.ms]
                                 plt.loglog(1 / r.dof, r.errs, marker_type[s], linewidth=line_type[f],
-                                           markersize=10, fillstyle=fill_type[t],
+                                           markersize=markersize_type[s], fillstyle=fill_type[s],
                                            label='{}-{} {} ({:.2f})'.
                                            format(pltsetup.sbp_fam[sbp_families[f]],
                                                   pltsetup.stencil_shortname[stencil[t]],
@@ -1159,7 +1160,7 @@ def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=
 
                                 if save_fig:
                                     plt.savefig(path + '\\soln_conv_rates\\errs_soln_VarSAT_{}_p{}.pdf'.
-                                                format('BR2', ps[p]), format='pdf', bbox_inches='tight')
+                                                format('BO', ps[p]), format='pdf', bbox_inches='tight')
 
                                 # plot functional convergence rates
                                 plt.figure(2)
@@ -1175,12 +1176,12 @@ def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=
                                 # plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.2f}'))
                                 # plt.gca().axes.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
                                 fill_type = ['none', 'full', 'none']
-                                line_type = [2, 3, 2]
-                                marker_type = [pltsetup.markers[2 * (f + s) + t], pltsetup.markers3[2 * (f + s) + t],
-                                               pltsetup.markers2[2 * (f + s) + t]]
-                                markersize_type = [8, pltsetup.ms, pltsetup.ms]
+                                line_type = [2, 3, 2, 2, 2]
+                                marker_type = [pltsetup.markers[2 * (f) + t], pltsetup.markers1[2 * (f) + t],
+                                               pltsetup.markers2[2 * (f) + t]]
+                                markersize_type = [16, 8]  # , pltsetup.ms, pltsetup.ms]
                                 plt.loglog(1 / r.dof, r.errs_func, marker_type[s], linewidth=line_type[f],
-                                           markersize=10, fillstyle=fill_type[t],
+                                           markersize=markersize_type[s], fillstyle=fill_type[s],
                                            label='{}-{} {} ({:.2f})'.
                                            format(pltsetup.sbp_fam[sbp_families[f]],
                                                   pltsetup.stencil_shortname[stencil[t]],
@@ -1196,7 +1197,7 @@ def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=
 
                             if save_fig:
                                     plt.savefig(path + '\\func_conv_rates\\errs_func_VarSAT_{}_p{}.pdf'.
-                                                format('BR2', ps[p]), format='pdf', bbox_inches='tight')
+                                                format('BO', ps[p]), format='pdf', bbox_inches='tight')
                     plt.show()
                     plt.close()
 
@@ -1449,13 +1450,14 @@ soln = None
 
 # ===============================================   1D-plots  ======================================================== #
 # give parameters for 1D solver and analyzer
-opers = ['CSBP_Mattsson2004']
+opers = ['HGT']
 # opers = ['CSBP', 'CSBP_Mattsson2004', 'LGL', 'LG', 'HGTL']
 # sat = ['BR2', 'LDG', 'BO', 'CNG']
-sat = ['BR2', 'LDG']
-p = [1]
+# sat = ['BR2', 'LDG']
+sat = ['BO', 'CNG']
+p = [4]
 # p = [1, 2, 3, 4]
-sten = ['wide', 'narrow']
+sten = ['narrow']
 # sten = ['narrow']
 degree = ['p1', 'p2', 'p3', 'p4']
 # app = ['wide', 'narrow']
@@ -1474,7 +1476,7 @@ calc_eigs = False
 save_figure = False
 
 soln = None
-soln = save_results(nrefine=9, sbp_families=opers, sats=sat, ps=p, solve_adjoint=False, save_results=False,
+soln = save_results(nrefine=5, sbp_families=opers, sats=sat, ps=p, solve_adjoint=False, save_results=False,
                  calc_cond=False, calc_eigvals=False, dim=1, stencil= sten, imp=imp_type, prob=prob_type)
 analyze_results_1d(sats=sat, sbp_families=opers, ps=p, stencil=sten, imp=imp_type, prob=prob_type, plot_by_family=plt_fam,
                    plot_by_sat=plt_sat, plot_spectrum=plt_eig, plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity,

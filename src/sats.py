@@ -407,7 +407,7 @@ class SATs:
     @staticmethod
     def diffusion_sbp_sat_1d_steady(n, nelem, d_mat, d2_mat, h_mat, tl, tr, nx, rx,
                                     flux_type='BR1', boundary_type='Periodic', db_mat=None, b=1, app=1,
-                                    uD_left=None, uD_right=None, uN_left=None, uN_right=None):
+                                    uD_left=None, uD_right=None, uN_left=None, uN_right=None, eqn='primal'):
         nface = 2
         tr = tr.reshape((n, 1))
         tl = tl.reshape((n, 1))
@@ -419,6 +419,7 @@ class SATs:
         d2_mat = d2_mat     # it's already scaled (it's called here after it is multiplied by rx)
         h_inv = np.linalg.inv(h_mat)
         b_mat = np.diag(b.flatten())
+        m_mat = d_mat.T @ h_mat @ b_mat @ d_mat
 
         # calculate normal derivative at the interfaces
         if app == 2:
@@ -436,18 +437,19 @@ class SATs:
             e_mat = tr @ tr.T - tl @ tl.T
 
             if b_mat[0,0] !=0:
-                A = db_inv.T @ (e_mat @ b_mat @ db_mat - h_mat @ d2_mat) @ db_inv
-                M = np.linalg.pinv(A)
-                # kk = np.diag(1/rx[:,0].flatten()) @ M # kk is constant for each operator
+                m_mat = e_mat @ b_mat @ db_mat - h_mat @ d2_mat
+                A = db_inv.T @ (m_mat + m_mat.T) @ db_inv
+                V_pinv = 2*np.linalg.pinv(A)
+                # kk = np.diag(1/rx[:,0].flatten()) @ V_pinv # kk is constant for each operator
 
-                # # In Eriksson's paper, we have Erk = M^{-1} = S A^{-1} S and q as
+                # # In Eriksson's paper, we have Erk = V_pinv^{-1} = S A^{-1} S and q as
                 # Erk = db_mat @ np.linalg.pinv(e_mat @ b_mat @ db_mat - h_mat @ d2_mat) @ db_mat.T
                 # q_Erk = 1/((nelem*len(h_mat) -1) - (nelem-1)) * (tl.T @ Erk @ tl)
-                # qh = 1/((nelem*len(h_mat) -1) - (nelem-1)) *(tl.T @ M @ tl)
+                # qh = 1/((nelem*len(h_mat) -1) - (nelem-1)) *(tl.T @ V_pinv @ tl)
                 # print(np.abs(qh-q_Erk))
-                # nlsp = sp.linalg.null_space(M)
+                # nlsp = sp.linalg.null_space(V_pinv)
             else:
-                M = 0*db_mat
+                V_pinv = 0*db_mat
 
         # SAT coefficients for different methods
         T1 = 0
@@ -465,7 +467,7 @@ class SATs:
         if flux_type == 'BR1':
             if app == 2:
                 eta = 2
-                T1 = (eta / 4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
+                T1 = (eta / 4 * (tr.T @ V_pinv @ tr + tl.T @ V_pinv @ tl))[0, 0]
             else:
                 eta = 1
                 T1 = (eta/4*(tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
@@ -481,7 +483,7 @@ class SATs:
         elif flux_type == 'BRZ':
             eta = nface
             if app == 2:
-                T1 = (eta/ 4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
+                T1 = (eta/ 4 * (tr.T @ V_pinv @ tr + tl.T @ V_pinv @ tl))[0, 0]
             else:
                 T1 = ((1+eta)/4 * (tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
             T2k = (-1 / 2)
@@ -496,7 +498,7 @@ class SATs:
         elif flux_type == 'BR2':
             if app == 2:
                 eta = 2
-                T1 = (eta/4 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
+                T1 = (eta/4 * (tr.T @ V_pinv @ tr + tl.T @ V_pinv @ tl))[0, 0]
             else:
                 eta = 2
                 T1 = (eta/4 * (tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
@@ -538,7 +540,7 @@ class SATs:
         elif flux_type == 'CNG':
             eta = 2
             if app == 2:
-                T1 = (eta/ 16 * (tr.T @ M @ tr + tl.T @ M @ tl))[0, 0]
+                T1 = (eta/ 16 * (tr.T @ V_pinv @ tr + tl.T @ V_pinv @ tl))[0, 0]
             else:
                 T1 = (eta/ 16 * (tr.T @ b_mat @ h_inv @ tr + tl.T @ b_mat @ h_inv @ tl))[0, 0]
 
@@ -550,10 +552,10 @@ class SATs:
         elif flux_type == 'LDG' or flux_type == 'CDG':
             eta = 2
             if app == 2:
-                T1 = (eta * (tr.T @ M @ tr))[0, 0]
+                T1 = (eta * (tr.T @ V_pinv @ tr))[0, 0]
             else:
                 T1 = eta*(tr.T @ b_mat @ h_inv @ tr)[0, 0]
-            # T1 = eta * (tr.T @ M @ tr )[0, 0]  #-2134 # unstable for p=4 HGT operator
+            # T1 = eta * (tr.T @ V_pinv @ tr )[0, 0]  #-2134 # unstable for p=4 HGT operator
             T2k = -1
             T2v = 0
             T3k = 0
@@ -575,8 +577,8 @@ class SATs:
             sN_right = 1
 
         if app == 2:
-            TD_left = sD_left * 2 * (tl.T @ M @ tl)[0, 0]
-            TD_right = sD_right * 2 * (tr.T @ M @ tr)[0, 0]
+            TD_left = sD_left * 2 * (tl.T @ V_pinv @ tl)[0, 0]
+            TD_right = sD_right * 2 * (tr.T @ V_pinv @ tr)[0, 0]
         else:
             TD_left = sD_left *2 * (tl.T @ b_mat @ h_inv @ tl)[0, 0]  # Dirichlet boundary flux coefficient at the left bc
             TD_right = sD_right * 2 * (tr.T @ b_mat @ h_inv @ tr)[0, 0]  # Dirichlet boundary flux coefficient at the right bc
@@ -589,62 +591,106 @@ class SATs:
         sat_p2 = 0
         sat_m2 = 0
 
-        # construct diagonals of the SAT matrix
-        if nelem >= 2:
-            sat_diag = h_inv @ (T1 * (tr @ tr.T) + T3k * (tr @ Dgk) + T2k * (Dgk.T  @ tr.T))\
-                       + h_inv @ (T1 * (tl @ tl.T) + T3v * (tl @ Dgv) + T2v * (Dgv.T @ tl.T))\
-                       + h_inv @ (T5k * (tr @ tl.T) + T5v * (tl @ tr.T))
-            sat_diag_p1 = h_inv @ (-T1 * (tr @ tl.T) + T3k * (tr @ Dgv) - T2k * (Dgk.T @ tl.T)
-                                   - T5v * (tl @ tl.T) + T6k * (tr @ tr.T))
-            sat_diag_m1 = h_inv @ (-T1 * (tl @ tr.T) + T3v * (tl @ Dgk) - T2v * (Dgv.T @ tr.T)
-                          - T5k * (tr @ tr.T) + T6v * (tl @ tl.T))
-            sat_diag_p2 = - h_inv @ (T6k * (tr @ tl.T))
-            sat_diag_m2 = - h_inv @ (T6v * (tl @ tr.T))
+        if eqn=='primal':
+            # construct diagonals of the SAT matrix
+            if nelem >= 2:
+                sat_diag = h_inv @ (T1 * (tr @ tr.T) + T3k * (tr @ Dgk) + T2k * (Dgk.T  @ tr.T))\
+                           + h_inv @ (T1 * (tl @ tl.T) + T3v * (tl @ Dgv) + T2v * (Dgv.T @ tl.T))\
+                           + h_inv @ (T5k * (tr @ tl.T) + T5v * (tl @ tr.T))
+                sat_diag_p1 = h_inv @ (-T1 * (tr @ tl.T) + T3k * (tr @ Dgv) - T2k * (Dgk.T @ tl.T)
+                                       - T5v * (tl @ tl.T) + T6k * (tr @ tr.T))
+                sat_diag_m1 = h_inv @ (-T1 * (tl @ tr.T) + T3v * (tl @ Dgk) - T2v * (Dgv.T @ tr.T)
+                              - T5k * (tr @ tr.T) + T6v * (tl @ tl.T))
+                sat_diag_p2 = - h_inv @ (T6k * (tr @ tl.T))
+                sat_diag_m2 = - h_inv @ (T6v * (tl @ tr.T))
 
-            sat_diags = sat_diag.copy().repeat(nelem).reshape(nelem,n,n, order='F').transpose(0,2,1)
-            sat_diags_p1 = sat_diag_p1.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
-            sat_diags_p2 = sat_diag_p2.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
-            sat_diags_m1 = sat_diag_m1.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
-            sat_diags_m2 = sat_diag_m2.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
-            sat_diags_p1[nelem - 1, :, :] = sat_diags_p1[nelem - 1, :, :] - h_inv @ (T6k * (tr @ tr.T))
-            sat_diags_m1[0, :, :] = sat_diags_m1[0, :, :] - (T6v * h_inv @ (tl @ tl.T))
+                sat_diags = sat_diag.copy().repeat(nelem).reshape(nelem,n,n, order='F').transpose(0,2,1)
+                sat_diags_p1 = sat_diag_p1.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
+                sat_diags_p2 = sat_diag_p2.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
+                sat_diags_m1 = sat_diag_m1.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
+                sat_diags_m2 = sat_diag_m2.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
+                sat_diags_p1[nelem - 1, :, :] = sat_diags_p1[nelem - 1, :, :] - h_inv @ (T6k * (tr @ tr.T))
+                sat_diags_m1[0, :, :] = sat_diags_m1[0, :, :] - (T6v * h_inv @ (tl @ tl.T))
 
-            # set boundary conditions
-            sat_diags[0,:,:] = h_inv @ (TD_left * (tl @ tl.T)  - sD_left * Dgv.T  @ tl.T +sN_left* tl @ Dgv
-                                        + T1 * (tr @ tr.T) + T5k * (tl @ tr.T)
-                                        + T3k * (tr @ Dgk) + T2k * (Dgk.T  @ tr.T))
-            sat_diags[nelem-1, :, :] = h_inv @ (TD_right * (tr @ tr.T) - sD_right * Dgk.T @ tr.T + sN_right * tr @ Dgk
-                                                + T1 * (tl @ tl.T) + T5v * (tr @ tl.T)
-                                                + T3v * (tl @ Dgv) + T2v * (Dgv.T @ tl.T))
+                # set boundary conditions
+                sat_diags[0,:,:] = h_inv @ (TD_left * (tl @ tl.T)  - sD_left * Dgv.T  @ tl.T +sN_left* tl @ Dgv
+                                            + T1 * (tr @ tr.T) + T5k * (tl @ tr.T)
+                                            + T3k * (tr @ Dgk) + T2k * (Dgk.T  @ tr.T))
+                sat_diags[nelem-1, :, :] = h_inv @ (TD_right * (tr @ tr.T) - sD_right * Dgk.T @ tr.T + sN_right * tr @ Dgk
+                                                    + T1 * (tl @ tl.T) + T5v * (tr @ tl.T)
+                                                    + T3v * (tl @ Dgv) + T2v * (Dgv.T @ tl.T))
 
-            # build SAT matrix
-            offset = n
-            aux = np.empty((0, offset), int)
-            aux2 = np.empty((0, offset * 2), int)
+                # build SAT matrix
+                offset = n
+                aux = np.empty((0, offset), int)
+                aux2 = np.empty((0, offset * 2), int)
 
-            sat_0 = sp.linalg.block_diag(*sat_diags)
-            sat_p1 = sp.linalg.block_diag(aux, *sat_diags_p1[1:nelem, :, :], aux.T)
-            sat_m1 = sp.linalg.block_diag(aux.T, *sat_diags_m1[0:nelem - 1, :, :], aux)
-            sat_p2 = sp.linalg.block_diag(aux2, *sat_diags_p2[2:nelem, :, :], aux2.T)
-            sat_m2 = sp.linalg.block_diag(aux2.T, *sat_diags_m2[0:nelem - 2, :, :], aux2)
+                sat_0 = sp.linalg.block_diag(*sat_diags)
+                sat_p1 = sp.linalg.block_diag(aux, *sat_diags_p1[1:nelem, :, :], aux.T)
+                sat_m1 = sp.linalg.block_diag(aux.T, *sat_diags_m1[0:nelem - 1, :, :], aux)
+                sat_p2 = sp.linalg.block_diag(aux2, *sat_diags_p2[2:nelem, :, :], aux2.T)
+                sat_m2 = sp.linalg.block_diag(aux2.T, *sat_diags_m2[0:nelem - 2, :, :], aux2)
 
-            if nelem < 3:
-                if nelem < 2:
-                    sat_p1 = 0
-                    sat_p2 = 0
-                    sat_m1 = 0
-                    sat_m2 = 0
-                else:
-                    sat_p2 = 0
-                    sat_m2 = 0
+                if nelem < 3:
+                    if nelem < 2:
+                        sat_p1 = 0
+                        sat_p2 = 0
+                        sat_m1 = 0
+                        sat_m2 = 0
+                    else:
+                        sat_p2 = 0
+                        sat_m2 = 0
 
-        else:
-            sat_diags = h_inv @ (sD_left*TD_left * (tl @ tl.T) - sD_left * Dgv.T @ tl.T
-                                          + sN_left * tl @ Dgv)
-            sat_diags = sat_diags+ h_inv @ (sD_right* TD_right * (tr @ tr.T) - sD_right * Dgk.T @ tr.T
-                                                               + sN_right * tr @ Dgk)
-            sat_0 = sat_diags
+            else:
+                sat_diags = h_inv @ (sD_left*TD_left * (tl @ tl.T) - sD_left * Dgv.T @ tl.T
+                                              + sN_left * tl @ Dgv)
+                sat_diags = sat_diags+ h_inv @ (sD_right* TD_right * (tr @ tr.T) - sD_right * Dgk.T @ tr.T
+                                                                   + sN_right * tr @ Dgk)
+                sat_0 = sat_diags
 
+        #---------------
+        if eqn == 'adjoint':
+            # construct diagonals of the SAT matrix
+            if nelem >= 2:
+                sat_diag = h_inv @ (T1 * (tr @ tr.T) + (T2k + 1)* (tr @ Dgk) + (T3k - 1) * (Dgk.T @ tr.T)) \
+                           + h_inv @ (T1 * (tl @ tl.T) + (T2v + 1) * (tl @ Dgv) + (T3v - 1) * (Dgv.T @ tl.T)) - h_inv @ (m_mat - m_mat.T)
+                sat_diag_p1 = h_inv @ (-T1 * (tr @ tl.T) - T2v * (tr @ Dgv) + T3v * (Dgk.T @ tl.T))
+                sat_diag_m1 = h_inv @ (-T1 * (tl @ tr.T) - T2k * (tl @ Dgk) + T3k * (Dgv.T @ tr.T))
+
+                sat_diags = sat_diag.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
+                sat_diags_p1 = sat_diag_p1.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
+                sat_diags_m1 = sat_diag_m1.copy().repeat(nelem).reshape(nelem, n, n, order='F').transpose(0, 2, 1)
+
+                # set boundary conditions
+                sat_diags[0, :, :] = h_inv @ (TD_left * (tl @ tl.T) - sD_left * Dgv.T @ tl.T + sN_left * tl @ Dgv
+                                              + T1 * (tr @ tr.T) + (T2k + 1) * (tr @ Dgk) + (T3k - 1) * (Dgk.T @ tr.T)) - h_inv @ (m_mat - m_mat.T)
+                sat_diags[nelem - 1, :, :] = h_inv @ (TD_right * (tr @ tr.T) - sD_right * Dgk.T @ tr.T + sN_right * tr @ Dgk
+                                                + T1 * (tl @ tl.T) + (T2v + 1) * (tl @ Dgv) + (T3v - 1) * (Dgv.T @ tl.T)) - h_inv @ (m_mat - m_mat.T)
+
+                # build SAT matrix
+                offset = n
+                aux = np.empty((0, offset), int)
+
+                sat_0 = sp.linalg.block_diag(*sat_diags)
+                sat_p1 = sp.linalg.block_diag(aux, *sat_diags_p1[1:nelem, :, :], aux.T)
+                sat_m1 = sp.linalg.block_diag(aux.T, *sat_diags_m1[0:nelem - 1, :, :], aux)
+
+                if nelem < 3:
+                    if nelem < 2:
+                        sat_p1 = 0
+                        sat_p2 = 0
+                        sat_m1 = 0
+                        sat_m2 = 0
+                    else:
+                        sat_p2 = 0
+                        sat_m2 = 0
+
+            else:
+                sat_diags = h_inv @ (sD_left * TD_left * (tl @ tl.T) - sD_left * Dgv.T @ tl.T + sN_left * tl @ Dgv) - h_inv @ (m_mat - m_mat.T)
+                sat_diags = sat_diags + h_inv @ (sD_right * TD_right * (tr @ tr.T) - sD_right * Dgk.T @ tr.T + sN_right * tr @ Dgk)
+                sat_0 = sat_diags
+
+        #--------------
         sat = sat_m2 + sat_m1 + sat_0 + sat_p1 + sat_p2
         sI = sparse.csr_matrix(sat)
 
@@ -677,7 +723,7 @@ class SATs:
         # plt.savefig(path + 'sparsity_{}.pdf'.format(flux_type), format='pdf')
         # plt.close()
         # # plt.show()
-        return sI, fB, TD_left, TD_right
+        return sI, fB, TD_left, TD_right, m_mat
 
     @staticmethod
     def advection_sbp_sats_1d_steady(n, nelem, h_mat, tl, tr, rx, a=1, uD_left=None, uD_right=None, flux_type='upwind'):

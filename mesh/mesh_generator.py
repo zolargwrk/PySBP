@@ -69,6 +69,9 @@ class MeshGenerator1D:
         elif quad_type == 'CSBP_Mattsson2004':
             oper = CSBPTypeOperators.hqd_csbp_mattsson2004(p, xl, xr, n, b, app)
             x_ref = oper['x_ref']
+        elif quad_type == 'CSBP_Mattsson2013':
+            oper = CSBPTypeOperators.hqd_csbp_mattsson2013(p, xl, xr, n, b, app)
+            x_ref = oper['x_ref']
         elif quad_type == 'HGTL':
             oper = CSBPTypeOperators.hqd_hgtl(p, xl, xr, n, b, app)
             x_ref = oper['x_ref']

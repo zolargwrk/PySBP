@@ -1,22 +1,22 @@
 digraph tree {
     "all_results";
     "sbp_family";
-    "HGT";
+    "CSBP_Mattsson2013";
     "narrow";
     "elem";
-    "BO";
+    "BR2";
     "p4";
     "Diff";
     "CNG";
     "p4";
     "Diff";
     "all_results" -> "sbp_family";
-    "sbp_family" -> "HGT";
-    "HGT" -> "narrow";
+    "sbp_family" -> "CSBP_Mattsson2013";
+    "CSBP_Mattsson2013" -> "narrow";
     "narrow" -> "elem";
-    "elem" -> "BO";
+    "elem" -> "BR2";
     "elem" -> "CNG";
-    "BO" -> "p4";
+    "BR2" -> "p4";
     "p4" -> "Diff";
     "CNG" -> "p4";
     "p4" -> "Diff";

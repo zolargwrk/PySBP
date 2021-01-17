@@ -366,11 +366,12 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
             # enforce boundary conditions (bc)
             bndry_conds = ps.boundary_conditions(xl, xr)
             bc = SimpleNamespace(**bndry_conds)
+            eqn='primal'
 
-            A_vis, fB_vis, TD_left, TD_right = RHSCalculator.rhs_poisson_1d_steady(n, nelem, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx,
+            A_vis, fB_vis, TD_left, TD_right, m_mat = RHSCalculator.rhs_poisson_1d_steady(n, nelem, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx,
                                                         rdata.rx, rdata.fscale, rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO,
                                                         rdata.vmapI, rdata.vmapO, flux_type_vis, sat_type, boundary_type, rdata.db_mat,
-                                                        rdata.d2_mat, b, app, bc.uD_left, bc.uD_right, bc.uN_left, bc.uN_right)
+                                                        rdata.d2_mat, b, app, bc.uD_left, bc.uD_right, bc.uN_left, bc.uN_right, eqn)
 
             A_inv, fB_inv = RHSCalculator.rhs_advection_1d_steady(n, nelem, rdata.d_mat, rdata.h_mat, rdata.tl,
                                                                   rdata.tr, rdata.rx, a, bc.uD_left, bc.uD_right, flux_type_inv)
@@ -387,7 +388,8 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
 
             # plot solution
             if choose_outs.plot_sol == 1:
-                plot_figure_1d(x, u, u_exact)
+                # plot_figure_1d(x, u, u_exact)
+                plot_figure_1d(x, u-u_exact)
 
             # error calculation for solution
             err = calc_err(u, u_exact, rx, h_mat)
@@ -434,16 +436,18 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
             adj_bcs = ps.adjoint_bndry(xl, xr)
             adj_bc = SimpleNamespace(**adj_bcs)
             a_adj = -a  # advection coefficient changed to -a for the adjoint problem
+            eqn='adjoint'
 
-            A_vis, gB_vis = RHSCalculator.rhs_poisson_1d_steady(n, nelem, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx,
+            A_vis, gB_vis, _, _, m_mat = RHSCalculator.rhs_poisson_1d_steady(n, nelem, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx,
                                                         rdata.rx, rdata.fscale, rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO,
                                                         rdata.vmapI, rdata.vmapO, flux_type_vis, sat_type, boundary_type, rdata.db_mat,
-                                                        rdata.d2_mat, b, app, adj_bc.psiD_left, adj_bc.psiD_right, adj_bc.psiN_left, adj_bc.psiN_right)
+                                                        rdata.d2_mat, b, app, adj_bc.psiD_left, adj_bc.psiD_right, adj_bc.psiN_left, adj_bc.psiN_right, eqn)
 
             A_inv, gB_inv = RHSCalculator.rhs_advection_1d_steady(n, nelem, rdata.d_mat, rdata.h_mat, rdata.tl,
                                                                   rdata.tr, rdata.rx, a_adj, adj_bc.psiD_left, adj_bc.psiD_right, flux_type_inv)
 
             A = A_vis + A_inv
+
 
             # adjoint source term plus terms from SAT at boundary
             g = ps.adjoint_source_term(x) - gB_vis + gB_inv
@@ -452,14 +456,27 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
             psi_exact = (ps.exact_adjoint(x, xl, xr)).reshape((n * nelem, 1), order='F')
 
             # plot solution
-            if choose_outs.plot_sol == 1:
-                plot_figure_1d(x, psi, psi_exact)
+            # if choose_outs.plot_sol == 1:
+                # plot_figure_1d(x, psi, psi_exact)
+                # plot_figure_1d(x, psi-psi_exact)
 
             # error calculation
             err_adj = calc_err(psi, psi_exact, rx, h_mat)
             errs_adj.append(err_adj)
 
-        print("error_soln =", "{:.4e}".format(err), "; error_func =", "{:.4e}".format(err_func), "; nelem =", nelem,
+            # calculate functional using adjoint
+            f = (ps.source_term(x)).reshape((n * nelem, 1), order='F')
+            J_psi = ps.calc_functional(psi, f, h_mat, rx, rdata.db_mat, rdata.tr, rdata.tl, TD_left, TD_right, adj=True)
+            err_J = np.abs(J_psi - J)
+
+            # M = sparse.block_diag([m_mat]*nelem)
+            # kk = (u_exact.T @ (M - M.T) @ psi_exact)[0][0]
+            # print("{:.2e}".format(kk))
+
+        # print("error_soln =", "{:.2e}".format(err), "; error_func =", "{:.2e}".format(err_func), "; nelem =", nelem,
+        #       "; ", quad_type, "; ", flux_type_vis, "; p =", p, "; nnz_elem =", nnz_elem)
+
+        print("err_J =", "{:.2e}".format(err_J),"error_soln =", "{:.2e}".format(err), "error_adj =", "{:.2e}".format(err_adj), "; error_func =", "{:.2e}".format(err_func), "; nelem =", nelem,
               "; ", quad_type, "; ", flux_type_vis, "; p =", p, "; nnz_elem =", nnz_elem)
 
     # plot error
@@ -495,12 +512,12 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
             else:
                 hs = (xr - xl) / (np.asarray(nelems))
             conv_adj = calc_conv(hs, errs_adj, conv_start, conv_end)
-            print(np.asarray(conv_adj))
-            print(np.asarray(errs_adj))
-            plot_conv_fig(hs, errs_adj, conv_start, conv_end)
+            # print(np.asarray(conv_adj))
+            # print(np.asarray(errs_adj))
+            # plot_conv_fig(hs, errs_adj, conv_start, conv_end)
 
     return {'p': p, 'b': b, 'a': a, 'nelems': nelems, 'ns': ns, 'quad_type': quad_type, 'flux_type_vis': flux_type_vis,
-            'errs': errs, 'errs_func': errs_func, 'errs_adj': errs_adj, 'cond_num': cond_num}
+            'errs': errs, 'errs_func': errs_func, 'cond_num': cond_num, 'uh': u, 'x':x, 'errs_adj': errs_adj}
 
 #advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_type_vis='BR1', nrefine=1, refine_type=None,
 #                  boundary_type=None, sat_type='sbp_sat', advec_diff1D_problem_input=None, a=0, b=1, n=1, app=1):

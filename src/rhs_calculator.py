@@ -225,7 +225,7 @@ class RHSCalculator:
     @staticmethod
     def rhs_poisson_1d_steady(n, nelem, d_mat, h_mat, lift, tl, tr, nx, rx, fscale, vmapM, vmapP, mapI, mapO, vmapI, vmapO,
                               flux_type, sat_type='dg_sat', boundary_type='Periodic', db_mat=None, d2_mat=None, b=1, app=1,
-                              uD_left=None, uD_right=None, uN_left=None, uN_right=None):
+                              uD_left=None, uD_right=None, uN_left=None, uN_right=None, eqn='primal'):
         """Computes the system matrix for the Poisson equation
         flux_type: specify the SAT type of interest, e.g., BR1
         sat_type: specify whether to implement SAT as in 'dg_sat' or 'sbp_sat' ways"""
@@ -239,14 +239,14 @@ class RHSCalculator:
         Ablock = [d2_mat]*nelem
 
         # get SBP SAT terms
-        sI, fB, TD_left, TD_right = SATs.diffusion_sbp_sat_1d_steady(n, nelem, d_mat, d2_mat, h_mat, tl, tr, nx, rx,
+        sI, fB, TD_left, TD_right, m_mat = SATs.diffusion_sbp_sat_1d_steady(n, nelem, d_mat, d2_mat, h_mat, tl, tr, nx, rx,
                                                   flux_type, boundary_type, db_mat, b, app,
-                                                  uD_left, uD_right, uN_left, uN_right)
+                                                  uD_left, uD_right, uN_left, uN_right, eqn)
 
         A1 = sparse.block_diag(Ablock)
         A = -A1 + sI
 
-        return A, fB, TD_left, TD_right
+        return A, fB, TD_left, TD_right, m_mat
 
     @ staticmethod
     def rhs_advection_1d_steady(n, nelem, d_mat, h_mat, tl, tr, rx, a=1, uD_left=None, uD_right=None, flux_type='upwind'):

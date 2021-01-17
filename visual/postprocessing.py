@@ -13,11 +13,13 @@ from solver.advection_diffusion_solver import advec_diff_1d
 from src.ref_elem import Ref2D_SBP
 from mpltools import annotation
 import pandas as pd
+from solver.plot_figure import plot_figure_1d, plot_figure_2d, plot_conv_fig
 
 # show more than 5 coulumns when printing output to screeen
 desired_width=320
 pd.set_option('display.width', desired_width)
 pd.set_option('display.max_columns', 15)
+
 
 def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_adjoint=False, save_results=False,
                  calc_cond=False, calc_eigvals=False, dim=2, stencil=('wide', 'narrow'), imp=('trad', 'elem'),
@@ -131,7 +133,7 @@ def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_
                                 if sbp_families[f] in ['LG', 'LGL']:
                                     nelem = 5
                                     app_correct = 1
-                                elif sbp_families[f] in ['CSBP', 'CSBP', 'CSBP_Mattsson2004', 'HGTL', 'HGT']:
+                                elif sbp_families[f] in ['CSBP', 'CSBP_Mattsson2013', 'CSBP_Mattsson2004', 'HGTL', 'HGT']:
                                     nelem = 1
                                     if ps[p]==1:
                                         n = 10
@@ -161,10 +163,10 @@ def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_
             path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\visual' \
                    '\\poisson1d_results\\'
             if calc_eigvals:
-                with open(path + 'results_poisson1D_eigvals.pickle', 'wb') as outfile:
+                with open(path + 'results_poisson1D_eigvals_test.pickle', 'wb') as outfile:
                     pickle.dump(all_results, outfile)
             else:
-                with open(path + 'results_poisson1D.pickle', 'wb') as outfile:
+                with open(path + 'results_poisson1D_test.pickle', 'wb') as outfile:
                     pickle.dump(all_results, outfile)
 
     return all_results
@@ -933,13 +935,28 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
                     plt.savefig(path + 'sparsity\\' + 'nnz_{}_p{}.pdf'.format(sats[s], p+1), format='pdf', bbox_inches='tight')
                 plt.show()
                 plt.close()
+    #######################################
 
+    # res_BR2 = all_results.children[0].children[0].children[0].children[0].children[0].results
+    # res_BO = all_results.children[0].children[0].children[1].children[0].children[0].results
+    # err_uh = res_BR2['uh'] - res_BO['uh']
+    # x_uh = res_BR2['x']
+    # y_uh = res_BR2['y']
+    # plot_figure_2d(x_uh, y_uh, err_uh)
+    # plot_figure_2d(x_uh, y_uh, res_BR2['uh']-res_BR2['u_exact'])
+    # plot_figure_2d(x_uh, y_uh, res_BO['uh']-res_BO['u_exact'])
+    # plot_figure_2d(x_uh, y_uh, res_BR2['uh'])
+    # plot_figure_2d(x_uh, y_uh, res_BO['uh'])
+    # plt.show()
+
+
+    ########################################
     return
 
 
 def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=None, prob=None, plot_by_family=False,
                        plot_by_sat=False, plot_spectrum=False, plot_spectral_radius=False, plot_sparsity=False,
-                       run_results=None, save_fig=False):
+                       run_results=None, save_fig=False, plot_adj_by_family=False):
 
     path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\visual\\poisson1d_results\\'
     if run_results is None:
@@ -1010,7 +1027,7 @@ def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=
                                 r = SimpleNamespace(**res)
 
                                 # set refinement levels where the convergence rates calculation begins and ends
-                                begin = (len(r.dof)) - 3    # -6 gives the 4th step for a 9 step total
+                                begin = (len(r.dof)) - 3   # -6 gives the 4th step for a 9 step total
                                 end = (len(r.dof)) - 0      # -3 gives the 6th step for a 9 step total
                                 # calculate solution convergence rates
                                 conv_soln = np.abs(np.polyfit(np.log10(r.dof[begin:end]),
@@ -1034,8 +1051,8 @@ def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=
                                 line_type = [2, 3, 2]
                                 marker_type = [pltsetup.markers[2 * s + t], pltsetup.markers1[2 * s + t], pltsetup.markers2[2 * s + t]]
                                 markersize_type = [8, pltsetup.ms, pltsetup.ms]
-                                plt.loglog(1 / r.dof, r.errs, marker_type[f], linewidth=line_type[f],
-                                           markersize=markersize_type[f], fillstyle=fill_type[f], label='{}-{} {} ({:.2f})'.
+                                plt.loglog(1 / r.dof, r.errs, marker_type[t], linewidth=line_type[t],
+                                           markersize=markersize_type[t], fillstyle=fill_type[t], label='{}-{} {} ({:.2f})'.
                                            format(pltsetup.sbp_fam[sbp_families[f]],
                                                   pltsetup.stencil_shortname[stencil[t]],
                                                   pltsetup.sat_name[sats[s]], conv_soln))
@@ -1058,8 +1075,8 @@ def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=
 
                                 # plot functional convergence rates
                                 plt.figure(2)
-                                plt.loglog(1 / r.dof, r.errs_func, marker_type[f], linewidth=line_type[f],
-                                           markersize=markersize_type[f], fillstyle=fill_type[f], label='{}-{} {} ({:.2f})'.
+                                plt.loglog(1 / r.dof, r.errs_func, marker_type[t], linewidth=line_type[t],
+                                           markersize=markersize_type[t], fillstyle=fill_type[t], label='{}-{} {} ({:.2f})'.
                                            format(pltsetup.sbp_fam[sbp_families[f]],
                                                   pltsetup.stencil_shortname[stencil[t]],
                                                   pltsetup.sat_name[sats[s]], conv_func))
@@ -1201,7 +1218,87 @@ def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=
                     plt.show()
                     plt.close()
 
+    #######################################
+
+    # res_BR2= all_results.children[0].children[0].children[0].children[0]. \
+    #     children[0].children[0].children[0].children[0].results
+    # res_BO = all_results.children[0].children[0].children[0].children[0]. \
+    #     children[1].children[0].children[0].children[0].results
+    # err_uh = res_BR2['uh']-res_BO['uh']
+    # x_uh = res_BR2['x'].reshape((-1, 1), order='F')
+    # plt.plot(x_uh, err_uh)
+    # plt.show()
+
+    ########################################
+
+
     # plot of condition number, sparsity, and eigenvalue spectrum can be done in a similar fashion as the 2D case
+    # plot solution by sbp family, i.e., 1 family with varying SAT types
+    if plot_adj_by_family:
+        for pr in range(len(prob)):
+            for i in range(len(imp)):  # traditional or element type refinement
+                for p in range(pmin, pmax):
+                    for f in range(len(sbp_families)):
+                        for s in range(len(sats)):
+                            for t in range(len(stencil)):  # wide or narrow stencil
+                                if run_results is None:
+                                    # SAT and SBP family list in saved data
+                                    fmod = sbp_famliy_saved_list.index(sbp_families[f])
+                                    smod = sat_saved_list.index(sats[s])
+                                else:
+                                    fmod = f
+                                    smod = s
+                                # get results from saved tree file
+                                res = all_results.children[0].children[fmod].children[app[t]].children[imp_app[i]]. \
+                                    children[smod].children[p].children[pr].children[0].results
+                                # calculate degrees of freedom and add it to res dictionary
+                                res['dof'] = np.asarray([x * y for x, y in zip(res['nelems'], res['ns'])])
+                                r = SimpleNamespace(**res)
+
+                                # set refinement levels where the convergence rates calculation begins and ends
+                                begin = (len(r.dof)) - 4  # -6 gives the 4th step for a 9 step total
+                                end = (len(r.dof)) - 1  # -3 gives the 6th step for a 9 step total
+                                # calculate solution convergence rates
+                                conv_soln = np.abs(np.polyfit(np.log10(r.dof[begin:end]),
+                                                              np.log10(r.errs_adj[begin:end]), 1)[0])
+
+                                # plot solution convergence rates
+                                plt.figure(1)
+                                # plt.loglog(1/r.dof, r.errs, pltsetup.markers[2*s+t], linewidth=pltsetup.lw,
+                                #            markersize=pltsetup.ms, label='{}-{}-{} $|$ {} $|$ {} $|$r={:.2f}'.
+                                #            format(pltsetup.sbp_fam[sbp_families[f]],
+                                #                   pltsetup.stencil_shortname[stencil[t]], imp[i],
+                                #                   pltsetup.sat_name[sats[s]], degrees[p], conv_soln))
+                                fill_type = ['full', 'none', 'full']
+                                line_type = [2, 3, 2]
+                                marker_type = [pltsetup.markers[2 * s + t], pltsetup.markers1[2 * s + t],
+                                               pltsetup.markers2[2 * s + t]]
+                                markersize_type = [8, pltsetup.ms, pltsetup.ms]
+                                plt.loglog(1 / r.dof, r.errs_adj, marker_type[f], linewidth=line_type[f],
+                                           markersize=markersize_type[f], fillstyle=fill_type[f],
+                                           label='{}-{} {} ({:.2f})'.
+                                           format(pltsetup.sbp_fam[sbp_families[f]],
+                                                  pltsetup.stencil_shortname[stencil[t]],
+                                                  pltsetup.sat_name[sats[s]], conv_soln))
+                                plt.xlabel(r'1/dof')
+                                plt.ylabel(r'adjoint error')
+                                plt.legend(ncol=2, labelspacing=0.1, columnspacing=0.7, handletextpad=0.1)
+                                plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.3f}'))
+                                # plt.gca().xaxis.set_minor_formatter(StrMethodFormatter('{x:.4f}'))
+                                plt.gca().axes.tick_params(which='minor', width=1, length=6, labelsize=22)
+                                plt.gca().axes.tick_params(which='major', width=2, length=12, labelsize=22)
+                                plt.gca().xaxis.set_minor_locator(LogLocator(base=10, subs=[1, 2, 3, 4, 5, 6, 7, 8, 9]))
+
+                                # annotation.slope_marker((0.005, 1e-3),
+                                #                         slope=(ps[p]+1)+ 2,
+                                #                         size_frac=0.2,
+                                #                         text_kwargs={'color': 'k', 'fontsize': 12})
+                                if save_fig:
+                                    plt.savefig(path + '\\adj_conv_rates\\adj_soln_VarOper_p{}.pdf'.
+                                                format(ps[p]), format='pdf', bbox_inches='tight')
+
+                plt.show()
+                plt.close()
 
     return
 
@@ -1271,6 +1368,8 @@ def plot_setup(sbp_families, sats, dim=2, stencil=None):
             sbp_fam['CSBP'] = 'CSBP1'
         if 'CSBP_Mattsson2004' in sbp_families:
             sbp_fam['CSBP_Mattsson2004'] = 'CSBP'
+        if 'CSBP_Mattsson2013' in sbp_families:
+            sbp_fam['CSBP_Mattsson2013'] = 'CSBP2'
         if 'HGTL' in sbp_families:
             sbp_fam['HGTL'] = 'HGTL'
         if 'HGT' in sbp_families:
@@ -1325,7 +1424,7 @@ def plot_setup(sbp_families, sats, dim=2, stencil=None):
               'legend.fontsize': 24,
               'xtick.labelsize': 24,
               'ytick.labelsize': 24,
-              'text.usetex': True,         # True works only if results are read from pickle saved file
+              'text.usetex': False,         # True works only if results are read from pickle saved file
               'font.family': 'serif',
               'figure.figsize': [12,8]} #[12,6],[6,8]
     plt.rcParams.update(params)
@@ -1406,16 +1505,16 @@ def nnz_estimate(sbp_family, sat, p, nelems, dim=2):
 # fam = ['gamma', 'omega', 'diage']
 # sat = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG']
 # p = [1,2,3,4]
-fam = ['gamma']
-sat = ['BR1']
-p = [1,2,3,4]
+fam = ['omega']
+sat = ['BR2', 'CNG']
+p = [4]
 p_map = 2
 
 # ------ plots --------
-plt_fam = False
+plt_fam = True
 plt_sat = False
-plt_sat_all = True
-plt_adj_fam = False
+plt_sat_all = False
+plt_adj_fam = True
 plt_adj_sat = False
 plt_eig = False
 plt_rho = False
@@ -1430,16 +1529,16 @@ tab_nnz = False
 # ------ save --------
 save_figure = False
 save_runs = False
-modify_saved = True
+modify_saved = False
 
 # ------ solve --------
-adj = False
+adj = True
 calc_eigs = False
 calc_cond_num = False
 curve_mesh = True
 
-soln = None
-# soln = save_results(h=8, nrefine=4, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=save_runs,
+# soln = None
+# soln = save_results(h=3, nrefine=3, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=save_runs,
 #                     calc_cond=calc_cond_num, calc_eigvals=calc_eigs, showMesh=showMesh, p_map=p_map, curve_mesh=curve_mesh,
 #                     plot_fig=plt_soln, modify_saved=modify_saved)
 # analyze_results_2d(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat,  plot_by_sat_all=plt_sat_all,
@@ -1450,25 +1549,26 @@ soln = None
 
 # ===============================================   1D-plots  ======================================================== #
 # give parameters for 1D solver and analyzer
-opers = ['HGT']
-# opers = ['CSBP', 'CSBP_Mattsson2004', 'LGL', 'LG', 'HGTL']
+opers = ['CSBP_Mattsson2013']
+# opers = ['CSBP', 'CSBP_Mattsson2004', 'CSBP_Mattsson2013', 'LGL', 'LG', 'HGTL']
 # sat = ['BR2', 'LDG', 'BO', 'CNG']
-# sat = ['BR2', 'LDG']
-sat = ['BO', 'CNG']
+# sat = ['BR2','LDG', 'BO', 'CNG']
+sat = ['BR2', 'CNG']
 p = [4]
 # p = [1, 2, 3, 4]
 sten = ['narrow']
-# sten = ['narrow']
-degree = ['p1', 'p2', 'p3', 'p4']
+# sten = ['wide', 'narrow']
+degree = ['p1', 'p2 ', 'p3', 'p4']
 # app = ['wide', 'narrow']
 # app =['wide']
 # imp_type = ['trad', 'elem']
 imp_type = ['elem']
 prob_type = ['Diff']
 
-adj = False
-plt_fam = False
-plt_sat = True
+adj = True
+plt_adj_fam = True
+plt_fam = True
+plt_sat = False
 plt_eig = False
 plt_rho = False
 plt_sparsity = False
@@ -1476,9 +1576,9 @@ calc_eigs = False
 save_figure = False
 
 soln = None
-soln = save_results(nrefine=5, sbp_families=opers, sats=sat, ps=p, solve_adjoint=False, save_results=False,
+soln = save_results(nrefine=7, sbp_families=opers, sats=sat, ps=p, solve_adjoint=adj, save_results=True,
                  calc_cond=False, calc_eigvals=False, dim=1, stencil= sten, imp=imp_type, prob=prob_type)
 analyze_results_1d(sats=sat, sbp_families=opers, ps=p, stencil=sten, imp=imp_type, prob=prob_type, plot_by_family=plt_fam,
                    plot_by_sat=plt_sat, plot_spectrum=plt_eig, plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity,
-                   run_results=soln, save_fig=save_figure)
+                   run_results=soln, save_fig=save_figure, plot_adj_by_family=plt_adj_fam)
 # ==================================================================================================================== #

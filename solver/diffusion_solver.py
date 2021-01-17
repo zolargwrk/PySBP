@@ -498,7 +498,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         m = 1/8
         n = 1/8
 
-        f0 = (-np.pi**2*m**2*(4*x + 1)*np.sin(np.pi*m*x)*np.sin(np.pi*n*y)
+        f0 = -(-np.pi**2*m**2*(4*x + 1)*np.sin(np.pi*m*x)*np.sin(np.pi*n*y)
               + 2*np.pi**2*m*n*y*np.cos(np.pi*m*x)*np.cos(np.pi*n*y) + 5*np.pi*m*np.sin(np.pi*n*y)*np.cos(np.pi*m*x)
               - np.pi**2*n**2*(y**2 + 1)*np.sin(np.pi*m*x)*np.sin(np.pi*n*y)
               + 2*np.pi*n*y*np.sin(np.pi*m*x)*np.cos(np.pi*n*y)).flatten(order='F')
@@ -552,7 +552,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         Hg = rdata.Hg
 
         # add contribution of the source term from the boundaries
-        f = f0 + fB.flatten(order='F')
+        f = -f0 + fB.flatten(order='F')
 
         # evaluate the exact solution at nodal points
         u_exact = exact_fun(x, y) #np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
@@ -609,7 +609,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         uSolN = uSolN.flatten(order='F')
         uGradD = uGradD.flatten(order='F')
 
-        g0 = (2 * y + 5).flatten(order='F')
+        g0 = -(2 * y + 5).flatten(order='F')
 
         # calculate functional superconvergece
         # func = (np.ones((nelem * nnodes, 1)).T @ Hg @ u.flatten(order='F'))[0]
@@ -620,7 +620,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         func = (g0.T @ Hg @ u.flatten(order='F')) + (-psiD.T @ BD @ (Dgk_D @ u.flatten(order='F'))) \
                 + (psiN.T @ BN @ (Rgk_N @ u.flatten(order='F'))) + psiD.T @ TDgk_D @ (Rgk_D @ u.flatten(order='F') - uD)
 
-        func_exact = 194.2166199256895709
+        func_exact = -27.0912595377575265 #194.2166199256895709
         err_func = np.abs(func - func_exact)
         errs_func.append(err_func)
 
@@ -643,7 +643,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             #     + np.pi**2*n**2*(y**2 + 1)*np.sin(np.pi*m*x)*np.cos(np.pi*n*y)
             #     + 3*np.pi*n*y*np.sin(np.pi*m*x)*np.sin(np.pi*n*y)).flatten(order='F')
 
-            g = g0 + gB.flatten(order='F')
+            g = -g0 + gB.flatten(order='F')
 
             # exact adjoint
             # psi_exact = np.sin(np.pi/bR * x) * np.cos(np.pi/(2*bT) * y)
@@ -658,6 +658,10 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
 
             errs_adj.append(err_adj)
 
+            func2 = ((f0.T @ Hg @ psi.flatten(order='F')) + (-uD.T @ BD @ (Dgk_D @ psi.flatten(order='F'))) \
+                + (uN.T @ BN @ (Rgk_N @ psi.flatten(order='F'))) + uD.T @ TDgk_D @ (Rgk_D @ psi.flatten(order='F') - psiD))
+
+            print(func - func2)
             # plot_figure_2d(x, y, psi-psi_exact)
 
         # get number of elements and calculate element size
@@ -709,7 +713,8 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
                                   saveMeshPlot=False, curve_mesh=curve_mesh, sbp_family=sbp_family)
 
     return {'nelems': nelems, 'hs': hs, 'errs_soln': errs_soln, 'eig_vals': eig_vals, 'nnz_elems': nnz_elems,
-            'errs_adj': errs_adj, 'errs_func': errs_func, 'cond_nums': cond_nums, 'nnodes': nnodes_list}
+            'errs_adj': errs_adj, 'errs_func': errs_func, 'cond_nums': cond_nums, 'nnodes': nnodes_list,
+            'uh': u, 'u_exact': u_exact, 'x':x, 'y':y}
 
 # poisson_sbp_2d(2, 0.5, 1, 'diage', 'BR2', plot_fig=True, solve_adjoint=False, showMesh=True, p_map=2, curve_mesh=True)
 # diffusion_sbp_2d(1, 0.5, 1, 'gamma', 'BR1', plot_fig=False)

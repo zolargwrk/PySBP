@@ -13,7 +13,7 @@ def plot_figure_1d(x, u, u_exact=None):
     if u_exact is not None:
         u_exact = u_exact.reshape((m * n), order='F')
 
-    plt.plot(x, u, 'ro')
+    plt.plot(x, u, '-ro')
     if u_exact is not None:
         plt.plot(x, u_exact, '-k*')
     plt.xlabel('x')

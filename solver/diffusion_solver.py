@@ -134,7 +134,7 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
             bndry_conds = ps.boundary_conditions(xl, xr)
             bc = SimpleNamespace(**bndry_conds)
 
-            A, fB = RHSCalculator.rhs_poisson_1d_steady(n, nelem, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx,
+            A, fB,_,_,_ = RHSCalculator.rhs_poisson_1d_steady(n, nelem, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx,
                                                         rdata.rx, rdata.fscale, rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO,
                                                         rdata.vmapI, rdata.vmapO, flux_type, sat_type, boundary_type, rdata.db_mat,
                                                         rdata.d2_mat, b, app, bc.uD_left, bc.uD_right, bc.uN_left, bc.uN_right)
@@ -169,7 +169,7 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
         if choose_outs.prob == 'adjoint' or choose_outs.prob == 'all':
             adj_bcs = ps.adjoint_bndry(xl, xr)
             adj_bc = SimpleNamespace(**adj_bcs)
-            A, gB = RHSCalculator.rhs_poisson_1d_steady(n, nelem, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx,
+            A, gB,_,_,_ = RHSCalculator.rhs_poisson_1d_steady(n, nelem, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx,
                                                         rdata.rx, rdata.fscale, rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO,
                                                         rdata.vmapI, rdata.vmapO, flux_type, sat_type, boundary_type, rdata.db_mat,
                                                         rdata.d2_mat, b, app, adj_bc.psiD_left, adj_bc.psiD_right, adj_bc.psiN_left, adj_bc.psiN_right)
@@ -250,7 +250,7 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
     return
 
 # diffusion_solver_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine, refine_type, boundary_type=None, b=1, n=1):
-# u = poisson_1d(3, 0, 1, 1, 'LG', 'BR2', 1, 'ntrad', 'nPeriodic', 'sbp_sat', poisson1D_problem_input, a=0, n=16, app=1)
+# u = poisson_1d(2, 0, 1, 1, 'LG', 'BR2', 1, 'ntrad', 'nPeriodic', 'sbp_sat', poisson1D_problem_input, a=0, n=16, app=1)
 
 
 #
@@ -439,10 +439,22 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
     bB = -5
     bT = 5
 
+    # bL = 0
+    # bR = 1
+    # bB = 0
+    # bT = 1
+
     # generate mesh
     mesh = MeshGenerator2D.rectangle_mesh(h, bL, bR, bB, bT)
-    btype = ['d', 'n', 'd', 'd']
-    ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family, p_map=p_map, curve_mesh=curve_mesh)
+    domain_type = 'notperiodic'
+    if domain_type=='notperiodic':
+        btype = ['d', 'n', 'd', 'd']
+        # btype = ['d', 'd', 'd', 'd']
+        # btype = ['n', 'd', 'n', 'n']
+    elif domain_type=='periodic':
+        btype = ['-', '-', '-', '-']
+
+    ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family, p_map=p_map, curve_mesh=curve_mesh, domain_type=domain_type)
     adata = SimpleNamespace(**ass_data)
     errs_soln = list()
     errs_adj = list()
@@ -457,6 +469,9 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
     errs_test = list()
     errs_test2 = list()
 
+    n1_lst_test = list()
+    n2_lst_test = list()
+
     # refine mesh
     for refine in range(0, nrefine):
         if refine == 0:
@@ -466,7 +481,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             mesh = MeshTools2D.hrefine_uniform_2d(ass_data, bL, bR, bB, bT)
 
         # update assembled data for 2D implementation
-        ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family, p_map, curve_mesh=curve_mesh)
+        ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family, p_map, curve_mesh=curve_mesh, domain_type=domain_type)
         adata = SimpleNamespace(**ass_data)
 
         # extract variables from adata
@@ -483,7 +498,12 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         Lx = adata.Lx  # length of domain in the x direction (not Lambda)
         Ly = adata.Ly  # length of domain in the y direction (not Lambda)
         etov= adata.etov
-
+        if domain_type=='notperiodic':
+            etoe = adata.etoe
+            etof = adata.etof
+        elif domain_type=='periodic':
+            etoe = adata.etoe_periodic
+            etof = adata.etof_periodic
         # initialize solution vectors
         u = 0*x
 
@@ -494,6 +514,14 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
                                                        adata.surf_jac, adata.nx, adata.ny)
         phy = SimpleNamespace(**phy_data)
 
+        # we can check that the derivative operators on the physical elements are exact to polynomials of degree=p-p_map
+        # on the reference element, e.g., check err1 using the code below, not sure about err2
+        # e=0; p=4; rxe=adata.rx[:,e].reshape((-1,1)); Dx=phy.DxB[e]; D2=Dx@Dx; d1=p*r**(p-1)*rxe; d2=p*(p-1)*r**(p-2)*(rxe)**2; err1=Dx@(r**p)-d1; err2=D2@(r**p)-d2
+        # e=0; p=4; Dx=phy.DxB[e]; D2=Dx@Dx; d1=p*r**(p-1)*rxe; d2=p*(p-1)*r**(p-2)*(rxe)**2; err1=Dx@(r**p)-d1; err2=D2@(r**p)-d2
+
+        # To check how Dgk and its pseudoinverse scales with h use the code (the pseudoinvese scales by O(h))
+        # e=0; Dx0 = phy.DxB[e]; ind = np.argmax(np.array((np.max(phy.BB[0][e]), np.max(phy.BB[1][e]), np.max(phy.BB[2][e])))); nx0=phy.nxB[ind][e]; ny0=phy.nyB[ind][e]; Dgk0 = rdata.Dgk[ind][e]; Rgk0 = phy.RB[ind][e]; n1 = np.array((np.linalg.norm(nx0), np.linalg.norm(ny0), np.linalg.norm(Dx0), np.linalg.norm(Dgk0), np.linalg.norm(Rgk0))); n2 = np.array((np.linalg.norm(np.linalg.pinv(nx0, rcond=1e-11)), np.linalg.norm(np.linalg.pinv(ny0, rcond=1e-11)), np.linalg.norm(np.linalg.pinv(Dx0, rcond=1e-11)), np.linalg.norm(np.linalg.pinv(Dgk0, rcond=1e-11)), np.linalg.norm(np.linalg.pinv(Rgk0))))
+
         # get the source term for primal problem
         m = 1/8
         n = 1/8
@@ -503,6 +531,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
               - np.pi**2*n**2*(y**2 + 1)*np.sin(np.pi*m*x)*np.sin(np.pi*n*y)
               + 2*np.pi*n*y*np.sin(np.pi*m*x)*np.cos(np.pi*n*y)).flatten(order='F')
 
+        # f0 = (m**2 * np.pi**2 * np.sin(np.pi * m * x) * np.sin(np.pi * n * y) + n**2 * np.pi**2 * np.sin(np.pi * m * x) * np.sin(np.pi * n * y)).flatten(order='F')
         # f0 = 2*(x**0).flatten(order='F')
         # get function for the exact solution
         exact_fun = lambda x, y: np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
@@ -511,7 +540,8 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         lxx = 4*x + 1
         lxy = y
         lyx = y
-        lyy = y ** 2 + 1
+        lyy = y**2 + 1
+
         # lxx = x ** 0
         # lxy = x * 0
         # lyx = x * 0
@@ -532,20 +562,20 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         # define boundary conditions on a rectangular domain
         # Neumann boundary: n*(Lambda \nabla u), for the right boundary nx = 1, ny = 0
         uDL_fun = lambda x, y: np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
-        uNL_fun = lambda x, y: np.pi*m*(-4*x - 1)*np.sin(np.pi*n*y)*np.cos(np.pi*m*x) - np.pi*n*y*np.sin(np.pi*m*x)*np.cos(np.pi*n*y)
+        uNL_fun = lambda x, y: np.pi*m*(-4*x - 1)*np.sin(np.pi*n*y)*np.cos(np.pi*m*x) - np.pi*n*y*np.sin(np.pi*m*x)*np.cos(np.pi*n*y) # -m*np.pi*np.sin(np.pi*n*y)*np.cos(np.pi*m*x)
         uDR_fun = lambda x, y: np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
-        uNR_fun = lambda x, y: np.pi*m*(4*x + 1)*np.sin(np.pi*n*y)*np.cos(np.pi*m*x) + np.pi*n*y*np.sin(np.pi*m*x)*np.cos(np.pi*n*y)
+        uNR_fun = lambda x, y: np.pi*m*(4*x + 1)*np.sin(np.pi*n*y)*np.cos(np.pi*m*x) + np.pi*n*y*np.sin(np.pi*m*x)*np.cos(np.pi*n*y) # m*np.pi*np.sin(np.pi*n*y)*np.cos(np.pi*m*x)
         uDB_fun = lambda x, y: np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
-        uNB_fun = lambda x, y: -np.pi*m*y*np.sin(np.pi*n*y)*np.cos(np.pi*m*x) - np.pi*n*(y**2 + 1)*np.sin(np.pi*m*x)*np.cos(np.pi*n*y)
+        uNB_fun = lambda x, y: -np.pi*m*y*np.sin(np.pi*n*y)*np.cos(np.pi*m*x) - np.pi*n*(y**2 + 1)*np.sin(np.pi*m*x)*np.cos(np.pi*n*y) # -n*np.pi*np.sin(np.pi*m*x)*np.cos(np.pi*n*y)
         uDT_fun = lambda x, y: np.sin(m*np.pi * x) * np.sin(n*np.pi * y)
-        uNT_fun = lambda x, y: np.pi*m*y*np.sin(np.pi*n*y)*np.cos(np.pi*m*x) + np.pi*n*(y**2 + 1)*np.sin(np.pi*m*x)*np.cos(np.pi*n*y)
+        uNT_fun = lambda x, y: np.pi*m*y*np.sin(np.pi*n*y)*np.cos(np.pi*m*x) + np.pi*n*(y**2 + 1)*np.sin(np.pi*m*x)*np.cos(np.pi*n*y) # n*np.pi*np.sin(np.pi*m*x)*np.cos(np.pi*n*y)
 
         rhs_data = RHSCalculator.rhs_poisson_sbp_2d(u, adata.xf, adata.yf, phy.DxB, phy.DyB, phy.HB, phy.BB, phy.RB,
                                                     phy.nxB, phy.nyB, phy.rxB, phy.ryB, phy.sxB,
-                                                    phy.syB, phy.surf_jacB, phy.jacB, adata.etoe, adata.etof,
+                                                    phy.syB, phy.surf_jacB, phy.jacB, etoe, etof,
                                                     adata.bgrp, adata.bgrpD, adata.bgrpN, flux_type, uDL_fun, uNL_fun,
                                                     uDR_fun, uNR_fun, uDB_fun, uNB_fun, uDT_fun, uNT_fun, bL, bR, bB,
-                                                    bT, LB)
+                                                    bT, LB, nx_uncurved=adata.nx_uncurved, ny_uncurved=adata.ny_uncurved)
         rdata = SimpleNamespace(**rhs_data)
         fB = rdata.fB
         A = rdata.A
@@ -595,6 +625,12 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         TDgk_D = rdata.TDgk_D
         Rgk_N = rdata.Rgk_N
 
+        Rgk_T5 = rdata.Rgk_T5
+        T5_D = rdata.T5_D
+        T5_DD = rdata.T5_DD
+        Rgk_T5DD = rdata.Rgk_T5DD
+        Rgv_T5DD = rdata.Rgv_T5DD
+
         # get U on Gamma^D and n\dot (lambda nabla U) on Gamma^N
         uD, uN = MeshTools2D.set_bndry_sbp_2D(xf, yf, adata.bgrpD, adata.bgrpN, bL, bR, bB, bT,
                                                      uDL_fun, uNL_fun, uDR_fun, uNR_fun, uDB_fun, uNB_fun, uDT_fun,
@@ -619,18 +655,41 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
         # func = (g0.T @ Hg @ u.flatten(order='F')) + (-uGradD.T @ BD @ psiD) + (uSolN.T @ BN @ psiN)
         func = (g0.T @ Hg @ u.flatten(order='F')) + (-psiD.T @ BD @ (Dgk_D @ u.flatten(order='F'))) \
                 + (psiN.T @ BN @ (Rgk_N @ u.flatten(order='F'))) + psiD.T @ TDgk_D @ (Rgk_D @ u.flatten(order='F') - uD)
+               # + psiD.T @ T5_D @ (Rgk_T5 @ u.flatten(order='F')) + psiD.T @ T5_DD @ (Rgk_T5DD @ u.flatten(order='F') - Rgv_T5DD @ uD)
 
         func_exact = -27.0912595377575265 #194.2166199256895709
         err_func = np.abs(func - func_exact)
         errs_func.append(err_func)
 
+        #--------------------------------
+        # Dx0 = phy.DxB[0];
+        # ind = np.argmax(np.array((np.max(phy.BB[0][0]), np.max(phy.BB[1][0]), np.max(phy.BB[2][0]))));
+        # nx0 = phy.nxB[ind][0];
+        # ny0 = phy.nyB[ind][0];
+        # Dgk0 = rdata.Dgk[ind][0];
+        # Rgk0 = phy.RB[ind][0];
+        # n1 = np.array((
+        #               np.linalg.norm(nx0, ord=np.inf), np.linalg.norm(ny0, ord=np.inf), np.linalg.norm(Dx0, ord=np.inf),
+        #               np.linalg.norm(Dgk0, ord=np.inf), np.linalg.norm(Rgk0, ord=np.inf)));
+        # n2 = np.array((np.linalg.norm(np.linalg.pinv(nx0, rcond=1e-11), ord=np.inf),
+        #                np.linalg.norm(np.linalg.pinv(ny0, rcond=1e-11), ord=np.inf),
+        #                np.linalg.norm(np.linalg.pinv(Dx0, rcond=1e-11), ord=np.inf),
+        #                np.linalg.norm(np.linalg.pinv(Dgk0, rcond=1e-11), ord=np.inf),
+        #                np.linalg.norm(np.linalg.pinv(Rgk0), ord=np.inf)))
+        # n1_lst_test.append(np.asarray(n1))
+        # n2_lst_test.append(np.asarray(n2))
+        # if len(n1_lst_test)>1:
+        #     print(n1 / n1_lst_test[-2])
+        #     print(n2 / n2_lst_test[-2])
+        #--------------------------------
+
         if solve_adjoint is True:
             rhs_data = RHSCalculator.rhs_poisson_sbp_2d(psi, adata.xf, adata.yf, phy.DxB, phy.DyB, phy.HB, phy.BB, phy.RB,
                                                     phy.nxB, phy.nyB, phy.rxB, phy.ryB, phy.sxB,
-                                                    phy.syB, phy.surf_jacB, phy.jacB, adata.etoe, adata.etof,
+                                                    phy.syB, phy.surf_jacB, phy.jacB, etoe, etof,
                                                     adata.bgrp, adata.bgrpD, adata.bgrpN, flux_type, psiDL_fun, psiNL_fun,
                                                     psiDR_fun, psiNR_fun, psiDB_fun, psiNB_fun, psiDT_fun, psiNT_fun, bL, bR, bB,
-                                                    bT, LB, eqn='adjoint')
+                                                    bT, LB, eqn='adjoint', nx_uncurved=adata.nx_uncurved, ny_uncurved=adata.ny_uncurved)
             rdata = SimpleNamespace(**rhs_data)
             gB = rdata.fB
             A_adj = rdata.A
@@ -672,6 +731,7 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
 
         # calculate eigen value, condition number, and number of nonzero elements
         if calc_eigvals:
+            # eig_val = 0
             eig_val = np.linalg.eigvals(A.toarray())
             max_eig = (np.max(eig_val)).real
         else:
@@ -716,6 +776,6 @@ def poisson_sbp_2d(p, h, nrefine=1, sbp_family='diagE', flux_type='BR2', solve_a
             'errs_adj': errs_adj, 'errs_func': errs_func, 'cond_nums': cond_nums, 'nnodes': nnodes_list,
             'uh': u, 'u_exact': u_exact, 'x':x, 'y':y}
 
-# poisson_sbp_2d(2, 0.5, 1, 'diage', 'BR2', plot_fig=True, solve_adjoint=False, showMesh=True, p_map=2, curve_mesh=True)
+# poisson_sbp_2d(2, 5, nrefine=3, sbp_family='omega', flux_type='BR2', plot_fig=False, solve_adjoint=True, showMesh=False, p_map=2, curve_mesh=True)
 # diffusion_sbp_2d(1, 0.5, 1, 'gamma', 'BR1', plot_fig=False)
 # poisson_2d(1, 0.5, 1,'BR2')

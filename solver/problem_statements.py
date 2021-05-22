@@ -9,8 +9,8 @@ def poisson1D_problem_input (x=None, xl=None, xr=None, n=None):
                 adjoint: output results of adjoint problem
                 functional: output results of functional convergence
                 all: outputs all three of the above"""
-        # prob = 'primal'
-        prob = 'adjoint'
+        prob = 'primal'
+        # prob = 'adjoint'
         # prob = 'all'
         func_conv = 0
         plot_sol = 0
@@ -158,7 +158,7 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
         # prob = 'adjoint'
         prob = 'all'
         func_conv = 1
-        plot_sol = 0
+        plot_sol = 1
         plot_err = 0
         show_eig = 0
         return {'prob': prob, 'func_conv': func_conv, 'plot_sol': plot_sol, 'plot_err': plot_err, 'show_eig': show_eig}
@@ -178,28 +178,28 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
         return a
 
     def exact_solution(x):
-        w = 30
-        u_exact = np.cos(w*x)
+        w = 2*np.pi #30
+        u_exact = np.cos(w*x)*np.sin(w*x) #np.cos(w*x)
         return u_exact
 
     def boundary_conditions(xl, xr):
-        w = 30
-        uD_left = np.cos(w * xl)  # None      # Dirichlet boundary at the left boundary
-        uD_right = None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
+        w = 2
+        uD_left = 0 #np.cos(w * xl)  # None      # Dirichlet boundary at the left boundary
+        uD_right = 0 # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
         uN_left = None  # -60*np.sin(60*xl) #None     # Neumann boundary at the left boundary
-        uN_right = -w*np.sin(w*xr)  # None    # Neumann boundary at the right boundary
+        uN_right = None #-w*np.sin(w*xr)  # None    # Neumann boundary at the right boundary
         return {'uD_left': uD_left, 'uD_right': uD_right, 'uN_left': uN_left, 'uN_right': uN_right}
 
     def source_term(x):
-        w = 30
+        w = 2
         a = var_coef_inv()
         b = var_coef_vis()
-        f = w**2 * b* np.cos(w*x) #-a*60*np.sin(60*x) + b*3600 * np.cos(60 * x)
+        f = 16*np.pi**2* np.cos(2*np.pi*x) * np.sin(2*np.pi*x) #w**2 * b* np.cos(w*x) #-a*60*np.sin(60*x) + b*3600 * np.cos(60 * x)
         return f
 
     def adjoint_source_term(x):
         b = var_coef_vis()
-        g = np.cos(30*x) #100*b*np.sin(10*x) #np.cos(60*x)
+        g = -20*x**3 #np.cos(30*x) #100*b*np.sin(10*x) #np.cos(60*x)
         return g
 
     def adjoint_bndry (xl, xr):
@@ -207,10 +207,10 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
         b = var_coef_vis()
         w = 30
         if b!= 0:
-            psiD_left = 1/(w**2)*(1 - np.cos(w))  # None      # Dirichlet boundary at the left boundary
-            psiD_right = None  # np.cos(60 * xr)  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
+            psiD_left = 0 #1/(w**2)*(1 - np.cos(w))  # None      # Dirichlet boundary at the left boundary
+            psiD_right = 0 #None  # np.cos(60 * xr)  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
             psiN_left = None  # -60*np.sin(60*xr) #None     # Neumann boundary at the left boundary
-            psiN_right = 1/(w**2)*(1 - w*np.sin(w) - np.cos(w)) #None  # -60*np.sin(60*xl)  # None    # Neumann boundary at the right boundary
+            psiN_right = None #1/(w**2)*(1 - w*np.sin(w) - np.cos(w)) #None  # -60*np.sin(60*xl)  # None    # Neumann boundary at the right boundary
         else:
             psiD_left = 0#-np.cos(30 * xl) / a  # None      # Dirichlet boundary at the left boundary
             psiD_right = None#np.cos(30 * xr) / a  # None # np.cos(30*xr)    # Dirichlet boundary at the right boundary
@@ -222,13 +222,13 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
     def exact_adjoint(x, xl, xr):
         a = var_coef_inv()
         b = var_coef_vis()
-        w = 30
+        w = 10 #30
         psi = 0
         if a!=0 and b!=0:
             psi = 1/(w*(b**2 * w**2 + a**2)*(np.exp(-a/b)-1)) * ((-b*w*np.cos(w) + a*np.sin(w) + b*w)*np.exp(-a*x/b)\
                 + (b*w*np.cos(w*x) - a*np.sin(w*x) - w*b)*np.exp(-a/b) + b*w*np.cos(w) - b*w*np.cos(w*x) - a*np.sin(w) + a*np.sin(w*x))
         elif a==0 and b!=0:
-            psi = 1/(w**2)*(np.cos(w*x) + (1 - np.cos(w))*x - np.cos(w)) #-(x**2)/2 + x #1 / (w**2 * b) * np.cos(w * x) + x / (w**2 * b) * (np.cos(w*xl) - np.cos(w*xr)) - np.cos(w*xl) / (w**2 * b)
+            psi = x**5 - x #1/(w**2)*(np.cos(w*x) + (1 - np.cos(w))*x - np.cos(w)) #-(x**2)/2 + x #1 / (w**2 * b) * np.cos(w * x) + x / (w**2 * b) * (np.cos(w*xl) - np.cos(w*xr)) - np.cos(w*xl) / (w**2 * b)
         elif a!=0 and b==0:
             if a > 0:
                 psi = - 1 / a * 1 / w * np.sin(w * x) + 1 / a * 1 / w * np.sin(w * xr) + 1 / a * np.cos(w * xr)
@@ -241,7 +241,7 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
         b = var_coef_vis()
         # J_exact = b*1/7 * (7*np.cos(50) - 5*np.cos(70) - 2) + 10*b*np.cos(10)*np.cos(60) #(xr/2 + 1/240 * np.sin(120*xr)) - (xl/2 + 1/240 * np.sin(120*xl))
         # J_exact = 8*np.sin(100) + 40*np.sin(20) + 5*np.cos(40) - 5/2 *np.cos(80) - 5/2 + (20*np.cos(20) - 40*np.sin(40))*np.cos(60)
-        J_exact = 1/2 + 1/120 * np.sin(60) + 1/(30**2) * (np.cos(30) - 30*np.sin(30)*np.cos(30) - (np.cos(30))**2) # 1/w * np.sin(w) # # + 1/(30)*(1-np.cos(30))*np.sin(30) #
+        J_exact = (40*np.pi**2 - 15)/(16*np.pi**3) #1/2 + 1/120 * np.sin(60) + 1/(30**2) * (np.cos(30) - 30*np.sin(30)*np.cos(30) - (np.cos(30))**2) # 1/w * np.sin(w) # # + 1/(30)*(1-np.cos(30))*np.sin(30) #
         return J_exact
 
     def calc_functional(u, g, h_mat, rx,  db_mat, tr, tl, TD_left, TD_right=None, adj=None):
@@ -259,9 +259,9 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
             psi = u
             psih = np.reshape(u, (nnodes, nelem), order='F')
             # boundary data
-            uD_left = 1
-            uN_right = -30*np.sin(30)
-            psiD_left = 1 / (30 ** 2) * (1 - np.cos(30))
+            uD_left = 0 #1
+            uN_right = 0 #-30*np.sin(30)
+            psiD_left = 0# 1 / (30 ** 2) * (1 - np.cos(30))
 
             J = (psi.T @ rh @ f)[0][0] \
                 - uD_left * (Dgv @ psih[:, 0])[0] \
@@ -270,11 +270,11 @@ def advec_diff1D_problem_input (x=None, xl=None, xr=None, n=None):
         else:
             uh = np.reshape(u, (nnodes, nelem), order='F')
             # boundary data
-            uD_left = 1
+            uD_left = 0 #1
             # uD_right = np.cos(30)
-            psiD_left = 1 / (30 ** 2) * (1 - np.cos(30))
+            psiD_left = 0 # 1 / (30 ** 2) * (1 - np.cos(30))
             # psiD_right = 1/(30**2) * (1 - np.cos(30))
-            psiN = 1 / (30 ** 2) * (1 - 30 * np.sin(30) - np.cos(30))
+            psiN = 0 # 1 / (30 ** 2) * (1 - 30 * np.sin(30) - np.cos(30))
 
             J = (g.T @ rh @ u)[0][0] \
                 - psiD_left * (Dgv @ uh[:, 0])[0]\

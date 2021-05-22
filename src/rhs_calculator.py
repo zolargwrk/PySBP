@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from solver.plot_figure import plot_figure_1d, plot_figure_2d, plot_conv_fig
 from scipy.sparse.linalg import spsolve
 from src.calc_tools import CalcTools
+from src.sats_unsteady import SATsUnsteady
 
 class RHSCalculator:
 
@@ -69,7 +70,8 @@ class RHSCalculator:
         if flux_type == 'Central':
             k = 0.5*np.ones(an.shape)
         else:
-            k = 0.5 * (1 + an/abs(an))
+            k = 0.5 * (1 + np.divide(an, abs(an), out=np.zeros_like(an), where=abs(an)!=0))
+            #k = 0.5 * (1 + an/abs(an))
 
         # convert matrix form of arrays into array form
         u = u.flatten(order='F')
@@ -204,7 +206,7 @@ class RHSCalculator:
                          uD_left=None, uD_right=None, uN_left=None, uN_right=None):
         """Computes the system matrix for the Poisson equation
         flux_type: specify the SAT type of interest, e.g., BR1
-        sat_type: specify whether to implement SAT as in 'dg_sat' or 'sbp_sat' ways"""
+        sat_inviscid: specify whether to implement SAT as in 'dg_sat' or 'sbp_sat' ways"""
         g = np.zeros((nelem * n, 1))
         A = np.zeros((nelem * n, nelem * n))
         for i in range(0, nelem * n):
@@ -228,7 +230,7 @@ class RHSCalculator:
                               uD_left=None, uD_right=None, uN_left=None, uN_right=None, eqn='primal'):
         """Computes the system matrix for the Poisson equation
         flux_type: specify the SAT type of interest, e.g., BR1
-        sat_type: specify whether to implement SAT as in 'dg_sat' or 'sbp_sat' ways"""
+        sat_inviscid: specify whether to implement SAT as in 'dg_sat' or 'sbp_sat' ways"""
 
         # set variable coefficient
         if type(b) == int or type(b) == float:
@@ -362,7 +364,7 @@ class RHSCalculator:
     def rhs_poisson_sbp_2d(u, xf, yf, DxB, DyB, HB, BB, RB, nxB, nyB, rxB, ryB, sxB, syB, surf_jacB, jacB,
                            etoe, etof, bgrp, bgrpD, bgrpN, flux_type='BR2', uDL_fun=None, uNL_fun=None, uDR_fun=None,
                            uNR_fun=None, uDB_fun=None, uNB_fun=None, uDT_fun=None, uNT_fun=None, bL=None, bR=None,
-                           bB=None, bT=None, LB=None, eqn='primal'):
+                           bB=None, bT=None, LB=None, eqn='primal', nx_uncurved=None, ny_uncurved=None):
 
         # define and set important variables
         nnodes = u.shape[0]     # number of nodes per each element
@@ -397,18 +399,44 @@ class RHSCalculator:
                                               uDB_fun, uNB_fun, uDT_fun, uNT_fun)
 
         # get the SATs
-        sat_data = SATs.diffusion_sbp_sat_2d_steady(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, DxB, DyB, HB, BB, RB,
-                                                    rxB, ryB, sxB, syB, jacB, surf_jacB, nxB, nyB, etoe, etof, bgrp,
-                                                    bgrpD, bgrpN, flux_type, uD, uN, eqn=eqn)
+        sat_data = SATs.diffusion_sbp_sat_2d_steady(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, DxB, DyB, HB, BB, nxB, RB,
+                                                    nyB, jacB, etoe, etof, bgrpD, bgrpN, flux_type, uD, uN, eqn=eqn,
+                                                    nx_uncurved=nx_uncurved, ny_uncurved=ny_uncurved)
         sdata = SimpleNamespace(**sat_data)
 
         # get system matrix
         A = (D2B - sdata.sI)
 
+        # get A matrix from SBP flux formulation
+        # A2 = RHSCalculator.rhs_diffusion_sbp_2d_flux_form(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, DxB, DyB, HB, BB, nxB, RB,
+        #                                             nyB, jacB, etoe, etof, bgrpD, bgrpN, flux_type, uD, uN, eqn=eqn,
+        #                                             nx_uncurved=nx_uncurved, ny_uncurved=ny_uncurved)
+        # err = A.toarray() - A2.toarray()
         return {'A': A, 'fB': sdata.fB, 'Hg': sdata.Hg, 'D2B': D2B, 'LxxB': LxxB, 'LxyB': LxyB, 'LyxB': LyxB,
                 'LyyB': LyyB, 'LB': LB, 'uD': uD, 'uN': uN, 'BD': sdata.BD, 'BN': sdata.BN, 'Dgk_D': sdata.Dgk_D,
-                'Rgk_D': sdata.Rgk_D, 'TDgk_D': sdata.TDgk_D, 'Rgk_N': sdata.Rgk_N}
+                'Rgk_D': sdata.Rgk_D, 'TDgk_D': sdata.TDgk_D, 'Rgk_N': sdata.Rgk_N, 'Dgk': sdata.Dgk, 'Rgk_T5': sdata.Rgk_T5,
+                'T5_D': sdata.T5_D, 'T5_DD': sdata.T5_DD, 'Rgk_T5DD': sdata.Rgk_T5DD, 'Rgv_T5DD': sdata.Rgv_T5DD, }
 
+    @ staticmethod
+    def rhs_diffusion_sbp_2d_flux_form(nnodes, nelem, LxxB, LxyB, LyxB, LyyB, DxB, DyB, HB, BB, nxB, RB, nyB, jacB, etoe, etof,
+                        bgrpD, bgrpN, flux_type='BR1', uD=None, uN=None, eqn='primal', nx_uncurved=None, ny_uncurved=None):
+
+        g = np.zeros((nnodes*nelem, 1))
+        A = sparse.csr_matrix((nelem * nnodes, nelem * nnodes))
+
+        for i in range(nnodes*nelem):
+            g[i] = 1
+            gmat = g.reshape((nnodes, nelem), order='F')
+            Avec = SATs.diffusion_sbp_sat_2d_flux_form(gmat, nnodes, nelem, LxxB, LxyB, LyxB, LyyB, DxB, DyB, HB, BB, nxB,
+                                                       RB, nyB, jacB, etoe, etof, bgrpD, bgrpN, flux_type=flux_type, uD=uD,
+                                                       uN=uN, eqn=eqn, nx_uncurved=nx_uncurved, ny_uncurved=ny_uncurved)
+            # eliminate very small numbers from the A matrix
+            Avec = (np.abs(Avec)>=1e-10) * Avec
+
+            A[:, i] = Avec.reshape((-1, 1), order='F')
+            g[i] = 0
+
+        return A
 
     @staticmethod
     def rhs_diffusion_flux_formulation_sbp_2d(p, u, x, y, r, s, xf, yf, Dr, Ds, H, B1, B2, B3, R1, R2, R3, nx, ny, rx,
@@ -639,6 +667,107 @@ class RHSCalculator:
         M = sparse.spmatrix.tocsc(M)
 
         return A, M
+
+
+    @staticmethod
+    def rhs_advection_unsteady_sbp_2d(u, t, xf, yf, DxB, DyB, HB, BB, RB, nxB, nyB, etoe, etof, bgrpD,
+                                      a=np.array([1, 1]), sat_type='upwind', domain_type='notperiodic', uDL_fun=None,
+                                      uDR_fun=None, uDB_fun=None, uDT_fun=None, bL=None, bR=None, bB=None, bT=None):
+
+        # define and set important variables
+        nnodes = u.shape[0]  # number of nodes per each element
+        nelem = u.shape[1]  # total number of elements
+        ax = a[0][0]
+        ay = a[1][0]
+
+        # get derivative operator in a block matrix
+        Dmat = ax * sparse.block_diag(DxB) + ay * sparse.block_diag(DyB)
+
+        sI, sD = SATsUnsteady.advection_sat_2d(nnodes, nelem, HB, BB, RB, nxB, nyB, etoe, etof, bgrpD, a, sat_type, domain_type)
+        u1 = u.reshape([-1, 1], order='F')
+        A = - Dmat + sI
+        if domain_type.lower() == 'notperiodic':
+            # set boundary conditions
+            uD, _ = MeshTools2D.set_bndry_advec_sbp_2D(xf, yf, bgrpD, bL, bR, bB, bT, t, uDL_fun, uDR_fun, uDB_fun, uDT_fun)
+            rhs = A @ u1 - sD @ uD.reshape([-1, 1], order='F')
+        else:
+            rhs = A @ u1
+
+        rhs = rhs.reshape([-1, nelem], order='F')
+
+        # print(np.max(np.linalg.eigvals(A.toarray()).real))
+
+        return rhs, A
+
+    @staticmethod
+    def rhs_unsteady_burgers_sbp_2d(u, t, xf, yf, DxB, DyB, HB, BB, RB, nxB, nyB, jacB, etoe, etof, bgrpD, bgrpN,
+                                    LB=None, sat_inviscid='splitform', sat_viscous='BR2', domain_type='notperiodic',
+                                    uDL_fun=None, uDR_fun=None, uDB_fun=None, uDT_fun=None, uNL_fun=None, uNR_fun=None,
+                                    uNB_fun=None, uNT_fun=None, bL=None, bR=None, bB=None, bT=None, nu=None):
+
+        # define and set important variables
+        nnodes = u.shape[0]  # number of nodes per each element
+        nelem = u.shape[1]  # total number of elements
+        nface = 3
+        nfp = int(xf.shape[0] / nface)
+
+        # variable coefficient
+        if LB is None:
+            I = np.eye(nnodes)
+            Z = np.zeros((nnodes, nnodes))
+
+            Lxx = sparse.block_diag(
+                [I] * nelem)  # variable coefficient -- only handles constant coefficient this way unless changed later
+            Lyy = sparse.block_diag(
+                [I] * nelem)  # LB should be a block matrix of size 2 by 2, i.e., LB = [[Lxx, Lxy],[Lyx, Lyy]]
+            Lxy = 0 * Lxx
+            Lyx = 0 * Lyy
+            LB = np.block([[Lxx, Lxy], [Lyx, Lyy]])
+            LxxB = np.block([I] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+            LxyB = np.block([Z] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+            LyxB = np.block([Z] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+            LyyB = np.block([I] * nelem).T.reshape(nelem, nnodes, nnodes).transpose(0, 2, 1)
+        else:
+            LxxB = CalcTools.matrix_to_3D_block_diag((LB[0, 0].diagonal()).reshape((nnodes, nelem), order='F'))
+            LxyB = CalcTools.matrix_to_3D_block_diag((LB[0, 1].diagonal()).reshape((nnodes, nelem), order='F'))
+            LyxB = CalcTools.matrix_to_3D_block_diag((LB[1, 0].diagonal()).reshape((nnodes, nelem), order='F'))
+            LyyB = CalcTools.matrix_to_3D_block_diag((LB[1, 1].diagonal()).reshape((nnodes, nelem), order='F'))
+
+        if domain_type.lower() == 'notperiodic':
+            # set boundary conditions
+            uD, uN = MeshTools2D.set_bndry_sbp_2D(xf, yf, bgrpD, bgrpN, bL, bR, bB, bT, uDL_fun, uNL_fun, uDR_fun,
+                                                  uNR_fun, uDB_fun, uNB_fun, uDT_fun, uNT_fun, t)
+        else:
+            uD = np.zeros((nfp * nface, nelem))
+            uN = np.zeros((nfp * nface, nelem))
+
+        u_sat = SATsUnsteady.burgers_sat_2d(u, uD, uN, nelem, HB, DxB, DyB, BB, RB, nxB, nyB, jacB, etoe, etof, bgrpD,
+                                    bgrpN, LxxB=LxxB, LxyB=LxyB, LyxB=LyxB, LyyB=LyyB, sat_inviscid=sat_inviscid,
+                                    sat_viscous=sat_viscous, domain_type=domain_type, nu=nu)
+
+        # get divergence of the gradient (second derivative term)
+        D2mat = sparse.csr_matrix((np.block([sparse.block_diag(DxB), sparse.block_diag(DyB)]) @ LB
+                                 @ np.block([[sparse.block_diag(DxB)], [sparse.block_diag(DyB)]]))[0, 0])
+
+        u1 = u.reshape((-1, 1), order='F')
+        rhs = np.zeros(u.shape)
+        rhs_inv = np.zeros(u.shape)
+
+        if sat_inviscid == 'splitform':
+            # get first derivative applied in both directions
+            Dmat = sparse.block_diag(DxB) + sparse.block_diag(DyB)
+
+            rhs = -1/3 * (Dmat @ (u1**2)) - 1/3 * np.diag(u1.flatten()) @ (Dmat @ u1) + D2mat @ u1 + u_sat.reshape((-1, 1), order='F')
+            rhs = rhs.reshape((-1, nelem), order='F')
+        elif sat_inviscid in ['twopoint', 'twopoint1', 'twopoint2', 'twopoint3']:
+            rhs1 = (D2mat @ u1 + u_sat.reshape((-1, 1), order='F')).reshape((-1, nelem), order='F')
+            for i in range(nelem):
+                F = SATsUnsteady.burgers_two_point_flux(u[:, i], u[:, i])
+                rhs_inv[:, i] = (-((DxB[i] + DyB[i]) * F) @ np.ones((nnodes, 1))).flatten()
+
+            rhs = rhs_inv + rhs1
+
+        return rhs
 
 # p = 2
 # mesh = MeshGenerator2D.rectangle_mesh(0.75)

@@ -15,6 +15,7 @@ from mpltools import annotation
 import pandas as pd
 from solver.plot_figure import plot_figure_1d, plot_figure_2d, plot_conv_fig
 
+
 # show more than 5 coulumns when printing output to screeen
 desired_width=320
 pd.set_option('display.width', desired_width)
@@ -65,8 +66,9 @@ def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_
                         # find nodes
                         if modify_saved:
                             # SAT and SBP family list in saved data
-                            sat_saved_list = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG']
-                            sbp_famliy_saved_list = ['gamma', 'omega', 'diage']
+                            sat_saved_list = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG', 'BR1*', 'LDG*']
+                            # sbp_famliy_saved_list = ['gamma', 'omega', 'diage']
+                            sbp_famliy_saved_list = ['diage']
                             p_saved_list = [0, 1, 2, 3]
                             fmod = sbp_famliy_saved_list.index(sbp_families[f])
                             smod = sat_saved_list.index(sats[s])
@@ -76,30 +78,30 @@ def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_
                             #     saved_results = pickle.load(infile)
                             #     soln = saved_results.children[0].children[f].children[s].children[p].children[0].results
                             if modify_saved:
-                                with open(path + 'results_poisson2D_eigvals.pickle', 'rb') as infile:
+                                with open(path + 'results_poisson2D_eigvals_diage.pickle', 'rb') as infile:
                                     # modify saved results
                                     saved_results = pickle.load(infile)
                                     saved_results.children[0].children[fmod].children[smod].children[pmod].children[0].results.clear()
                                     saved_results.children[0].children[fmod].children[smod].children[pmod].children[0].results.update(soln)
-                                with open(path + 'results_poisson2D_eigvals.pickle', 'wb') as outfile:
+                                with open(path + 'results_poisson2D_eigvals_diage.pickle', 'wb') as outfile:
                                     pickle.dump(saved_results, outfile)
                             else:
-                                with open(path + 'results_poisson2D_eigvals.pickle', 'wb') as outfile:
+                                with open(path + 'results_poisson2D_eigvals_diage.pickle', 'wb') as outfile:
                                     pickle.dump(all_results, outfile)
                         else:
                             if modify_saved:
                                 # with open(path + 'results_poisson2D.pickle', 'rb') as infile:
                                 #     saved_results = pickle.load(infile)
                                 #     soln = saved_results.children[0].children[f].children[s].children[p].children[0].results
-                                with open(path + 'results_poisson2D.pickle', 'rb') as infile:
+                                with open(path + 'results_poisson2D_diage.pickle', 'rb') as infile:
                                     # modify saved results
                                     saved_results = pickle.load(infile)
                                     saved_results.children[0].children[fmod].children[smod].children[pmod].children[0].results.clear()
                                     saved_results.children[0].children[fmod].children[smod].children[pmod].children[0].results.update(soln)
-                                with open(path + 'results_poisson2D.pickle', 'wb') as outfile:
+                                with open(path + 'results_poisson2D_diage.pickle', 'wb') as outfile:
                                     pickle.dump(saved_results, outfile)
                             else:
-                                with open(path + 'results_poisson2D.pickle', 'wb') as outfile:
+                                with open(path + 'results_poisson2D_diage.pickle', 'wb') as outfile:
                                     pickle.dump(all_results, outfile)
 
     elif dim == 1:
@@ -174,13 +176,13 @@ def save_results(h=0.8, nrefine=2, sbp_families=None, sats=None, ps=None, solve_
 
 def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=False, plot_by_sat=False, plot_by_sat_all=False,
                        plot_spectrum=False, plot_spectral_radius=False, plot_sparsity=False, plot_adj_by_family=False,
-                       plot_adj_by_sat=False, tabulate_cond_num=False, tabulate_density = False, tabulate_nnz=False,
-                       run_results=None, save_fig=False):
+                       plot_adj_by_sat=False, tabulate_cond_num=False, cond_by_nnz=False, cond_by_p=False,
+                       tabulate_density=False, tabulate_nnz=False, run_results=None, save_fig=False):
 
     path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\visual\\poisson2d_results\\'
     if run_results is None:
         # solve and obtain results or open saved from file
-        with open(path+'results_poisson2D.pickle', 'rb') as infile:
+        with open(path+'results_poisson2D_diage.pickle', 'rb') as infile:
             all_results = pickle.load(infile)
 
         pmin = np.min(ps) - 1
@@ -193,8 +195,9 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
 
     dim = 2
     # SAT and SBP family list in saved data
-    sat_saved_list = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG']
-    sbp_famliy_saved_list = ['gamma', 'omega', 'diage']
+    sat_saved_list = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG', 'BR1*', 'LDG*']
+    # sbp_famliy_saved_list = ['gamma', 'omega', 'diage']
+    sbp_famliy_saved_list = ['diage']
     p_saved_list = [0, 1, 2, 3]
 
     # setup default values based on input
@@ -543,13 +546,16 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
     # plot spectrum of the system matrix
     if plot_spectrum:
         if run_results is None:
-            with open(path + 'results_poisson2D_eigvals.pickle', 'rb') as infile2: # needs result with all eigenvalues
+            # with open(path + 'results_poisson2D_eigvals.pickle', 'rb') as infile2: # needs result with all eigenvalues
+            #     all_results = pickle.load(infile2)
+            with open(path + 'results_poisson2D_eigvals_diage.pickle', 'rb') as infile2: # needs result with all eigenvalues
                 all_results = pickle.load(infile2)
         else:
             all_results = run_results
 
         for p in range(pmin, pmax):
             for f in range(len(sbp_families)):
+                fig, ax = plt.subplots()
                 for s in range(len(sats)):
                     if run_results is None:
                         # SAT and SBP family list in saved data
@@ -572,42 +578,49 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
                     X = [x.real for x in r.eig_vals][refine]
                     Y = [x.imag for x in r.eig_vals][refine]
 
-
                     # plot eigenvalue spectrum
-                    plt.rcParams.update({'font.size': 24, 'axes.labelsize': 26, 'legend.fontsize': 23,
-                                         'xtick.labelsize': 26, 'ytick.labelsize': 26})
+                    a = 8
+                    plt.rcParams.update({'font.size': 24+a, 'axes.labelsize': 24+a, 'legend.fontsize': 24+a,
+                                         'xtick.labelsize': 24+a, 'ytick.labelsize': 24+a})
                     plt.rcParams['text.latex.preview'] = True
-                    marker_spectrum = ['.', 'x', 'o', 's', 'd', '*']
-                    marker_facecolor = ['r', 'b', 'none', 'none', 'none', 'none']
-                    marker_edgecolor = ['r', 'b', 'k', 'g', 'c', 'm']
+                    if len(sats) in [2, 4]:
+                        marker_edgecolor = (['r', 'b', 'k', 'g', 'm', 'c'])
+                        marker_spectrum = (['.', 'x', 'o', 's', 'd', '*'])
+                        marker_facecolor = ['r', 'b', 'none', 'none', 'none', 'none']
+                    elif len(sats)==6:
+                        marker_spectrum = (['d', '*', '.', 'x', 'o', 's'])
+                        marker_facecolor = ['none', 'none', 'r', 'b', 'none', 'none']
+                        marker_edgecolor = (['m', 'c', 'r', 'b', 'k', 'g'])
 
                     # label_spectrum='SBP- {} $\;$ {} $\;$  $p={}$ $\;$  $\lambda_L = {:.2f}$ $\;$  $\lambda_S = {:.2e}$'.\
                     #     format(pltsetup.sbp_fam[sbp_families[f]], pltsetup.sat_name[sats[s]], p+1, np.max(X), np.min(X))
 
-                    label_spectrum = r'{} $\max(Re(\lambda))= {:.2f}$ $\;$  $\rho = {:.2e}$'. \
+                    label_spectrum = r'{} $\max(Re(\lambda))= {:.3f}$ $\;$  $\rho = {:.2e}$'. \
                         format(pltsetup.sat_name[sats[s]], np.max(X), np.max(np.abs(X)))
-
                     system_matrix = '_'
-                    if sats[s] in {'BR1', 'BR2', 'LDG', 'CDG'}:
-                        plt.scatter(X, Y+s, s=120, marker=marker_spectrum[s], facecolors=marker_facecolor[s], edgecolors=marker_edgecolor[s],
+
+                    if sats[s] in {'BR1', 'BR2', 'LDG', 'CDG', 'BR1*', 'LDG*'}:
+                        # ax.scatter(X, Y+s-(s-3)*s*0.15+(s-1)*(s-3)*0.15, s=120, marker=marker_spectrum[s], facecolors=marker_facecolor[s], edgecolors=marker_edgecolor[s],
+                        #             label=label_spectrum)
+                        ax.scatter(X, Y+s+2, s=120, marker=marker_spectrum[s], facecolors=marker_facecolor[s], edgecolors=marker_edgecolor[s],
                                     label=label_spectrum)
-                        plt.xlabel(r'$\lambda$')
+
+                        plt.xlabel(r'$\lambda$', fontsize=24+8)
                         system_matrix = 'symmetric'
-                        plt.yticks(np.arange(4), ('0', '0', '0', '0'))
-                        # plt.yscale('symlog')
-                        # plt.xscale('symlog')
-
-                        plt.legend(labelspacing=0.1, columnspacing=0.7, handletextpad=0.05, loc=(0, 0.065))
+                        # plt.yticks(np.arange(len(sats)), ['0']*len(sats))
+                        plt.yticks(np.arange(len(sats) + 2), ['', ''] + ['0'] * len(sats))
+                        # plt.yticks(np.arange(len(sats) + 3), ['','','']+['0'] * len(sats))
+                        # plt.yticks(np.array((0, 0.45, 1 -(1-3)*1*0.15, 2-(2-3)*2*.15-0.15, 3)), (' ', '0', '0', '0', '0'))
+                        # plt.legend(handles[::-1], labels[::-1], labelspacing=0.1, columnspacing=0.7, handletextpad=0.05)
                         plt.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
-
 
                     elif sats[s] in {'BO', 'CNG'}:
                         plt.scatter(X, Y, s=120, marker=marker_spectrum[s], facecolors=marker_facecolor[s],
                                     edgecolors=marker_edgecolor[s], label=label_spectrum)
-                        plt.xlabel(r'$Re(\lambda)$')
-                        plt.ylabel(r'$Im(\lambda)$')
+                        plt.xlabel(r'$Re(\lambda)$', fontsize=24+8)
+                        plt.ylabel(r'$Im(\lambda)$', fontsize=24+8)
                         system_matrix = 'asymmetric'
-                        plt.legend(labelspacing=0.1, columnspacing=0.7, handletextpad=0.05, loc=(0, 0.065))
+                        # plt.legend(labelspacing=0.1, columnspacing=0.7, handletextpad=0.05, loc=(0, 0.065))
                         plt.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
                         plt.ticklabel_format(style='sci', axis='y', scilimits=(10, 0))
 
@@ -618,6 +631,12 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
 
                         plt.legend(labelspacing=0.1, columnspacing=0.7, handletextpad=0.05, loc=(0, 0.065))
                         plt.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
+                handles, labels = ax.get_legend_handles_labels()
+                ax.legend(handles[::-1], labels[::-1], labelspacing=0.07, columnspacing=0.4, handletextpad=-0.1, loc=(0.005, 0.01))
+                ax.xaxis.get_offset_text().set_fontsize(24+8)
+                ax.yaxis.get_offset_text().set_fontsize(24+8)
+                plt.yticks(fontsize=24+8)
+                plt.xticks(fontsize=24+8)
 
                 if save_fig:
                         plt.savefig(path + 'spectrum\\'+'spectrum_{}_{}_p{}.pdf'.format(system_matrix, sbp_families[f], p+1),
@@ -685,7 +704,9 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
     # Tabulate condition number
     if tabulate_cond_num:
         if run_results is None:
-            with open(path + 'results_poisson2D_eigvals.pickle', 'rb') as infile3:
+            # with open(path + 'results_poisson2D_eigvals.pickle', 'rb') as infile3:
+            #     all_results = pickle.load(infile3)
+            with open(path + 'results_poisson2D_eigvals_diage.pickle', 'rb') as infile3:
                 all_results = pickle.load(infile3)
         else:
             all_results = run_results
@@ -713,7 +734,7 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
                         r = SimpleNamespace(**res)
 
                         # get nnz of BR1 as a reference
-                        resref = all_results.children[0].children[fmod].children[5].children[p].children[0].results
+                        resref = all_results.children[0].children[fmod].children[0].children[p].children[0].results
                         rref = SimpleNamespace(**resref)
 
                         # add condition number to row of the table
@@ -731,53 +752,110 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
             print(df, '\n')
             # print(df.to_latex(), '\n')
 
-    if plt_cond:
+    if plt_cond_by_nnz or plt_cond_by_p:
         if run_results is None:
             with open(path + 'results_poisson2D_eigvals.pickle', 'rb') as infile3:
                 all_results = pickle.load(infile3)
+            # with open(path + 'results_poisson2D_eigvals_diage.pickle', 'rb') as infile3:
+            #     all_results = pickle.load(infile3)
         else:
             all_results = run_results
 
         nrefine = len((all_results.children[0].children[0].children[0].children[0].children[0].results)['hs'])
         nelem_list = []
         cond_num_list = []
-        for p in range(pmin, pmax):
-            for f in range(len(sbp_families)):
-                for s in range(len(sats)):
-                    for refine in range(nrefine):
-                        # get results from saved tree file
-                        res = all_results.children[0].children[f].children[s].children[p].children[0].results
-                        r = SimpleNamespace(**res)
 
-                        # calculate spectral radius
-                        cond_num = np.max(np.abs(r.cond_nums[refine]))  # eig_vals[0]:eigenvalues with no grid refinement
-                        nelem = r.nelems[refine]
-                        nelem_list.append(nelem)
-                        cond_num_list.append(cond_num)
+        if cond_by_nnz:
+            for p in range(pmin, pmax):
+                for f in range(len(sbp_families)):
+                    for s in range(len(sats)):
+                        if run_results is None:
+                            # SAT and SBP family list in saved data
+                            fmod = sbp_famliy_saved_list.index(sbp_families[f])
+                            smod = sat_saved_list.index(sats[s])
+                        else:
+                            fmod = f
+                            smod = s
 
-                    # plot spectral radius
-                    # plt.rcParams.update({'font.size': 22, 'axes.labelsize': 22, 'legend.fontsize': 22,
-                    #                      'xtick.labelsize': 22, 'ytick.labelsize': 22})
+                        for refine in range(nrefine):
+                            # get results from saved tree file
+                            res = all_results.children[0].children[fmod].children[smod].children[p].children[0].results
+                            r = SimpleNamespace(**res)
 
-                    # label_cond = 'SBP- {} $\;$ {} $\;$ $p={}$'.format(pltsetup.sbp_fam[sbp_families[f]], pltsetup.sat_name[sats[s]], p+1)
-                    label_cond = '{}'.format(pltsetup.sat_name[sats[s]])
-                    plt.plot(nelem_list, cond_num_list, pltsetup.markers[s], linewidth=pltsetup.lw,
-                             markersize=pltsetup.ms, label=label_cond)
+                            # calculate spectral radius
+                            cond_num = np.max(np.abs(r.cond_nums[refine]))  # eig_vals[0]:eigenvalues with no grid refinement
+                            nelem = r.nelems[refine]
+                            nelem_list.append(nelem)
+                            cond_num_list.append(cond_num)
 
-                    plt.yscale('symlog')
-                    plt.xlabel(r'$n_e$')
-                    plt.ylabel(r'condition number')
-                    plt.gca().axes.xaxis.set_major_locator(MaxNLocator(integer=True))
-                    plt.legend(ncol=3, labelspacing=0.1, columnspacing=0.7, handletextpad=0.1, loc=4)
+                        # plot spectral radius
+                        # plt.rcParams.update({'font.size': 22, 'axes.labelsize': 22, 'legend.fontsize': 22,
+                        #                      'xtick.labelsize': 22, 'ytick.labelsize': 22})
 
-                    nelem_list = []
-                    cond_num_list = []
+                        # label_cond = 'SBP- {} $\;$ {} $\;$ $p={}$'.format(pltsetup.sbp_fam[sbp_families[f]], pltsetup.sat_name[sats[s]], p+1)
+                        label_cond = '{}'.format(pltsetup.sat_name[sats[s]])
+                        plt.plot(nelem_list, cond_num_list, pltsetup.markers[s], linewidth=pltsetup.lw,
+                                 markersize=pltsetup.ms, label=label_cond)
 
-                if save_fig:
-                    plt.savefig(path + 'cond_nums\\' + 'cond_{}_p{}.pdf'.format(sbp_families[f], p+1),
-                                format='pdf', bbox_inches='tight')
-                plt.show()
-                plt.close()
+                        axes = plt.gca()
+                        axes.set_ylim([1e3, 1e9])
+
+                        plt.yscale('symlog')
+                        plt.xlabel(r'$n_e$')
+                        plt.ylabel(r'condition number')
+                        plt.gca().axes.xaxis.set_major_locator(MaxNLocator(integer=True))
+                        plt.legend(ncol=3, labelspacing=0.1, columnspacing=0.7, handletextpad=0.1)
+
+                        nelem_list = []
+                        cond_num_list = []
+
+                    if save_fig:
+                        plt.savefig(path + 'cond_nums\\' + 'cond_{}_p{}.pdf'.format(sbp_families[f], p+1),
+                                    format='pdf', bbox_inches='tight')
+                    plt.show()
+                    plt.close()
+
+        cond_num_list = []
+        if cond_by_p:
+            for refine in range(nrefine):
+                for f in range(len(sbp_families)):
+                    for s in range(len(sats)):
+                        if run_results is None:
+                            # SAT and SBP family list in saved data
+                            fmod = sbp_famliy_saved_list.index(sbp_families[f])
+                            smod = sat_saved_list.index(sats[s])
+                        else:
+                            fmod = f
+                            smod = s
+                        for p in range(pmin, pmax):
+                            # get results from saved tree file
+                            res = all_results.children[0].children[fmod].children[smod].children[p].children[0].results
+                            r = SimpleNamespace(**res)
+
+                            # calculate spectral radius
+                            cond_num = np.max(np.abs(r.cond_nums[refine]))  # eig_vals[0]:eigenvalues with no grid refinement
+                            cond_num_list.append(cond_num)
+
+                        label_cond = '{}'.format(pltsetup.sat_name[sats[s]])
+                        plt.plot(range(pmin+1,pmax+1), cond_num_list, pltsetup.markers[s], linewidth=pltsetup.lw,
+                                 markersize=pltsetup.ms, label=label_cond)
+
+                        axes = plt.gca()
+                        axes.set_ylim([5e1, 1e9])
+
+                        plt.yscale('symlog')
+                        plt.xlabel(r'$p$')
+                        plt.ylabel(r'condition number')
+                        plt.gca().axes.xaxis.set_major_locator(MaxNLocator(integer=True))
+                        plt.legend(ncol=3, labelspacing=0.1, columnspacing=0.7, handletextpad=0.1)
+
+                        cond_num_list = []
+
+                    if save_fig:
+                        plt.savefig(path + 'cond_nums\\' + 'cond_{}_refine{}.pdf'.format(sbp_families[f], refine+1),
+                                    format='pdf', bbox_inches='tight')
+                    plt.show()
+                    plt.close()
 
 
     # Tabulate number of nonzero elements
@@ -787,7 +865,9 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
                 with open(path + 'results_poisson2D_eigvals.pickle', 'rb') as infile3:
                     all_results = pickle.load(infile3)
             else:
-                with open(path + 'results_poisson2D.pickle', 'rb') as infile3:
+                # with open(path + 'results_poisson2D.pickle', 'rb') as infile3:
+                #     all_results = pickle.load(infile3)
+                with open(path + 'results_poisson2D_diage.pickle', 'rb') as infile3:
                     all_results = pickle.load(infile3)
         else:
             all_results = run_results
@@ -851,7 +931,7 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
                         r = SimpleNamespace(**res)
 
                         # get nnz of BR1 as a reference
-                        resref = all_results.children[0].children[fmod].children[1].children[p].children[0].results
+                        resref = all_results.children[0].children[fmod].children[0].children[p].children[0].results
                         rref = SimpleNamespace(**resref)
 
                         # get theoretical estimate of the nnz
@@ -874,6 +954,8 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
             # print(df.to_latex(), '\n')
 
     if plot_sparsity:
+        with open(path + 'old2\\results_poisson2D.pickle', 'rb') as infile4:
+            all_results = pickle.load(infile4)
         nrefine = len((all_results.children[0].children[0].children[0].children[0].children[0].results)['hs'])
         nelem_list = []
         nnz_elem_list = []
@@ -905,8 +987,8 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
                         nnz_est_list.append(nnz_est)
 
                     # plot
-                    plt.rcParams.update({'font.size': 22, 'axes.labelsize': 28, 'legend.fontsize': 22,
-                                         'xtick.labelsize': 24, 'ytick.labelsize': 24})
+                    plt.rcParams.update({'font.size': 22+8, 'axes.labelsize': 28+8, 'legend.fontsize': 22+8,
+                                         'xtick.labelsize': 24+8, 'ytick.labelsize': 24+8})
 
                     label_nnz = 'SBP-{} num.'.format(pltsetup.sbp_fam[sbp_families[f]])
                     label_nnz_est = 'SBP-{} est.'.format(pltsetup.sbp_fam[sbp_families[f]])
@@ -923,6 +1005,9 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
                     plt.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
                     plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
 
+                    axes = plt.gca()
+                    axes.set_ylim([0, 1e7])
+
                     nelem_list = []
                     nnz_elem_list = []
                     nnz_est_list = []
@@ -932,6 +1017,7 @@ def analyze_results_2d(sbp_families=None, sats=None, ps=None, plot_by_family=Fal
                 plt.legend([handles[idx] for idx in order], [labels[idx] for idx in order],
                            ncol=1, labelspacing=0.3, columnspacing=1, handletextpad=0.1)
                 if save_fig:
+                    #path2 = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\Report\\SIAM_CSE21\\figures\\'
                     plt.savefig(path + 'sparsity\\' + 'nnz_{}_p{}.pdf'.format(sats[s], p+1), format='pdf', bbox_inches='tight')
                 plt.show()
                 plt.close()
@@ -958,7 +1044,7 @@ def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=
                        plot_by_sat=False, plot_spectrum=False, plot_spectral_radius=False, plot_sparsity=False,
                        run_results=None, save_fig=False, plot_adj_by_family=False):
 
-    path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\visual\\poisson1d_results\\'
+    path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\visual\\poisson1d_results\\test\\'
     if run_results is None:
         # solve and obtain results or open saved from file
         with open(path+'results_poisson1D.pickle', 'rb') as infile:
@@ -1224,10 +1310,22 @@ def analyze_results_1d(sbp_families=None, sats=None, ps=None, stencil=None, imp=
     #     children[0].children[0].children[0].children[0].results
     # res_BO = all_results.children[0].children[0].children[0].children[0]. \
     #     children[1].children[0].children[0].children[0].results
-    # err_uh = res_BR2['uh']-res_BO['uh']
-    # x_uh = res_BR2['x'].reshape((-1, 1), order='F')
-    # plt.plot(x_uh, err_uh)
-    # plt.show()
+    # rfns = len(res_BR2['uhs'])
+    # for rfn in range(1, rfns):
+    #     nel= np.asarray(res_BR2['xs'][rfn]).shape[1]
+    #     nnod = np.asarray(res_BR2['xs'][rfn]).shape[0] #int(len(res_BR2['uhs'][rfn])/nel)
+    #     expon_lst = [3, 3, 5, 7]
+    #     err_uh = np.abs(res_BR2['uhs'][rfn]-res_BO['uhs'][rfn])
+    #     # err_uh_exact = np.abs(res_BO['uhs'][rfn] - res_BO['u_exacts'][rfn])
+    #     x_uh = res_BR2['xs'][rfn].reshape((-1, 1), order='F')
+    #     plt.semilogy(x_uh,err_uh)
+    #     # plt.yscale('symlog')
+    #     # plt.yscale('symlog', linthreshy=10**(-expon_lst[rfn-1]))
+    #     plt.xlabel(r'$x$')
+    #     plt.ylabel(r'$|BR2(u_h) - BO(u_h)|$')
+    #     plt.title(r'Difference between BR2 and BO solutions, nelem={}, nodes per elem = {}'.format(nel, nnod), fontsize=20)
+    #     plt.savefig(path + '..\\test\\soln_conv_rates\\soln_diff_{}.pdf'.format(nel), format='pdf', bbox_inches='tight')
+    #     plt.show()
 
     ########################################
 
@@ -1351,7 +1449,7 @@ def plot_setup(sbp_families, sats, dim=2, stencil=None):
         if 'diage' in sbp_families:
             sbp_fam['diage'] = 'E'
 
-        markers = ['--Db', ':Xk', '-.or', '-.<g', ':xm', ':dc', '--s']
+        markers = ['--Db', ':Xk', '-.or', '-.<g', ':xm', ':dc', '--s', ':Py']
         markers1 = ['--*b', '--xk', '--or', '--<g', '--Xm', '--dc', '--s']
         markers2 = ['-*b', '-xk', '-or', '-<g', '-Xm', '-dc', '-s']
         markers3 = [':*b', ':xk', ':or', ':<g', ':Xm', ':dc', ':s']
@@ -1418,15 +1516,20 @@ def plot_setup(sbp_families, sats, dim=2, stencil=None):
         sat_name['IP']  = "SIPG "
     if 'NIPG' in sats:
         sat_name['NIPG'] ="NIPG "
+    if 'BR1*' in sats:
+        sat_name['BR1*'] =" BR1* "
+    if 'LDG*' in sats:
+        sat_name['LDG*'] =" LDG* "
 
     # set plot parameters
-    params = {'axes.labelsize': 28,
-              'legend.fontsize': 24,
-              'xtick.labelsize': 24,
-              'ytick.labelsize': 24,
+    a=8
+    params = {'axes.labelsize': 28 + a,
+              'legend.fontsize': 24 + a,
+              'xtick.labelsize': 24 + a,
+              'ytick.labelsize': 24 + a,
               'text.usetex': False,         # True works only if results are read from pickle saved file
               'font.family': 'serif',
-              'figure.figsize': [12,8]} #[12,6],[6,8]
+              'figure.figsize': [15,9]} #[12,6],[6,8],[12,10], [11,6]
     plt.rcParams.update(params)
     lw = 4  # lineweight
     ms = 15  # markersize
@@ -1503,11 +1606,14 @@ def nnz_estimate(sbp_family, sat, p, nelems, dim=2):
 # ================================================  2D-plots  ======================================================== #
 # give parameters for 2D solver and analyzer
 # fam = ['gamma', 'omega', 'diage']
-# sat = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG']
-# p = [1,2,3,4]
-fam = ['omega']
-sat = ['BR2', 'CNG']
-p = [4]
+# sat = ['BR1', 'BR2', 'LDG', 'CDG', 'BO', 'CNG', 'BR1*', 'LDG*']
+sat = ['LDG*']
+p = [1, 2, 3, 4]
+fam = ['diage']
+# fam = ['gamma', 'omega']
+# sat = (['LDG', 'BR1', 'CDG', 'BR2', 'LDG*', 'BR1*'])[::-1]
+# sat = (['LDG', 'BR1', 'CDG', 'BR2'])[::-1]
+# p = [2]
 p_map = 2
 
 # ------ plots --------
@@ -1518,7 +1624,8 @@ plt_adj_fam = True
 plt_adj_sat = False
 plt_eig = False
 plt_rho = False
-plt_cond = False
+plt_cond_by_nnz = False
+plt_cond_by_p = False
 plt_sparsity = False
 showMesh = False
 plt_soln = False
@@ -1537,26 +1644,27 @@ calc_eigs = False
 calc_cond_num = False
 curve_mesh = True
 
-# soln = None
-# soln = save_results(h=3, nrefine=3, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=save_runs,
-#                     calc_cond=calc_cond_num, calc_eigvals=calc_eigs, showMesh=showMesh, p_map=p_map, curve_mesh=curve_mesh,
-#                     plot_fig=plt_soln, modify_saved=modify_saved)
-# analyze_results_2d(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat,  plot_by_sat_all=plt_sat_all,
-#                    plot_spectrum=plt_eig, plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity,
-#                    plot_adj_by_sat=plt_adj_sat, plot_adj_by_family=plt_adj_fam, tabulate_cond_num=tab_cond,
-#                    tabulate_density = tab_density, tabulate_nnz = tab_nnz, run_results=soln, save_fig=save_figure)
+soln = None
+soln = save_results(h=3, nrefine=4, sats=sat, sbp_families=fam, ps=p, solve_adjoint=adj, save_results=save_runs,
+                    calc_cond=calc_cond_num, calc_eigvals=calc_eigs, showMesh=showMesh, p_map=p_map, curve_mesh=curve_mesh,
+                    plot_fig=plt_soln, modify_saved=modify_saved)
+analyze_results_2d(sats=sat, sbp_families=fam, ps=p, plot_by_family=plt_fam, plot_by_sat=plt_sat,  plot_by_sat_all=plt_sat_all,
+                   plot_spectrum=plt_eig, plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity,
+                   plot_adj_by_sat=plt_adj_sat, plot_adj_by_family=plt_adj_fam, tabulate_cond_num=tab_cond,
+                   cond_by_nnz=plt_cond_by_nnz, cond_by_p=plt_cond_by_p,
+                   tabulate_density=tab_density, tabulate_nnz= tab_nnz, run_results=soln, save_fig=save_figure)
 # ==================================================================================================================== #
 
 # ===============================================   1D-plots  ======================================================== #
 # give parameters for 1D solver and analyzer
-opers = ['CSBP_Mattsson2013']
+opers = ['LG']
 # opers = ['CSBP', 'CSBP_Mattsson2004', 'CSBP_Mattsson2013', 'LGL', 'LG', 'HGTL']
 # sat = ['BR2', 'LDG', 'BO', 'CNG']
 # sat = ['BR2','LDG', 'BO', 'CNG']
-sat = ['BR2', 'CNG']
+sat = ['BR2', 'BO']
 p = [4]
 # p = [1, 2, 3, 4]
-sten = ['narrow']
+sten = ['wide']
 # sten = ['wide', 'narrow']
 degree = ['p1', 'p2 ', 'p3', 'p4']
 # app = ['wide', 'narrow']
@@ -1575,10 +1683,10 @@ plt_sparsity = False
 calc_eigs = False
 save_figure = False
 
-soln = None
-soln = save_results(nrefine=7, sbp_families=opers, sats=sat, ps=p, solve_adjoint=adj, save_results=True,
-                 calc_cond=False, calc_eigvals=False, dim=1, stencil= sten, imp=imp_type, prob=prob_type)
-analyze_results_1d(sats=sat, sbp_families=opers, ps=p, stencil=sten, imp=imp_type, prob=prob_type, plot_by_family=plt_fam,
-                   plot_by_sat=plt_sat, plot_spectrum=plt_eig, plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity,
-                   run_results=soln, save_fig=save_figure, plot_adj_by_family=plt_adj_fam)
+# soln = None
+# soln = save_results(nrefine=5, sbp_families=opers, sats=sat, ps=p, solve_adjoint=adj, save_results=True,
+#                  calc_cond=False, calc_eigvals=False, dim=1, stencil= sten, imp=imp_type, prob=prob_type)
+# analyze_results_1d(sats=sat, sbp_families=opers, ps=p, stencil=sten, imp=imp_type, prob=prob_type, plot_by_family=plt_fam,
+#                    plot_by_sat=plt_sat, plot_spectrum=plt_eig, plot_spectral_radius=plt_rho, plot_sparsity=plt_sparsity,
+#                    run_results=soln, save_fig=save_figure, plot_adj_by_family=plt_adj_fam)
 # ==================================================================================================================== #

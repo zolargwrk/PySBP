@@ -280,7 +280,7 @@ class Assembler:
                 'etov': etov, 'r': r, 's': s, 'etoe': etoe, 'etof': etof, 'vx': vx, 'vy': vy}
 
     @staticmethod
-    def assembler_sbp_2d(p, mesh, btype, sbp_family="gamma", p_map=2, curve_mesh='True'):
+    def assembler_sbp_2d(p, mesh, btype, sbp_family="gamma", p_map=2, curve_mesh='True', domain_type='notperiodic'):
 
         # define and set important variables
         nfp = p + 1                         # number of points on each facet
@@ -324,6 +324,15 @@ class Assembler:
         Lx = mesh['Lx']  # bR - bL
         Ly = mesh['Ly']  # bT - bB
 
+        #-------------------------------------
+        # get normals on uncurved elements (for LDG and CDG implementations)
+        geo_data = MeshTools2D.geometric_factors_2d(x, y, Dr, Ds)
+        geo = SimpleNamespace(**geo_data)
+        norm_uncurved = MeshTools2D.normals_sbp_2d(geo.rx, geo.ry, geo.sx, geo.sy, geo.jac, R1, R2, R3)
+        nx_uncurved = norm_uncurved['nx']
+        ny_uncurved = norm_uncurved['ny']
+        # -------------------------------------
+
         # curve the mesh and get geometric factors
         if curve_mesh:
             curvedxy_data = MeshTools2D.curve_mesh2d(r, s, x, y, vx, vy, etov, p_map=p_map, Lx=Lx, Ly=Ly)
@@ -341,8 +350,8 @@ class Assembler:
             sy = xr / jac
         else:
             # get volume geometric factors
-            geo_data = MeshTools2D.geometric_factors_2d(x, y, Dr, Ds)
-            geo = SimpleNamespace(**geo_data)
+            # geo_data = MeshTools2D.geometric_factors_2d(x, y, Dr, Ds)
+            # geo = SimpleNamespace(**geo_data)
             jac = geo.xr * geo.ys - geo.xs * geo.yr
             xr = geo.xr
             yr = geo.yr
@@ -402,12 +411,21 @@ class Assembler:
         bgrpD = bgrp_type['bgrpD']
         bgrpN = bgrp_type['bgrpN']
 
+        # reset element to element and element to facet mapping for periodic domain
+        if domain_type.lower() == 'periodic':
+            etoe_periodic, etof_periodic = MeshTools2D.periodic_mesh_map_2d(etoe, etof, bgrp, xf, yf)
+        else:
+            etoe_periodic = etoe
+            etof_periodic = etof
+
         return {'nfp': nfp, 'ns': ns, 'nface': nface, 'nelem': nelem, 'Dr': Dr, 'Ds': Ds, 'H': H, 'B1': B1, 'B2': B2,
                 'B3': B3, 'R1': R1, 'R2': R2, 'R3': R3, 'Er': Er, 'Es': Es, 'rx': rx, 'ry': ry,
                 'sx': sx, 'sy': sy, 'xr': xr, 'xs': xs, 'yr': yr, 'ys': ys, 'jac': jac, 'nx': nx, 'ny': ny,
                 'surf_jac': surf_jac, 'bgrp': bgrp, 'x': x, 'y': y, 'etov': etov, 'r': r, 's': s, 'etoe': etoe,
                 'etof': etof, 'vx': vx, 'vy': vy, 'bgrpD': bgrpD, 'bgrpN': bgrpN, 'xf': xf, 'yf': yf, 'Lx': Lx,
-                'Ly': Ly, 'nnodes': nnodes, 'etoe2': etoe2, 'etof2': etof2, 'etof_nbr': etof_nbr, 'fscale': None}
+                'Ly': Ly, 'nnodes': nnodes, 'etoe2': etoe2, 'etof2': etof2, 'etof_nbr': etof_nbr, 'fscale': None,
+                'etoe_periodic': etoe_periodic, 'etof_periodic': etof_periodic, 'nx_uncurved': nx_uncurved,
+                'ny_uncurved': ny_uncurved}
 
 
 # mesh = MeshGenerator2D.rectangle_mesh(0.25)

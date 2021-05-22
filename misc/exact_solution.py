@@ -20,12 +20,13 @@ def poisson_exact_input_2d():
     u = sympy.sin(m*sympy.pi*x) * sympy.sin(n*sympy.pi*y)
     # u = -(x**3+y**3)
     psi = (x+y)
-    # psi = -(x**2 + y**2)
+    # psi = x*(x-1) * y*(y-1)
 
     Lxx = 4 * x + 1
     Lxy = y
     Lyx = y
     Lyy = y ** 2 + 1
+
     # Lxx = 1
     # Lxy = 0
     # Lyx = 0
@@ -51,6 +52,7 @@ def poisson_get_exact_2d():
     uGradDB = -input.Lyx * (input.u).diff(x) - input.Lyy * (input.u).diff(y)
     uGradDL = -input.Lxx * (input.u).diff(x) - input.Lxy * (input.u).diff(y)
     uGradDT = input.Lyx * (input.u).diff(x) + input.Lyy * (input.u).diff(y)
+    uGradDR = input.Lxx * (input.u).diff(x) + input.Lxy * (input.u).diff(y)
 
     psiNL = -input.Lxx * (input.psi).diff(x) - input.Lxy * (input.psi).diff(y)
     psiNR = input.Lxx * (input.psi).diff(x) + input.Lxy * (input.psi).diff(y)
@@ -63,13 +65,36 @@ def poisson_get_exact_2d():
 
     a = 1/8
     b = 1/8
-    func_exactVol = sympy.integrate(g*input.u, (x, 0, 20), (y, -5, 5)).subs(m, a).subs(n, b)
-    func_exactDB = sympy.integrate(-input.psi.subs(y, -5) * uGradDB.subs(y, -5), (x, 0, 20)).subs(m, a).subs(n, b)
-    func_exactDL = sympy.integrate(-input.psi.subs(x, 0) * uGradDL.subs(x, 0), (y, -5, 5)).subs(m, a).subs(n, b)
-    func_exactDT = sympy.integrate(-input.psi.subs(y, 5) * uGradDT.subs(y, 5), (x, 0, 20)).subs(m, a).subs(n, b)
-    func_exactNR = sympy.integrate(psiNR.subs(x, 20) * input.u.subs(x, 20), (y, -5, 5)).subs(m, a).subs(n, b)
 
-    func_exact = (func_exactVol + func_exactDB + func_exactDL + func_exactDT + func_exactNR).evalf()
+    # the rectangular domain
+    bL = 0
+    bR = 20
+    bB = -5
+    bT = 5
+
+    # bL = 0
+    # bR = 1
+    # bB = 0
+    # bT = 1
+
+    # domain type
+    domain_type = ['d', 'n', 'd', 'd']
+    # domain_type = ['d', 'd', 'd', 'd']
+
+    func_exactVol = sympy.integrate(g*input.u, (x, bL, bR), (y, bB, bT)).subs(m, a).subs(n, b)
+    func_exactDB = sympy.integrate(-input.psi.subs(y, bB) * uGradDB.subs(y, bB), (x, bL, bR)).subs(m, a).subs(n, b)
+    func_exactDL = sympy.integrate(-input.psi.subs(x, bL) * uGradDL.subs(x, bL), (y, bB, bT)).subs(m, a).subs(n, b)
+    func_exactDT = sympy.integrate(-input.psi.subs(y, bT) * uGradDT.subs(y, bT), (x, bL, bR)).subs(m, a).subs(n, b)
+    func_exactDR = sympy.integrate(-input.psi.subs(x, bR) * uGradDR.subs(x, bR), (y, bB, bT)).subs(m, a).subs(n, b)
+    func_exactNR = sympy.integrate(psiNR.subs(x, bR) * input.u.subs(x, bR), (y, bB, bT)).subs(m, a).subs(n, b)
+    func_exactNL = sympy.integrate(psiNL.subs(x, bL) * input.u.subs(x, bL), (y, bB, bT)).subs(m, a).subs(n, b)
+    func_exactNB = sympy.integrate(psiNB.subs(y, bB) * input.u.subs(y, bB), (x, bL, bR)).subs(m, a).subs(n, b)
+    func_exactNT = sympy.integrate(psiNT.subs(y, bT) * input.u.subs(y, bT), (x, bL, bR)).subs(m, a).subs(n, b)
+
+    if domain_type == ['d', 'n', 'd', 'd']:
+        func_exact = (func_exactVol + func_exactDB + func_exactDL + func_exactDT + func_exactNR).evalf()
+    elif domain_type == ['d', 'd', 'd', 'd']:
+        func_exact = (func_exactVol + func_exactDB + func_exactDL + func_exactDT + func_exactDR).evalf()
 
     #--------
     # func2_exactVol = sympy.integrate(f * input.psi, (x, 0, 20), (y, -5, 5)).subs(m, a).subs(n, b)

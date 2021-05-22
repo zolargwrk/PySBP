@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from scipy import sparse
 from solver.problem_statements import advection1D_problem_input, poisson1D_problem_input, advec_diff1D_problem_input
 from matplotlib import pyplot as plt
+from matplotlib.ticker import Locator
 
 
 def advection_1d_steady(p, xl, xr, nelem, quad_type, nrefine=1, refine_type=None, advection1D_problem_input=None,
@@ -315,6 +316,7 @@ def poisson_1d(p, xl, xr, nelem, quad_type, flux_type='BR1', nrefine=1, refine_t
 def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_type_vis='BR1', nrefine=1, refine_type=None,
                   boundary_type=None, sat_type='sbp_sat', advec_diff1D_problem_input=None, a=0, b=1, n=1, app=1):
 
+    path = 'C:\\Users\\Zelalem\\OneDrive - University of Toronto\\UTIAS\\Research\\PySBP\\visual\\poisson1d_results\\test\\'
     # get problem statement (degree)
     prob_input = advec_diff1D_problem_input()
     ps = SimpleNamespace(**prob_input)
@@ -333,6 +335,10 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
     ns = list()
     nelems = list()
     cond_num = list()
+    errs_J = list()
+    uhs = list()
+    xs = list()
+    u_exacts = list()
 
     # refine mesh uniformly
     for i in range(0, nrefine):
@@ -385,11 +391,66 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
             # solve the linear system and get exact solution
             u = (spsolve(A, f)).reshape((n*nelem, 1))
             u_exact = ps.exact_solution(x).reshape((n*nelem, 1), order='F')
+            uhs.append(u)
+            xs.append(x)
+            u_exacts.append(u_exact)
 
             # plot solution
             if choose_outs.plot_sol == 1:
-                # plot_figure_1d(x, u, u_exact)
-                plot_figure_1d(x, u-u_exact)
+                g = (ps.adjoint_source_term(x)).reshape((n * nelem, 1), order='F')
+                psi_exact = (ps.exact_adjoint(x, xl, xr)).reshape((n * nelem, 1), order='F')
+                if i in range(1, nrefine): #nrefine-1:
+                    plt.plot(x.flatten(order='F'), u.flatten(order='F'), '-or', label=r'$u_h$')
+                    plt.plot(x.flatten(order='F'), u_exact.flatten(order='F'), '-k',  label=r'$u_{exact}$')
+                    plt.xlabel(r'$x$')
+                    plt.ylabel(r'primal solution')
+                    plt.legend()
+                    params = {'text.usetex': True}
+                    plt.rcParams.update(params)
+                    plt.title(r'{}-SAT, elems={}, nodes per elem ={}'.format(flux_type_vis, int(nelem), int(len(x.flatten(order='F'))/nelem)))
+                    # plt.savefig(path + '\\soln_conv_rates\\solution_{}_nelem{}.pdf'.format(flux_type_vis, nelem), format='pdf', bbox_inches='tight')
+                    # plt.show()
+                    plt.close()
+
+                    plt.plot(x.flatten(order='F'), (g * u_exact).flatten(order='F'), '-b', label=r'$\cal{GU}$')
+                    plt.plot(x.flatten(order='F'), (f * psi_exact).flatten(order='F'), '-r', label=r'$\psi \cal{F}$')
+                    plt.xlabel(r'$x$')
+                    plt.ylabel(r'$y$')
+                    plt.legend()
+                    params = {'text.usetex': True}
+                    plt.rcParams.update(params)
+                    plt.title(r'Analytical integrands in the functionals')
+                    # plt.savefig(path + '\\func_conv_rates\\integrands_exact.pdf', format='pdf', bbox_inches='tight')
+                    # plt.show()
+                    plt.close()
+
+                    expon_lst = [3, 3, 5, 7]
+                    plt.plot(x.flatten(order='F'), ((u_exact - u)).flatten(order='F'), '-r')
+                    plt.yscale('symlog')
+                    plt.yscale('symlog', linthreshy=1e-14) #10**(-expon_lst[i-1]))
+                    plt.xlabel(r'$x$')
+                    plt.ylabel(r'$u_{exact} - u_h$')
+                    params = {'text.usetex': True}
+                    plt.rcParams.update(params)
+                    err_sum = np.sum(u_exact - u)
+                    plt.title(r'{}-SAT, elems={}, nodes per elem ={}, err sum={:.2e}'.format(flux_type_vis, int(nelem), int(len(x.flatten(order='F')) / nelem), err_sum))
+                    # plt.savefig(path + '\\soln_conv_rates\\solution_error_{}_nelem{}.pdf'.format(flux_type_vis,nelem), format='pdf', bbox_inches='tight')
+                    # plt.show()
+                    plt.close()
+
+                    expon_lst = [3, 4, 5, 7]
+                    plt.plot(x.flatten(order='F'), ((g*u_exact - g*u)).flatten(order='F'), '-r')
+                    plt.yscale('symlog')
+                    plt.yscale('symlog', linthreshy= 1e-14) #10 ** (-expon_lst[i - 1]))
+                    plt.xlabel(r'$x$')
+                    plt.ylabel(r'$ {\cal{GU}}- g \circ u_h$')
+                    params = {'text.usetex': True}
+                    plt.rcParams.update(params)
+                    err_sum = np.sum(g*u_exact - g*u)
+                    plt.title(r'{}-SAT, elems={}, nodes per elem ={}, err sum={:.2e}'.format(flux_type_vis, int(nelem), int(len(x.flatten(order='F')) / nelem), err_sum))
+                    # plt.savefig(path + '\\func_conv_rates\\integrand_error_{}_nelem{}.pdf'.format(flux_type_vis, nelem), format='pdf', bbox_inches='tight')
+                    plt.show()
+                    plt.close()
 
             # error calculation for solution
             err = calc_err(u, u_exact, rx, h_mat)
@@ -455,12 +516,44 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
             psi = (spsolve(A, g)).reshape((n * nelem, 1))
             psi_exact = (ps.exact_adjoint(x, xl, xr)).reshape((n * nelem, 1), order='F')
 
-            # plot solution
-            # if choose_outs.plot_sol == 1:
-                # plot_figure_1d(x, psi, psi_exact)
-                # plot_figure_1d(x, psi-psi_exact)
+            if choose_outs.plot_sol == 1:
+                if i in range(1, nrefine):# or i==2: #nrefine-1:
+                    plt.plot(x.flatten(order='F'), psi.flatten(order='F'), '-or', label=r'$\psi_h$')
+                    plt.plot(x.flatten(order='F'), psi_exact.flatten(order='F'), '-k', label=r'$\psi_{exact}$')
+                    plt.xlabel(r'$x$')
+                    plt.ylabel(r'adjoint solution')
+                    plt.legend()
+                    params = {'text.usetex': True}
+                    plt.rcParams.update(params)
+                    plt.title(r'{}-SAT, elems={}, nodes per elem ={}'.format(flux_type_vis, int(nelem), int(len(x.flatten(order='F')) / nelem)))
+                    # plt.savefig(path + '\\adj_conv_rates\\adjoint_{}_nelem{}.pdf'.format(flux_type_vis,nelem), format='pdf', bbox_inches='tight')
+                    # plt.show()
+                    plt.close()
 
-            # error calculation
+                    plt.plot(x.flatten(order='F'), ((psi_exact - psi)).flatten(order='F'), '-r')
+                    plt.yscale('symlog')
+                    plt.yscale('symlog', linthreshy=1e-14)
+                    plt.xlabel(r'$x$')
+                    plt.ylabel(r'$\psi_{exact} - \psi_h$')
+                    params = {'text.usetex': True}
+                    plt.rcParams.update(params)
+                    plt.title(r'{}-SAT, elems={}, nodes per elem ={}'.format(flux_type_vis, int(nelem), int(len(x.flatten(order='F')) / nelem)))
+                    # plt.savefig(path + '\\adj_conv_rates\\adjoint_error_{}_nelem{}.pdf'.format(flux_type_vis,nelem), format='pdf', bbox_inches='tight')
+                    # plt.show()
+                    plt.close()
+
+                    plt.plot(x.flatten(order='F'), (g * u).flatten(order='F'), '-b', label=r'$g \circ u_h$')
+                    plt.plot(x.flatten(order='F'), (f * psi).flatten(order='F'), '-r', label=r'$\psi_h \circ f$')
+                    plt.xlabel(r'$x$')
+                    plt.ylabel(r'$y$')
+                    plt.legend()
+                    params = {'text.usetex': True}
+                    plt.rcParams.update(params)
+                    plt.title(r'Numerical integrands in the functionals - {} SAT, nelem={}'.format(flux_type_vis, nelem))
+                    # plt.savefig(path + '\\func_conv_rates\\integrands_numerical_{}_{}.pdf'.format(flux_type_vis, nelem), format='pdf', bbox_inches='tight')
+                    # plt.show()
+                    plt.close()
+
             err_adj = calc_err(psi, psi_exact, rx, h_mat)
             errs_adj.append(err_adj)
 
@@ -468,16 +561,28 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
             f = (ps.source_term(x)).reshape((n * nelem, 1), order='F')
             J_psi = ps.calc_functional(psi, f, h_mat, rx, rdata.db_mat, rdata.tr, rdata.tl, TD_left, TD_right, adj=True)
             err_J = np.abs(J_psi - J)
+            errs_J.append(err_J)
 
             # M = sparse.block_diag([m_mat]*nelem)
             # kk = (u_exact.T @ (M - M.T) @ psi_exact)[0][0]
             # print("{:.2e}".format(kk))
 
-        # print("error_soln =", "{:.2e}".format(err), "; error_func =", "{:.2e}".format(err_func), "; nelem =", nelem,
+        print("error_soln =", "{:.2e}".format(err), "; error_func =", "{:.2e}".format(err_func), "; nelem =", nelem,
+              "; ", quad_type, "; ", flux_type_vis, "; p =", p, "; nnz_elem =", nnz_elem)
+
+        # print("err_J =", "{:.2e}".format(err_J),"error_soln =", "{:.2e}".format(err), "error_adj =", "{:.2e}".format(err_adj), "; error_func =", "{:.2e}".format(err_func), "; nelem =", nelem,
         #       "; ", quad_type, "; ", flux_type_vis, "; p =", p, "; nnz_elem =", nnz_elem)
 
-        print("err_J =", "{:.2e}".format(err_J),"error_soln =", "{:.2e}".format(err), "error_adj =", "{:.2e}".format(err_adj), "; error_func =", "{:.2e}".format(err_func), "; nelem =", nelem,
-              "; ", quad_type, "; ", flux_type_vis, "; p =", p, "; nnz_elem =", nnz_elem)
+    if choose_outs.plot_sol == 1:
+        plt.loglog(1/np.asarray(dofs), np.asarray(errs_J), ':ob')
+        plt.xlabel(r'$1/dof$')
+        plt.ylabel(r'$|I_h(u_h) - I_h(\psi_h)|$')
+        params = {'text.usetex': True}
+        plt.rcParams.update(params)
+        plt.title(r'{}-SAT, numerical verification of $I_h(u_h) = I_h(\psi_h)$'.format(flux_type_vis))
+        # plt.savefig(path + '\\func_conv_rates\\func_verify_{}.pdf'.format(flux_type_vis), format='pdf', bbox_inches='tight')
+        # plt.show()
+        plt.close()
 
     # plot error
     if choose_outs.prob == 'primal' or choose_outs.prob == 'all':
@@ -517,9 +622,10 @@ def advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_ty
             # plot_conv_fig(hs, errs_adj, conv_start, conv_end)
 
     return {'p': p, 'b': b, 'a': a, 'nelems': nelems, 'ns': ns, 'quad_type': quad_type, 'flux_type_vis': flux_type_vis,
-            'errs': errs, 'errs_func': errs_func, 'cond_num': cond_num, 'uh': u, 'x':x, 'errs_adj': errs_adj}
+            'errs': errs, 'errs_func': errs_func, 'cond_num': cond_num, 'uh': u, 'x':x, 'errs_adj': errs_adj,
+            'uhs':uhs, 'xs': xs, 'u_exacts': u_exacts}
 
 #advec_diff_1d(p, xl, xr, nelem, quad_type, flux_type_inv = 'upwind', flux_type_vis='BR1', nrefine=1, refine_type=None,
-#                  boundary_type=None, sat_type='sbp_sat', advec_diff1D_problem_input=None, a=0, b=1, n=1, app=1):
+#                  boundary_type=None, sat_inviscid='sbp_sat', advec_diff1D_problem_input=None, a=0, b=1, n=1, app=1):
 #CSBP_Mattsson2004
-# u = advec_diff_1d(2, 0, 1, 2, 'HGT', 'upwind', 'BR2', 6, 'ntrad', 'nPeriodic', 'sbp_sat', advec_diff1D_problem_input, n=28, app=2)
+# u = advec_diff_1d(3, 0, 1, 2, 'LGL', 'upwind', 'BR2', 6, 'ntrad', 'nPeriodic', 'sbp_sat', advec_diff1D_problem_input, n=28, app=2)

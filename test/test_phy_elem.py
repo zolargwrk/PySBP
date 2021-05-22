@@ -66,10 +66,9 @@ class TestPhy2D_SBP(unittest.TestCase):
 
         # get operators on the physical elements
         sat_data = SATs.diffusion_sbp_sat_2d_steady(nnodes, nelem, rdata.LxxB, rdata.LxyB, rdata.LyxB, rdata.LyyB,
-                                                    phy.DxB, phy.DyB, phy.HB, phy.BB, phy.RB, phy.rxB, phy.ryB,
-                                                    phy.sxB, phy.syB, phy.jacB, phy.surf_jacB, phy.nxB, phy.nyB,
-                                                    adata.etoe, adata.etof, adata.bgrp, adata.bgrpD, adata.bgrpN,
-                                                    flux_type, rdata.uD, rdata.uN)
+                                                    phy.DxB, phy.DyB, phy.HB, phy.BB, phy.nxB, phy.RB, phy.nyB,
+                                                    adata.etoe, adata.etof, adata.bgrpD, adata.bgrpN, flux_type,
+                                                    rdata.uD, rdata.uN)
         sdata = SimpleNamespace(**sat_data)
 
         # initialize error terms
@@ -209,6 +208,9 @@ class TestPhy2D_SBP(unittest.TestCase):
         errsDx = []
         errsDy = []
         errsD2 = []
+        errsRx = []
+        errsRy = []
+        hs=[]
         nrefine = 3
         for refine in range(0, nrefine):
             mesh = MeshTools2D.hrefine_uniform_2d(ass_data, bL, bR, bB, bT)
@@ -244,6 +246,25 @@ class TestPhy2D_SBP(unittest.TestCase):
             errsDx.append(np.max(np.abs(errDxcurv)))
             errsDy.append(np.max(np.abs(errDycurv)))
             errsD2.append(np.max(np.abs(errD2curv)))
+
+            # error in the extrapolation matrix
+            errR1x = adata2.R1 @ x - adata2.xf[0:int(len(adata2.xf)/3), :]
+            errR2x = adata2.R2 @ x - adata2.xf[int(len(adata2.xf)/3):int(2*len(adata2.xf)/3), :]
+            errR3x = adata2.R3 @ x - adata2.xf[int(2*len(adata2.xf)/3):int(3*len(adata2.xf)/3), :]
+            errsRx.append(np.max([np.max(np.abs(errR1x)), np.max(np.abs(errR2x)), np.max(np.abs(errR3x))]))
+
+            errR1y = adata2.R1 @ y - adata2.yf[0:int(len(adata2.xf) / 3), :]
+            errR2y = adata2.R2 @ y - adata2.yf[int(len(adata2.xf) / 3):int(2 * len(adata2.xf) / 3), :]
+            errR3y = adata2.R3 @ y - adata2.yf[int(2 * len(adata2.xf) / 3):int(3 * len(adata2.xf) / 3), :]
+            errsRy.append(np.max([np.max(np.abs(errR1y)), np.max(np.abs(errR2y)), np.max(np.abs(errR3y))]))
+
+            # get nominal element size
+            h = 20 / np.sqrt(nelem)
+            hs.append(h)
+
+        # error in R convergence
+        Rconvx = np.abs(np.polyfit(np.log10(hs), np.log10(errsRx), 1)[0])
+        Rconvy = np.abs(np.polyfit(np.log10(hs), np.log10(errsRy), 1)[0])
 
         # calculate the trancation error and obtain the order. we devide by ln2 because we are reducing the length
         # of the edges of the triangle by 1/2? and (h1/h2)^p = err1/err2 --> (h1/(h1/2))^p = 2^p = (err1/err2)

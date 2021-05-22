@@ -281,11 +281,11 @@ class MeshTools2D:
         matchR = np.vstack([sorted[indx + 1, :], sorted[indx, :]])
 
         etoe_temp = (etoe.reshape((etoe.shape[0]*etoe.shape[1], 1), order='F'))
-        etoe_temp[matchL[:, 1].T] = np.asarray(matchR[:, 2]).reshape(len(matchR[:, 2]), 1)
+        etoe_temp[(matchL[:, 1].T).astype(int)] = np.asarray(matchR[:, 2]).reshape(len(matchR[:, 2]), 1)
         etoe = etoe_temp.reshape((nelem, 3), order='F')
 
         etof_temp = (etof.reshape((etof.shape[0]*etof.shape[1], 1), order='F'))
-        etof_temp[matchL[:, 1].T] = np.asarray(matchR[:, 3]).reshape(len(matchR[:, 3]), 1)
+        etof_temp[(matchL[:, 1].T).astype(int)] = np.asarray(matchR[:, 3]).reshape(len(matchR[:, 3]), 1)
         etof = etof_temp.reshape((nelem, 3), order='F')
 
         return {'etoe': etoe, 'etof': etof}
@@ -439,7 +439,7 @@ class MeshTools2D:
                 # global numbering to nodes on the facet (relative to mapM which number the nodes from 0 to nfp*nface*nelem -1)
                 mapP[elem, face, idM] = idP + face2*nfp + elem2*nface*nfp
 
-        if boundary_type == 'Periodic':
+        if boundary_type.lower() == 'periodic':
             vmapP[0] = vmapM[-1]
             vmapP[-1] = vmapM[0]
             mapP[0] = mapM[-1]
@@ -874,7 +874,7 @@ class MeshTools2D:
 
     @staticmethod
     def set_bndry_sbp_2D(xf, yf, bgrpD, bgrpN, bL, bR, bB, bT, uDL_fun=None, uNL_fun=None, uDR_fun=None, uNR_fun=None,
-                         uDB_fun=None, uNB_fun=None, uDT_fun=None, uNT_fun=None):
+                         uDB_fun=None, uNB_fun=None, uDT_fun=None, uNT_fun=None, t=None):
         """Calculates boundary conditions at boundary facet nodes. This is for rectangular domain, it needs to be
         changed for other types of domains where both x and y axis might be required to impose the boundary
         conditions"""
@@ -898,32 +898,94 @@ class MeshTools2D:
             face = bgrpD[i, 1]
             # left boundary
             if np.abs(xf[fid[face][1], elem] - bL) <= tol:
-                uD[fid[face], elem] = uDL_fun(xf[fid[face], elem], yf[fid[face], elem])
+                if t is None:
+                    uD[fid[face], elem] = uDL_fun(xf[fid[face], elem], yf[fid[face], elem])
+                else:
+                    uD[fid[face], elem] = uDL_fun(xf[fid[face], elem], yf[fid[face], elem], t)
             # right boundary
             if np.abs(xf[fid[face][1], elem] - bR) <= tol:
-                uD[fid[face], elem] = uDR_fun(xf[fid[face], elem], yf[fid[face], elem])
+                if t is None:
+                    uD[fid[face], elem] = uDR_fun(xf[fid[face], elem], yf[fid[face], elem])
+                else:
+                    uD[fid[face], elem] = uDR_fun(xf[fid[face], elem], yf[fid[face], elem], t)
             # bottom boundary
             if np.abs(yf[fid[face][1], elem] - bB) <= tol:
-                uD[fid[face], elem] = uDB_fun(xf[fid[face], elem], yf[fid[face], elem])
+                if t is None:
+                    uD[fid[face], elem] = uDB_fun(xf[fid[face], elem], yf[fid[face], elem])
+                else:
+                    uD[fid[face], elem] = uDB_fun(xf[fid[face], elem], yf[fid[face], elem], t)
             # top boundary
             if np.abs(yf[fid[face][1], elem] - bT) <= tol:
-                uD[fid[face], elem] = uDT_fun(xf[fid[face], elem], yf[fid[face], elem])
+                if t is None:
+                    uD[fid[face], elem] = uDT_fun(xf[fid[face], elem], yf[fid[face], elem])
+                else:
+                    uD[fid[face], elem] = uDT_fun(xf[fid[face], elem], yf[fid[face], elem], t)
 
         for i in range(0, len(bgrpN)):
             elem = bgrpN[i, 0]
             face = bgrpN[i, 1]
             # left boundary
             if np.abs(xf[fid[face][1], elem] - bL) <= tol:
-                uN[fid[face], elem] = uNL_fun(xf[fid[face], elem], yf[fid[face], elem])
+                if t is None:
+                    uN[fid[face], elem] = uNL_fun(xf[fid[face], elem], yf[fid[face], elem])
+                else:
+                    uN[fid[face], elem] = uNL_fun(xf[fid[face], elem], yf[fid[face], elem], t)
             # right boundary
             if np.abs(xf[fid[face][1], elem] - bR) <= tol:
-                uN[fid[face], elem] = uNR_fun(xf[fid[face], elem], yf[fid[face], elem])
+                if t is None:
+                    uN[fid[face], elem] = uNR_fun(xf[fid[face], elem], yf[fid[face], elem])
+                else:
+                    uN[fid[face], elem] = uNR_fun(xf[fid[face], elem], yf[fid[face], elem], t)
             # bottom boundary
             if np.abs(yf[fid[face][1], elem] - bB) <= tol:
-                uN[fid[face], elem] = uNB_fun(xf[fid[face], elem], yf[fid[face], elem])
+                if t is None:
+                    uN[fid[face], elem] = uNB_fun(xf[fid[face], elem], yf[fid[face], elem])
+                else:
+                    uN[fid[face], elem] = uNR_fun(xf[fid[face], elem], yf[fid[face], elem], t)
             # top boundary
             if np.abs(yf[fid[face][1], elem] - bT) <= tol:
-                uN[fid[face], elem] = uNT_fun(xf[fid[face], elem], yf[fid[face], elem])
+                if t is None:
+                    uN[fid[face], elem] = uNT_fun(xf[fid[face], elem], yf[fid[face], elem])
+                else:
+                    uN[fid[face], elem] = uNT_fun(xf[fid[face], elem], yf[fid[face], elem], t)
+
+        return uD, uN
+
+    @staticmethod
+    def set_bndry_advec_sbp_2D(xf, yf, bgrpD, bL, bR, bB, bT, t=None, uDL_fun=None, uDR_fun=None, uDB_fun=None, uDT_fun=None):
+        """Calculates boundary conditions at boundary facet nodes. This is for rectangular domain, it needs to be
+        changed for other types of domains where both x and y axis might be required to impose the boundary
+        conditions"""
+        dim = 2
+        nface = dim + 1
+        nfp = int(xf.shape[0] / nface)
+        nelem = xf.shape[1]
+        tol = 1e-10
+
+        # boundary facet nodes by facet number
+        fid1 = np.arange(0, nfp)
+        fid2 = np.arange(nfp, 2 * nfp)
+        fid3 = np.arange(2 * nfp, 3 * nfp)
+        fid = [fid1, fid2, fid3]
+
+        uD = np.zeros((nfp * nface, nelem))
+        uN = np.zeros((nfp * nface, nelem))
+
+        for i in range(0, len(bgrpD)):
+            elem = bgrpD[i, 0]
+            face = bgrpD[i, 1]
+            # left boundary
+            if np.abs(xf[fid[face][1], elem] - bL) <= tol:
+                uD[fid[face], elem] = uDL_fun(xf[fid[face], elem], yf[fid[face], elem], t)
+            # right boundary
+            if np.abs(xf[fid[face][1], elem] - bR) <= tol:
+                uD[fid[face], elem] = uDR_fun(xf[fid[face], elem], yf[fid[face], elem], t)
+            # bottom boundary
+            if np.abs(yf[fid[face][1], elem] - bB) <= tol:
+                uD[fid[face], elem] = uDB_fun(xf[fid[face], elem], yf[fid[face], elem], t)
+            # top boundary
+            if np.abs(yf[fid[face][1], elem] - bT) <= tol:
+                uD[fid[face], elem] = uDT_fun(xf[fid[face], elem], yf[fid[face], elem], t)
 
         return uD, uN
 
@@ -1034,10 +1096,17 @@ class MeshTools2D:
         if func is not None:
             x_lag2, y_lag2 = func(x_lag, y_lag)
         else:
-            # use function from Jesse Chan et.al. 2019 paper: Efficient Entropy Stable Gauss Collocation Methods
-            alpha = 1/16
-            x_lag2 = x_lag + Lx*alpha*np.cos(np.pi/Lx * (x_lag - Lx/2)) * np.cos(3*np.pi/Ly * y_lag)
-            y_lag2 = y_lag + Ly*alpha*np.sin(4*np.pi/Lx * (x_lag2 - Lx/2)) * np.cos(np.pi/Ly * y_lag)
+            if Lx == 20.0 and Ly == 10.0:
+                # use function from Jesse Chan et.al. 2019 paper: Efficient Entropy Stable Gauss Collocation Methods
+                alpha = 1/16
+                x_lag2 = x_lag + Lx*alpha*np.cos(np.pi/Lx * (x_lag - Lx/2)) * np.cos(3*np.pi/Ly * y_lag)
+                y_lag2 = y_lag + Ly*alpha*np.sin(4*np.pi/Lx * (x_lag2 - Lx/2)) * np.cos(np.pi/Ly * y_lag)
+
+            if Lx == 1.0 and Ly == 1.0:
+                # use function from Del Rey Fernandez et.al. 2018: SATs for Multidimensional SBP operators
+                alpha = 1/5
+                x_lag2 = x_lag + alpha * np.sin(np.pi * x_lag) * np.sin(np.pi * y_lag)
+                y_lag2 = y_lag - alpha * np.exp(y_lag) * np.sin(np.pi * x_lag) * np.sin(np.pi * y_lag)
 
         # get degree p Vandermonde matrix evaluated at the Lagrange finite element nodes and the SBP nodes
         nelem = x.shape[1]
@@ -1078,9 +1147,14 @@ class MeshTools2D:
             if func is not None:
                 xcurved, ycurved = func(x, y)
             elif curve_mesh:
-                # map to curved element with out polynomial interpolation (used for plotting purposes only)
-                xcurved = x + Lx * alpha * np.cos(np.pi / Lx * (x - Lx / 2)) * np.cos(3 * np.pi / Ly * y)
-                ycurved = y + Ly * alpha * np.sin(4 * np.pi / Lx * (xcurved - Lx / 2)) * np.cos(np.pi / Ly * y)
+                if Lx == 20.0 and Ly == 10.0:
+                    # map to curved element with out polynomial interpolation (used for plotting purposes only)
+                    xcurved = x + Lx * alpha * np.cos(np.pi / Lx * (x - Lx / 2)) * np.cos(3 * np.pi / Ly * y)
+                    ycurved = y + Ly * alpha * np.sin(4 * np.pi / Lx * (xcurved - Lx / 2)) * np.cos(np.pi / Ly * y)
+                if Lx == 1.0 and Ly == 1.0:
+                    xcurved = x + alpha * np.sin(np.pi * x) * np.sin(np.pi * y)
+                    ycurved = y - alpha * np.exp(y) * np.sin(np.pi * x) * np.sin(np.pi * y)
+
             else:
                 xcurved = x
                 ycurved = y
@@ -1220,6 +1294,51 @@ class MeshTools2D:
         return {'rxB': rxB, 'ryB': ryB, 'sxB': sxB, 'syB': syB, 'jacB': jacB, 'surf_jacB': surf_jacB, 'nxB': nxB,
                 'nyB': nyB, 'RB': RB, 'HB': HB, 'BB': BB, 'DxB': DxB, 'DyB': DyB, 'ExB': ExB, 'EyB': EyB, 'QxB': QxB,
                 'QyB': QyB, 'SxB': SxB, 'SyB': SyB, 'D2B': D2B}
+
+    @staticmethod
+    def periodic_mesh_map_2d(etoe, etof, bgrp, xf, yf):
+
+        # find width and height of domain (assuming rectangular domain only)
+        bL = np.min(xf)
+        bR = np.max(xf)
+        bB = np.min(yf)
+        bT = np.max(yf)
+        width = bR - bL
+        height = bT - bB
+
+        bgrp= np.concatenate(bgrp, axis=0)[:, 2:4]
+
+        nface = 3
+        nfp = int(xf.shape[0]/nface)
+
+        etoe_periodic = etoe.copy()
+        etof_periodic = etof.copy()
+
+        dist = lambda x,y: np.linalg.norm(x - y, np.inf)
+        tol = 1e-10
+
+        for i in bgrp[:, 0]:
+            for j in bgrp[:, 0]:
+                for m in np.unique(bgrp[:, 1]):
+                    for n in np.unique(bgrp[:, 1]):
+                        if ((dist(yf[m*nfp: (m+1)*nfp, i], yf[n*nfp: (n+1)*nfp, j]) <= tol or
+                                    dist(yf[m*nfp: (m+1)*nfp, i], np.flip(yf[n*nfp: (n+1)*nfp, j]))<= tol) and
+                            (np.abs(dist(xf[m*nfp: (m+1)*nfp, i], xf[n*nfp: (n+1)*nfp, j]) - width) <= tol or
+                                    np.abs(dist(xf[m*nfp: (m+1)*nfp, i], np.flip(xf[n*nfp: (n+1)*nfp, j])) - width)<= tol)):
+                            etoe_periodic[i][m] = j
+                            etoe_periodic[j][n] = i
+                            etof_periodic[i][m] = n
+                            etof_periodic[j][n] = m
+                        if ((dist(xf[m*nfp: (m+1)*nfp, i], xf[n*nfp: (n+1)*nfp, j]) <= tol or
+                                    dist(xf[m*nfp: (m+1)*nfp, i], np.flip(xf[n*nfp: (n+1)*nfp, j])) <= tol) and
+                            (np.abs(dist(yf[m*nfp: (m+1)*nfp, i], yf[n*nfp: (n+1)*nfp, j]) - height) <= tol or
+                                    np.abs(dist(yf[m*nfp: (m+1)*nfp, i], np.flip(yf[n*nfp: (n+1)*nfp, j])) - height)<= tol)):
+                            etoe_periodic[i][m] = j
+                            etoe_periodic[j][n] = i
+                            etof_periodic[i][m] = n
+                            etof_periodic[j][n] = m
+
+        return etoe_periodic, etof_periodic
 
 # mesh = MeshGenerator2D.rectangle_mesh(0.5)
 #

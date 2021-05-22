@@ -2,6 +2,7 @@ import numpy as np
 import quadpy
 from types import SimpleNamespace
 from src.ref_elem import Ref2D_DG
+from scipy import sparse
 
 
 class TimeMarcher:
@@ -63,7 +64,7 @@ class TimeMarcher:
                 # diffusion
                 # rhs = rhs_calculator(u, rdata.d_mat, rdata.h_mat, rdata.lift, rdata.tl, rdata.tr, rdata.nx, rdata.rx,
                 #                      rdata.fscale, rdata.vmapM, rdata.vmapP, rdata.mapI, rdata.mapO, rdata.vmapI,
-                #                      rdata.vmapO, flux_type, self.sat_type, boundary_type, rdata.db_mat, rdata.d2_mat,
+                #                      rdata.vmapO, flux_type, self.sat_inviscid, boundary_type, rdata.db_mat, rdata.d2_mat,
                 #                      b, self.app, uD_left, uD_right, uN_left, uN_right)
 
                 res = rk4a[j]*res + dt*rhs
@@ -116,6 +117,87 @@ class TimeMarcher:
 
         return u
 
+    @staticmethod
+    def low_storage_rk4_sbp_2d(u, t0, tf, rhs_calculator, phy_data, assembly_data, a=np.array([1,1]), LB=np.eye(2), cfl=1,
+                               eqn='advection', advection_sat_type='upwind', diffusion_sat_type='BR2',
+                               domain_type='notperiodic', uDL_fun=None, uDR_fun=None, uDB_fun=None, uDT_fun=None,
+                               uNL_fun=None, uNR_fun=None, uNB_fun=None, uNT_fun=None, bL=None, bR=None, bB=None, bT=None, nu=None):
+        """Low Storage Explicit RK4 method
+            Inputs: cfl - CFL number
+                    a - wave speed"""
+        adata = SimpleNamespace(**assembly_data)
+        phy = SimpleNamespace(**phy_data)
+        p = (phy.nxB[0][0]).shape[0]-1
+
+        nnodes = u.shape[0]
+        nelem = u.shape[1]
+
+        if domain_type.lower()=='periodic':
+            etoe = adata.etoe_periodic
+            etof = adata.etof_periodic
+        else:
+            etoe = adata.etoe
+            etof = adata.etof
+
+        # set time step
+        # calculate the smallest mesh size
+        hk = 2 * phy.jacB
+        hmin = np.min(hk[np.nonzero(hk)])
+
+        # calculate minimum distance on the reference element
+        dx_min = 2
+        for i in range(adata.r.shape[0]):
+            for j in range(adata.s.shape[1]):
+                dx = np.sqrt((adata.r[i] - adata.r[j])**2 + (adata.s[i] - adata.s[j])**2)
+                if (dx > 0 and dx < dx_min):
+                    dx_min = dx
+
+        dt = 1e-2
+        if eqn.lower() in ['advection', 'burgers_inviscid']:
+            dt = cfl * (dx_min * hmin)
+        elif eqn.lower() in ['diffusion', 'burgers_viscous']:
+            # dt = cfl * (dx_min * hmin**2)
+            dt = cfl/(2*p + 1) * hmin**2
+        # dt=1/100000
+        # low storage rk4 coefficients
+        rk4a, rk4b, rk4c = coeff_low_storage_rk4()
+
+        t = t0
+        res = np.zeros((nnodes, nelem))
+        rhs = np.zeros((nnodes, nelem))
+        A = None
+
+        # energy at initial condition
+        energy0 = u.reshape((-1, 1), order='F').T @ sparse.block_diag(phy.HB) @ u.reshape((-1, 1), order='F')
+
+        # time loop
+        while t < tf:
+            if t + dt > tf:
+                dt = tf - t
+
+            for j in range(0, 5):
+                time_loc = t + rk4c[j] * dt
+                if eqn.lower() == 'advection':
+                    rhs, A = rhs_calculator(u, time_loc, adata.xf, adata.yf, phy.DxB, phy.DyB, phy.HB, phy.BB, phy.RB, phy.nxB,
+                                         phy.nyB, etoe, etof, adata.bgrpD, a, advection_sat_type,
+                                         domain_type, uDL_fun, uDR_fun, uDB_fun, uDT_fun, bL, bR, bB, bT)
+
+                if eqn.lower() in ['burgers_inviscid', 'burgers_viscous']:
+                    rhs = rhs_calculator(u, time_loc, adata.xf, adata.yf, phy.DxB, phy.DyB, phy.HB, phy.BB, phy.RB, phy.nxB,
+                                         phy.nyB, phy.jacB, etoe, etof, adata.bgrpD, adata.bgrpN, LB,
+                                         advection_sat_type, diffusion_sat_type, domain_type, uDL_fun, uDR_fun, uDB_fun,
+                                         uDT_fun, uNL_fun, uNR_fun, uNB_fun, uNT_fun, bL, bR, bB, bT, nu)
+
+                res = rk4a[j] * res + dt * rhs
+                u = u + rk4b[j] * res
+            t += dt
+            print(t)
+            energy1 = u.reshape((-1, 1), order='F').T @ sparse.block_diag(phy.HB) @ u.reshape((-1, 1), order='F')
+            energy_change = energy1/energy0 - 1
+            print('energy_change =', energy_change[0][0])
+
+        return u, A
+
 
 def coeff_low_storage_rk4():
     rk4a = np.array([0.0, - 567301805773.0 / 1357537059087.0, - 2404267990393.0 / 2016746695238.0,
@@ -147,4 +229,3 @@ def set_dt_2D(p, r, s, x, y, cfl):
     dt = cfl*(2/3 * x_min * dtscale.min())
 
     return dt, dtscale
-

@@ -1,310 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="3b51e320-309c-498b-8200-ffc229192c7c" name="Default Changelist" comment="">
-<<<<<<< HEAD
+    <list default="true" id="be4ae5a2-786a-4b34-868b-237316d326c6" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/PySBP.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/PySBP.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/R_User_Library.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
-    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
-=======
+      <change beforePath="$PROJECT_DIR$/mesh/mesh_tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/mesh/mesh_tools.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/solver/advection_solver.py" beforeDir="false" afterPath="$PROJECT_DIR$/solver/advection_solver.py" afterDir="false" />
     </list>
->>>>>>> dg_sbp
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="FileEditorManager">
-    <splitter split-orientation="horizontal" split-proportion="0.51103264">
-      <split-first>
-        <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-          <file pinned="false" current-in-tab="true">
-            <entry file="file://$PROJECT_DIR$/solver/advection_solver.py">
-              <provider selected="true" editor-type-id="text-editor">
-<<<<<<< HEAD
-                <state relative-caret-position="234">
-                  <caret line="36" selection-start-line="36" selection-end-line="36" />
-=======
-                <state relative-caret-position="217">
-                  <caret line="35" column="54" selection-start-line="35" selection-start-column="54" selection-end-line="35" selection-end-column="54" />
->>>>>>> dg_sbp
-                  <folding>
-                    <element signature="e#0#18#0" expanded="true" />
-                  </folding>
-                </state>
-              </provider>
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/src/rhs_calculator.py">
-              <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="301">
-<<<<<<< HEAD
-                  <caret line="43" selection-start-line="43" selection-end-line="43" />
-=======
-                  <caret line="42" selection-start-line="42" selection-end-line="42" />
->>>>>>> dg_sbp
-                </state>
-              </provider>
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/src/time_marcher.py">
-              <provider selected="true" editor-type-id="text-editor">
-<<<<<<< HEAD
-                <state relative-caret-position="-441">
-                  <caret line="35" selection-start-line="35" selection-end-line="35" />
-=======
-                <state relative-caret-position="-475">
-                  <caret line="33" selection-start-line="33" selection-end-line="33" />
->>>>>>> dg_sbp
-                </state>
-              </provider>
-            </entry>
-          </file>
-        </leaf>
-      </split-first>
-      <split-second>
-        <leaf>
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/mesh/mesh_generator.py">
-              <provider selected="true" editor-type-id="text-editor">
-<<<<<<< HEAD
-                <state relative-caret-position="-175">
-                  <caret line="46" selection-start-line="46" selection-end-line="46" />
-=======
-                <state relative-caret-position="97">
-                  <caret line="62" selection-start-line="62" selection-end-line="62" />
->>>>>>> dg_sbp
-                  <folding>
-                    <element signature="e#0#13#0" expanded="true" />
-                  </folding>
-                </state>
-              </provider>
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/mesh/mesh_tools.py">
-              <provider selected="true" editor-type-id="text-editor">
-<<<<<<< HEAD
-                <state relative-caret-position="1802">
-                  <caret line="106" selection-start-line="106" selection-end-line="106" />
-=======
-                <state relative-caret-position="1887">
-                  <caret line="111" selection-start-line="111" selection-end-line="111" />
->>>>>>> dg_sbp
-                </state>
-              </provider>
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/src/csbp_type_operators.py">
-              <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="85">
-                  <caret line="5" lean-forward="true" selection-start-line="5" selection-end-line="5" />
-<<<<<<< HEAD
-=======
-                  <folding>
-                    <element signature="e#66#76#0" expanded="true" />
-                  </folding>
->>>>>>> dg_sbp
-                </state>
-              </provider>
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="true">
-            <entry file="file://$PROJECT_DIR$/src/ref_elem.py">
-              <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="214">
-                  <caret line="81" lean-forward="true" selection-start-line="81" selection-end-line="81" />
-                  <folding>
-                    <element signature="e#0#18#0" expanded="true" />
-                  </folding>
-                </state>
-              </provider>
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/src/assembler.py">
-              <provider selected="true" editor-type-id="text-editor">
-<<<<<<< HEAD
-                <state relative-caret-position="-646">
-                  <caret line="31" selection-start-line="31" selection-end-line="31" />
-=======
-                <state relative-caret-position="204">
-                  <caret line="81" selection-start-line="81" selection-end-line="81" />
-                  <folding>
-                    <element signature="e#0#18#0" expanded="true" />
-                  </folding>
->>>>>>> dg_sbp
-                </state>
-              </provider>
-            </entry>
-          </file>
-          <file pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/solver/plot_figure.py">
-              <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="255">
-                  <caret line="15" column="7" selection-start-line="15" selection-start-column="6" selection-end-line="15" selection-end-column="7" />
-                  <folding>
-                    <element signature="e#0#31#0" expanded="true" />
-                  </folding>
-                </state>
-              </provider>
-            </entry>
-          </file>
-        </leaf>
-      </split-second>
-    </splitter>
-  </component>
-<<<<<<< HEAD
-  <component name="FileTemplateManagerImpl">
-    <option name="RECENT_TEMPLATES">
-      <list>
-        <option value="Python Script" />
-      </list>
-    </option>
-  </component>
-  <component name="FindInProjectRecents">
-    <dirStrings>
-      <dir>C:\Users\Zelalem\OneDrive - University of Toronto\UTIAS\Research\HOPSolve</dir>
-    </dirStrings>
-  </component>
-=======
->>>>>>> dg_sbp
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="IdeDocumentHistory">
-    <option name="CHANGED_PATHS">
-      <list>
-<<<<<<< HEAD
-        <option value="$PROJECT_DIR$/misc/CSBP_Oper.py" />
-        <option value="$PROJECT_DIR$/src/mesh_generator.py" />
-        <option value="$PROJECT_DIR$/src/csbp_type_operators.py" />
-        <option value="$PROJECT_DIR$/misc/construct_matrices_sbp_1d.py" />
-        <option value="$PROJECT_DIR$/src/jacobian_mapping.py" />
-        <option value="$PROJECT_DIR$/mesh/__init__.py" />
-        <option value="$PROJECT_DIR$/src/cubature_rules.py" />
-        <option value="$PROJECT_DIR$/mesh/mesh_generator.py" />
-        <option value="$PROJECT_DIR$/ref/ref_1d.py" />
-        <option value="$PROJECT_DIR$/src/assembler" />
-        <option value="$PROJECT_DIR$/src/assemble_1d" />
-        <option value="$PROJECT_DIR$/src/ref_elem.py" />
-        <option value="$PROJECT_DIR$/mesh/mesh_tools.py" />
-        <option value="$PROJECT_DIR$/src/assembler.py" />
-        <option value="$PROJECT_DIR$/solver/plot_figure.py" />
-        <option value="$PROJECT_DIR$/src/time_marcher.py" />
-        <option value="$PROJECT_DIR$/src/rhs_calculator.py" />
-=======
-        <option value="$PROJECT_DIR$/mesh/mesh_tools.py" />
-        <option value="$PROJECT_DIR$/mesh/mesh_generator.py" />
-        <option value="$PROJECT_DIR$/src/assembler.py" />
-        <option value="$PROJECT_DIR$/src/time_marcher.py" />
-        <option value="$PROJECT_DIR$/src/rhs_calculator.py" />
-        <option value="$PROJECT_DIR$/src/csbp_type_operators.py" />
-        <option value="$PROJECT_DIR$/../../Phyton and Git/1D_CSBP/CSBPpEQ4.py" />
-        <option value="$PROJECT_DIR$/src/ref_elem.py" />
->>>>>>> dg_sbp
-        <option value="$PROJECT_DIR$/solver/advection_solver.py" />
-      </list>
-    </option>
-  </component>
-  <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="10" />
-    <option name="y" value="20" />
-    <option name="width" value="1346" />
-    <option name="height" value="698" />
-  </component>
-  <component name="ProjectLevelVcsManager">
-    <ConfirmationsSetting value="2" id="Add" />
-  </component>
-  <component name="ProjectView">
-    <navigator proportions="" version="1">
-      <foldersAlwaysOnTop value="true" />
-    </navigator>
-    <panes>
-      <pane id="Scope" />
-      <pane id="ProjectPane">
-        <subPane>
-          <expand>
-            <path>
-              <item name="HOPSolve" type="b2602c69:ProjectViewProjectNode" />
-              <item name="HOPSolve" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="HOPSolve" type="b2602c69:ProjectViewProjectNode" />
-              <item name="HOPSolve" type="462c0819:PsiDirectoryNode" />
-              <item name="mesh" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="HOPSolve" type="b2602c69:ProjectViewProjectNode" />
-              <item name="HOPSolve" type="462c0819:PsiDirectoryNode" />
-              <item name="misc" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="HOPSolve" type="b2602c69:ProjectViewProjectNode" />
-              <item name="HOPSolve" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-            </path>
-          </expand>
-          <select />
-        </subPane>
-      </pane>
-    </panes>
+  <component name="ProjectId" id="213rcdrm8eylKeJkqnW5zAEiTbj" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
-<<<<<<< HEAD
-    <property name="ASKED_SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
-    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../Phyton and Git/1D_CSBP" />
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
-  <component name="PyConsoleOptionsProvider">
-    <option name="myPythonConsoleState">
-      <console-settings module-name="HOPSolve" sdk-home="C:\Users\Zelalem\Anaconda3\python.exe">
-        <option name="mySdkHome" value="C:\Users\Zelalem\Anaconda3\python.exe" />
-        <option name="myModuleName" value="HOPSolve" />
-      </console-settings>
-    </option>
-  </component>
-  <component name="RecentsManager">
-    <key name="MoveFile.RECENT_KEYS">
-      <recent name="C:\Users\Zelalem\OneDrive - University of Toronto\UTIAS\Research\HOPSolve\src" />
-      <recent name="C:\Users\Zelalem\OneDrive - University of Toronto\UTIAS\Research\HOPSolve\mesh" />
-    </key>
-=======
-    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
->>>>>>> dg_sbp
-  </component>
-  <component name="RunDashboard">
-    <option name="ruleStates">
-      <list>
-        <RuleState>
-          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
-        </RuleState>
-        <RuleState>
-          <option name="name" value="StatusDashboardGroupingRule" />
-        </RuleState>
-      </list>
-    </option>
-  </component>
   <component name="RunManager" selected="Python.advection_solver">
-<<<<<<< HEAD
-    <configuration name="HOPSolve" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
-      <module name="HOPSolve" />
+    <configuration name="Python 3.10" type="PythonConfigurationType" factoryName="Python">
+      <module name="PySBP" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
-      <option name="SDK_HOME" value="C:\Users\Zelalem\Anaconda3\python.exe" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.." />
+      <option name="SDK_HOME" value="$USER_HOME$/work/bin/python3.10" />
+      <option name="WORKING_DIRECTORY" value="" />
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -313,46 +53,19 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration default="true" type="PythonConfigurationType" factoryName="Python">
-      <module name="HOPSolve" />
+    <configuration name="advection_solver" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="PySBP" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
-      <option name="SDK_HOME" value="C:\Users\Zelalem\Anaconda3\python.exe" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.." />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-=======
->>>>>>> dg_sbp
-    <configuration name="advection_solver" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <module name="HOPSolve" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-<<<<<<< HEAD
-      <option name="SDK_HOME" value="C:\Users\Zelalem\Anaconda3\python.exe" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.." />
-=======
       <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/solver" />
->>>>>>> dg_sbp
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/solver/advection_solver.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
@@ -362,614 +75,33 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-<<<<<<< HEAD
-    <configuration name="assemble_1d" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <module name="HOPSolve" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="C:\Users\Zelalem\Anaconda3\python.exe" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.." />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="C:\Users\Zelalem\OneDrive - University of Toronto\UTIAS\Research\HOPSolve\src\assemble_1d" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="assembler" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <module name="HOPSolve" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="C:\Users\Zelalem\Anaconda3\python.exe" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.." />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/assembler.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="mesh_tools" type="PythonConfigurationType" factoryName="Python" temporary="true">
-=======
-    <configuration name="csbp_type_operators" type="PythonConfigurationType" factoryName="Python" temporary="true">
->>>>>>> dg_sbp
-      <module name="HOPSolve" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-<<<<<<< HEAD
-      <option name="SDK_HOME" value="C:\Users\Zelalem\Anaconda3\python.exe" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.." />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/mesh/mesh_tools.py" />
-=======
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/csbp_type_operators.py" />
->>>>>>> dg_sbp
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-<<<<<<< HEAD
-    <configuration name="ref_1d" type="PythonConfigurationType" factoryName="Python" temporary="true">
-=======
-    <configuration name="rhs_calculator" type="PythonConfigurationType" factoryName="Python" temporary="true">
->>>>>>> dg_sbp
-      <module name="HOPSolve" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-<<<<<<< HEAD
-      <option name="SDK_HOME" value="C:\Users\Zelalem\Anaconda3\python.exe" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.." />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="C:\Users\Zelalem\OneDrive - University of Toronto\UTIAS\Research\HOPSolve\src\ref_elem.py" />
-=======
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/rhs_calculator.py" />
->>>>>>> dg_sbp
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <list>
-<<<<<<< HEAD
-      <item itemvalue="Python.HOPSolve" />
+      <item itemvalue="Python.Python 3.10" />
       <item itemvalue="Python.advection_solver" />
-      <item itemvalue="Python.assemble_1d" />
-      <item itemvalue="Python.assembler" />
-      <item itemvalue="Python.mesh_tools" />
-      <item itemvalue="Python.ref_1d" />
-=======
-      <item itemvalue="Python.advection_solver" />
-      <item itemvalue="Python.csbp_type_operators" />
-      <item itemvalue="Python.rhs_calculator" />
->>>>>>> dg_sbp
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.advection_solver" />
-<<<<<<< HEAD
-        <item itemvalue="Python.assembler" />
-        <item itemvalue="Python.assemble_1d" />
-        <item itemvalue="Python.mesh_tools" />
-        <item itemvalue="Python.ref_1d" />
-=======
-        <item itemvalue="Python.csbp_type_operators" />
-        <item itemvalue="Python.rhs_calculator" />
->>>>>>> dg_sbp
       </list>
     </recent_temporary>
   </component>
-  <component name="SvnConfiguration">
-    <configuration />
-  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
-<<<<<<< HEAD
     <task active="true" id="Default" summary="Default task">
-      <changelist id="887b37cf-b273-4ad6-b0bf-79d9aeda9a9c" name="Default Changelist" comment="" />
-      <created>1566746288487</created>
+      <changelist id="be4ae5a2-786a-4b34-868b-237316d326c6" name="Changes" comment="" />
+      <created>1637180698566</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1566746288487</updated>
+      <updated>1637180698566</updated>
+      <workItem from="1637180718335" duration="460000" />
     </task>
-    <task id="LOCAL-00001" summary="created cubature rules in 1D">
-      <created>1566749947109</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
-      <option name="project" value="LOCAL" />
-      <updated>1566749947109</updated>
-    </task>
-    <task id="LOCAL-00002" summary="Included miscellaneous files used to solve construct CSBP operators upto dergee 6">
-      <created>1566753057665</created>
-      <option name="number" value="00002" />
-      <option name="presentableId" value="LOCAL-00002" />
-      <option name="project" value="LOCAL" />
-      <updated>1566753057665</updated>
-    </task>
-    <task id="LOCAL-00003" summary="1d mesh generator with all required outputs">
-      <created>1567041166757</created>
-      <option name="number" value="00003" />
-      <option name="presentableId" value="LOCAL-00003" />
-      <option name="project" value="LOCAL" />
-      <updated>1567041166757</updated>
-    </task>
-    <task id="LOCAL-00004" summary="made minor changes">
-      <created>1567060022332</created>
-      <option name="number" value="00004" />
-      <option name="presentableId" value="LOCAL-00004" />
-      <option name="project" value="LOCAL" />
-      <updated>1567060022332</updated>
-    </task>
-    <task id="LOCAL-00005" summary="included assembler&#10;moved the method jacobian_mapping to mesh_tools.py&#10;fixed the buildmap_1d method">
-      <created>1567196843671</created>
-      <option name="number" value="00005" />
-      <option name="presentableId" value="LOCAL-00005" />
-      <option name="project" value="LOCAL" />
-      <updated>1567196843671</updated>
-    </task>
-    <task id="LOCAL-00006" summary="fixed issue advection solver. LGL now working.">
-      <created>1567232726533</created>
-      <option name="number" value="00006" />
-      <option name="presentableId" value="LOCAL-00006" />
-      <option name="project" value="LOCAL" />
-      <updated>1567232726533</updated>
-    </task>
-    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
-  <component name="TodoView">
-    <todo-panel id="selected-file">
-      <is-autoscroll-to-source value="true" />
-    </todo-panel>
-    <todo-panel id="all">
-      <are-packages-shown value="true" />
-      <is-autoscroll-to-source value="true" />
-    </todo-panel>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
   </component>
-=======
-    <task id="LOCAL-00001" summary="Included LG operator">
-      <created>1567273496979</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
-      <option name="project" value="LOCAL" />
-      <updated>1567273496979</updated>
-    </task>
-    <task id="LOCAL-00002" summary="Included CSBP type operators and LGL operator (diagonal mass matrix)">
-      <created>1567309058576</created>
-      <option name="number" value="00002" />
-      <option name="presentableId" value="LOCAL-00002" />
-      <option name="project" value="LOCAL" />
-      <updated>1567309058576</updated>
-    </task>
-    <option name="localTasksCounter" value="3" />
-    <servers />
-  </component>
->>>>>>> dg_sbp
-  <component name="ToolWindowManager">
-    <frame x="-8" y="-8" width="1382" height="754" extended-state="6" />
-    <layout>
-      <window_info id="Favorites" order="0" side_tool="true" />
-      <window_info content_ui="combo" id="Project" order="1" visible="true" weight="0.14101592" />
-      <window_info id="Structure" order="2" side_tool="true" weight="0.25" />
-<<<<<<< HEAD
-      <window_info anchor="bottom" id="Terminal" order="0" weight="0.32956383" />
-      <window_info anchor="bottom" id="Event Log" order="1" side_tool="true" />
-      <window_info anchor="bottom" id="Python Console" order="2" weight="0.6429725" />
-      <window_info anchor="bottom" id="Message" order="3" />
-      <window_info anchor="bottom" id="Find" order="4" weight="0.32956383" />
-      <window_info anchor="bottom" id="Version Control" order="5" weight="0.32956383" />
-      <window_info active="true" anchor="bottom" id="Run" order="6" visible="true" weight="0.32956383" />
-      <window_info anchor="bottom" id="Debug" order="7" weight="0.4184168" />
-=======
-      <window_info active="true" anchor="bottom" id="Terminal" order="0" visible="true" weight="0.32956383" />
-      <window_info anchor="bottom" id="Event Log" order="1" side_tool="true" />
-      <window_info anchor="bottom" id="Python Console" order="2" weight="0.31987077" />
-      <window_info anchor="bottom" id="Message" order="3" />
-      <window_info anchor="bottom" id="Find" order="4" weight="0.32956383" />
-      <window_info anchor="bottom" id="Version Control" order="5" weight="0.32956383" />
-      <window_info anchor="bottom" id="Run" order="6" weight="0.2907916" />
-      <window_info anchor="bottom" id="Debug" order="7" weight="0.450727" />
->>>>>>> dg_sbp
-      <window_info anchor="bottom" id="Cvs" order="8" weight="0.25" />
-      <window_info anchor="bottom" id="Inspection" order="9" weight="0.4" />
-      <window_info anchor="bottom" id="TODO" order="10" weight="0.32956383" />
-      <window_info anchor="right" id="R Graphics" order="0" />
-      <window_info anchor="right" id="R Packages" order="1" />
-      <window_info anchor="right" id="JuliaSciView" order="2" />
-      <window_info anchor="right" id="Commander" internal_type="SLIDING" order="3" type="SLIDING" weight="0.4" />
-      <window_info anchor="right" id="Ant Build" order="4" weight="0.25" />
-      <window_info anchor="right" content_ui="combo" id="Hierarchy" order="5" weight="0.25" />
-    </layout>
-  </component>
-  <component name="VcsManagerConfiguration">
-<<<<<<< HEAD
-    <MESSAGE value="created cubature rules in 1D" />
-    <MESSAGE value="Included miscellaneous files used to solve construct CSBP operators upto dergee 6" />
-    <MESSAGE value="1d mesh generator with all required outputs" />
-    <MESSAGE value="made minor changes" />
-    <MESSAGE value="included assembler&#10;moved the method jacobian_mapping to mesh_tools.py&#10;fixed the buildmap_1d method" />
-    <MESSAGE value="fixed issue advection solver. LGL now working." />
-    <option name="LAST_COMMIT_MESSAGE" value="fixed issue advection solver. LGL now working." />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/ref_elem.py</url>
-          <line>97</line>
-          <option name="timeStamp" value="29" />
-        </line-breakpoint>
-      </breakpoints>
-      <default-breakpoints>
-        <breakpoint type="python-exception">
-          <properties notifyOnTerminate="true" exception="BaseException">
-            <option name="notifyOnTerminate" value="true" />
-          </properties>
-        </breakpoint>
-      </default-breakpoints>
-    </breakpoint-manager>
-  </component>
-  <component name="debuggerHistoryManager">
-    <expressions id="evaluateExpression">
-      <expression>
-        <expression-string>np.asarray([elem1, face1], np.int).T</expression-string>
-        <language-id>Python</language-id>
-        <evaluation-mode>EXPRESSION</evaluation-mode>
-      </expression>
-      <expression>
-        <expression-string>np.asarray([elem1, face1], np.int)</expression-string>
-        <language-id>Python</language-id>
-        <evaluation-mode>EXPRESSION</evaluation-mode>
-      </expression>
-      <expression>
-        <expression-string>jacobi_polynomial([1, 2, 3, 4])</expression-string>
-        <language-id>Python</language-id>
-        <evaluation-mode>EXPRESSION</evaluation-mode>
-      </expression>
-      <expression>
-        <expression-string>jacobi_polynomial([1, 2])</expression-string>
-        <language-id>Python</language-id>
-        <evaluation-mode>EXPRESSION</evaluation-mode>
-      </expression>
-      <expression>
-        <expression-string>jacobi_polynomial(1)</expression-string>
-        <language-id>Python</language-id>
-        <evaluation-mode>EXPRESSION</evaluation-mode>
-      </expression>
-      <expression>
-        <expression-string>dict(x[3])</expression-string>
-        <language-id>Python</language-id>
-        <evaluation-mode>EXPRESSION</evaluation-mode>
-      </expression>
-      <expression>
-        <expression-string>dict(x)</expression-string>
-        <language-id>Python</language-id>
-        <evaluation-mode>EXPRESSION</evaluation-mode>
-      </expression>
-      <expression>
-        <expression-string>x.keys()</expression-string>
-        <language-id>Python</language-id>
-        <evaluation-mode>EXPRESSION</evaluation-mode>
-      </expression>
-      <expression>
-        <expression-string>x.bgrp</expression-string>
-        <language-id>Python</language-id>
-        <evaluation-mode>EXPRESSION</evaluation-mode>
-      </expression>
-    </expressions>
-  </component>
-  <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/src/CubatureRules.py" />
-    <entry file="file://$PROJECT_DIR$/misc/CSBP_Oper.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="187">
-          <caret line="11" column="19" lean-forward="true" selection-start-line="11" selection-start-column="19" selection-end-line="11" selection-end-column="19" />
-          <folding>
-            <element signature="e#132#150#0" expanded="true" />
-=======
-    <MESSAGE value="Included LG operator" />
-    <MESSAGE value="Included CSBP type operators and LGL operator (diagonal mass matrix)" />
-    <option name="LAST_COMMIT_MESSAGE" value="Included CSBP type operators and LGL operator (diagonal mass matrix)" />
-  </component>
-  <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/src/accuracy_test_1d.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-17">
-          <folding>
-            <element signature="e#0#18#0" expanded="true" />
->>>>>>> dg_sbp
-          </folding>
-        </state>
-      </provider>
-    </entry>
-<<<<<<< HEAD
-    <entry file="file://$PROJECT_DIR$/../Programs/matlabscripts_from_Others/Hiken/SummationByParts.jl-master/src/differentiate.jl">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-2278" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../Programs/matlabscripts_from_Others/Hiken/SummationByParts.jl-master/src/outerconstructors.jl">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-952" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../Programs/matlabscripts_from_Others/Hiken/SummationByParts.jl-master/src/cubature.jl">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-881">
-          <caret line="279" selection-start-line="279" selection-end-line="279" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/Anaconda3/Lib/subprocess.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="130">
-          <caret line="1177" selection-start-line="1177" selection-end-line="1177" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/AppData/Roaming/Python/Python37/site-packages/pygmsh/helpers.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="11">
-          <caret line="125" selection-start-line="125" selection-end-line="125" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/AppData/Roaming/Python/Python37/site-packages/meshio/_helpers.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="130">
-          <caret line="219" selection-start-line="219" selection-end-line="219" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../Programs/matlabscripts_from_Others/Hiken/SummationByParts.jl-master/src/mappingjacobian.jl">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="17">
-          <caret line="64" column="20" selection-start-line="64" selection-start-column="20" selection-end-line="64" selection-end-column="20" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/mesh/__init__.py" />
-    <entry file="file://$USER_HOME$/Anaconda3/Lib/site-packages/numpy/lib/twodim_base.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="115">
-          <caret line="200" selection-start-line="200" selection-end-line="200" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/Anaconda3/Lib/site-packages/numpy/core/fromnumeric.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="111">
-          <caret line="45" selection-start-line="45" selection-end-line="45" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/jacobian_mapping.py" />
-    <entry file="file://$USER_HOME$/Anaconda3/Lib/site-packages/IPython/core/interactiveshell.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="111">
-          <caret line="3295" selection-start-line="3295" selection-end-line="3295" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/assemble_1d" />
-    <entry file="file://$APPLICATION_HOME_DIR$/helpers/pydev/_pydev_imps/_pydev_execfile.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="111">
-          <caret line="10" selection-start-line="10" selection-end-line="10" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$APPLICATION_HOME_DIR$/helpers/pydev/pydevd.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="111">
-          <caret line="1146" selection-start-line="1146" selection-end-line="1146" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/misc/construct_matrices_sbp_1d.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="290">
-          <caret line="311" column="14" selection-start-line="311" selection-start-column="14" selection-end-line="311" selection-end-column="14" />
-          <folding>
-            <element signature="e#61#79#0" expanded="true" />
-=======
-    <entry file="file://$PROJECT_DIR$/mesh/mesh_generator.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="97">
-          <caret line="62" selection-start-line="62" selection-end-line="62" />
-          <folding>
-            <element signature="e#0#13#0" expanded="true" />
->>>>>>> dg_sbp
-          </folding>
-        </state>
-      </provider>
-    </entry>
-<<<<<<< HEAD
-    <entry file="file://$PROJECT_DIR$/src/csbp_type_operators.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="85">
-          <caret line="5" lean-forward="true" selection-start-line="5" selection-end-line="5" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/cubature_rules.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="221">
-          <caret line="21" column="34" lean-forward="true" selection-start-line="21" selection-start-column="34" selection-end-line="21" selection-end-column="34" />
-=======
-    <entry file="file://$PROJECT_DIR$/src/assembler.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="204">
-          <caret line="81" selection-start-line="81" selection-end-line="81" />
->>>>>>> dg_sbp
-          <folding>
-            <element signature="e#0#18#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-<<<<<<< HEAD
-    <entry file="file://$PROJECT_DIR$/src/accuracy_test_1d.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="278">
-          <caret line="21" column="23" selection-start-line="21" selection-start-column="23" selection-end-line="21" selection-end-column="23" />
-          <folding>
-            <element signature="e#0#18#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/mesh/mesh_tools.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1802">
-          <caret line="106" selection-start-line="106" selection-end-line="106" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/mesh/mesh_generator.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-175">
-          <caret line="46" selection-start-line="46" selection-end-line="46" />
-          <folding>
-            <element signature="e#0#13#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/assembler.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-646">
-          <caret line="31" selection-start-line="31" selection-end-line="31" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/solver/plot_figure.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="255">
-          <caret line="15" column="7" selection-start-line="15" selection-start-column="6" selection-end-line="15" selection-end-column="7" />
-          <folding>
-            <element signature="e#0#31#0" expanded="true" />
-=======
-    <entry file="file://$PROJECT_DIR$/src/time_marcher.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-475">
-          <caret line="33" selection-start-line="33" selection-end-line="33" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/rhs_calculator.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="301">
-          <caret line="42" selection-start-line="42" selection-end-line="42" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/mesh/mesh_tools.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1887">
-          <caret line="111" selection-start-line="111" selection-end-line="111" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../../Phyton and Git/1D_CSBP/CSBPpEQ4.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="306">
-          <caret line="56" column="32" selection-start-line="56" selection-start-column="32" selection-end-line="56" selection-end-column="32" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/csbp_type_operators.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="85">
-          <caret line="5" lean-forward="true" selection-start-line="5" selection-end-line="5" />
-          <folding>
-            <element signature="e#66#76#0" expanded="true" />
->>>>>>> dg_sbp
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/ref_elem.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="214">
-          <caret line="81" lean-forward="true" selection-start-line="81" selection-end-line="81" />
-          <folding>
-            <element signature="e#0#18#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-<<<<<<< HEAD
-    <entry file="file://$PROJECT_DIR$/src/time_marcher.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-441">
-          <caret line="35" selection-start-line="35" selection-end-line="35" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/rhs_calculator.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="301">
-          <caret line="43" selection-start-line="43" selection-end-line="43" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/solver/advection_solver.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="234">
-          <caret line="36" selection-start-line="36" selection-end-line="36" />
-=======
-    <entry file="file://$PROJECT_DIR$/solver/advection_solver.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="217">
-          <caret line="35" column="54" selection-start-line="35" selection-start-column="54" selection-end-line="35" selection-end-column="54" />
->>>>>>> dg_sbp
-          <folding>
-            <element signature="e#0#18#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/PySBP$advection_solver.coverage" NAME="advection_solver Coverage Results" MODIFIED="1637181007700" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/solver" />
+    <SUITE FILE_PATH="coverage/PySBP$Python_3_10.coverage" NAME="Python 3.10 Coverage Results" MODIFIED="1637180873127" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
   </component>
 </project>

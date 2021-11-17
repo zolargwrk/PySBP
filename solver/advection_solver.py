@@ -124,7 +124,7 @@ def advection_solver_2d(p, h, t0, tf, cfl=1, flux_type='Upwind', boundary_type=N
 # u = advection_solver_1d(2, 0, 1, 2, 0, 2, 1, 'CSBP', 'Upwind', 'nPeriodic', n=17)
 
 # advection_solver_2d(p, h, t0, tf, cfl=1, flux_type='Central', boundary_type=None)
-u = advection_solver_2d(2, 0.5, 0, 1, cfl=1, flux_type='Upwind', boundary_type='nPeriodic')
+# u = advection_solver_2d(2, 0.5, 0, 1, cfl=1, flux_type='Upwind', boundary_type='nPeriodic')
 
 
 def advection_solver_sbp_2d_steady(p, h, sbp_family='diagE'):
@@ -349,4 +349,4 @@ def advection_solver_sbp_2d_steady(p, h, sbp_family='diagE'):
     return u
 
 
-# u = advection_solver_sbp_2d_steady(2, 0.5, 'diagE')
+u = advection_solver_sbp_2d_steady(2, 0.5, 'diagE')

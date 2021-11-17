@@ -394,7 +394,7 @@ class MeshTools2D:
         return xf, yf
 
     @staticmethod
-    def buildmaps_2d(p, n, x, y, etov, etoe, etof, fmask, boundary_type=None):
+    def buildmaps_2d(p, n, x, y, etov, etoe, etof, fmask, boundary_type='nPeriodic'):
         # n = (p+1)*(p+2)/2 : number of degrees of freedom per element
         nelem = etov.shape[0]
         nfp = p+1   # number of nodes on each facet

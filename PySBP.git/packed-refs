@@ -1,6 +1,0 @@
-# pack-refs with: peeled fully-peeled sorted 
-eec340072fa378f675d7ae193f584aa7e60f87bc refs/heads/dg_2d
-4830e015a02007a3cb55caf54fb5a168c225a983 refs/heads/dg_sbp
-a65f6c960ae992c9840b2269f9eee75eb27293f0 refs/heads/diffusion_2d
-11d1283bac4bcc265fca921e7cdb5dc352e1ec86 refs/heads/master
-e193791b03fb77445b84e05a0e6ba4c13d42092c refs/heads/sbp_sat

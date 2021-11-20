@@ -9,6 +9,7 @@ from src.error_conv import calc_err, calc_conv
 from types import SimpleNamespace
 from scipy.sparse.linalg import spsolve
 from scipy import sparse
+from visual.mesh_plot import MeshPlot
 import matplotlib.pyplot as plt
 
 
@@ -127,70 +128,66 @@ def advection_solver_2d(p, h, t0, tf, cfl=1, flux_type='Upwind', boundary_type=N
 # u = advection_solver_2d(2, 0.5, 0, 1, cfl=1, flux_type='Upwind', boundary_type='nPeriodic')
 
 
-def advection_solver_sbp_2d_steady(p, h, nrefine=1, sbp_family='diagE', p_map=1, curve_mesh=False):
+def advection_solver_sbp_2d_steady(p, n_edge0, nrefine=1, sbp_family='diagE', upwind=1, p_map=1, curve_mesh=False, domain_type='periodic'):
     dim = 2
     nface = dim + 1
     nfp = p + 1
     ns = int((p + 1) * (p + 2) / 2)
     # the rectangular domain
     bL = 0
-    bR = 1
+    bR = 2
     bB = 0
-    bT = 1
+    bT = 2
+    if upwind:
+        upwind = 1
+        flux_type = "upwind"
+    else:
+        flux_type = "symmetric"
 
-    upwind = 0 # upwind = 1 gives upwind flux
     # generate mesh
-    mesh = MeshGenerator2D.rectangle_mesh(h, bL, bR, bB, bT)
-    domain_type = 'notperiodic'
-    if domain_type == 'notperiodic':
+    mesh = MeshGenerator2D.rectangle_mesh(n_edge0, bL, bR, bB, bT)
+    if domain_type.lower() != 'periodic':
         btype = ['d', 'd', 'd', 'd']
-    elif domain_type == 'periodic':
+    else:
         btype = ['-', '-', '-', '-']
 
-    ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family, p_map=p_map, curve_mesh=curve_mesh,
-                                          domain_type=domain_type)
-    adata = SimpleNamespace(**ass_data)
+    # set exact solution
+    u_exact = lambda x, y: np.sin(np.pi * x) * np.sin(np.pi * y)
+    f = lambda x, y: (np.pi * np.cos(np.pi * x) * np.sin(np.pi * y) + np.pi * np.cos(np.pi * y) * np.sin(np.pi * x))
+
+    # u_exact = lambda x, y: np.sin(np.pi/2 * x)
+    # f = lambda x, y: np.pi/2 * np.cos(np.pi/2 * x)
+
+    ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family, p_map=p_map, curve_mesh=curve_mesh, domain_type=domain_type)
     errs_soln = list()
-    errs_adj = list()
-    errs_func = list()
     hs = list()
     nelems = list()
     nnodes_list = list()
-    cond_nums = list()
-    nnz_elems = list()
-    eig_vals = list()
 
     # refine mesh
     for refine in range(0, nrefine):
         if refine == 0:
-            mesh = MeshGenerator2D.rectangle_mesh(h, bL, bR, bB, bT)
+            mesh = MeshGenerator2D.rectangle_mesh(n_edge0, bL, bR, bB, bT)
         else:
-            # mesh = MeshGenerator2D.rectangle_mesh(h, bL, bR, bB, bT, True)
+            # mesh = MeshGenerator2D.rectangle_mesh((refine+1)*n_edge0, bL, bR, bB, bT)
             mesh = MeshTools2D.hrefine_uniform_2d(ass_data, bL, bR, bB, bT)
 
         # update assembled data for 2D implementation
-        ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family, p_map, curve_mesh=curve_mesh,
-                                              domain_type=domain_type)
+        ass_data = Assembler.assembler_sbp_2d(p, mesh, btype, sbp_family, p_map, curve_mesh=curve_mesh, domain_type=domain_type)
         adata = SimpleNamespace(**ass_data)
 
         # extract variables from adata
         x = adata.x
         y = adata.y
-        r = adata.r
-        s = adata.s
         nelem = adata.nelem
         nnodes = adata.nnodes
-        vx = adata.vx
-        vy = adata.vy
         xf = adata.xf
         yf = adata.yf
-        Lx = adata.Lx  # length of domain in the x direction (not Lambda)
-        Ly = adata.Ly  # length of domain in the y direction (not Lambda)
-        etov = adata.etov
-        if domain_type == 'notperiodic':
+
+        if domain_type.lower() != 'periodic':
             etoe = adata.etoe
             etof = adata.etof
-        elif domain_type == 'periodic':
+        else:
             etoe = adata.etoe_periodic
             etof = adata.etof_periodic
         # initialize solution vectors
@@ -216,89 +213,110 @@ def advection_solver_sbp_2d_steady(p, h, nrefine=1, sbp_family='diagE', p_map=1,
         Ln = [Ln1B, Ln2B, Ln3B]
 
         # upwind SATs
-        T1kkB = 1/2*(phy.RB[0].transpose(0, 2, 1) @ phy.BB[0] @ (Ln[0] - upwind*np.abs(Ln[0])) @ phy.RB[0])
-        T2kkB = 1/2*(phy.RB[1].transpose(0, 2, 1) @ phy.BB[1] @ (Ln[1] - upwind*np.abs(Ln[1])) @ phy.RB[1])
-        T3kkB = 1/2*(phy.RB[2].transpose(0, 2, 1) @ phy.BB[2] @ (Ln[2] - upwind*np.abs(Ln[2])) @ phy.RB[2])
+        T1kkB = 1/2*(phy.BB[0] @ (Ln[0] - upwind*np.abs(Ln[0])))
+        T2kkB = 1/2*(phy.BB[1] @ (Ln[1] - upwind*np.abs(Ln[1])))
+        T3kkB = 1/2*(phy.BB[2] @ (Ln[2] - upwind*np.abs(Ln[2])))
         Tkk = [T1kkB, T2kkB, T3kkB]
 
         HB_inv = np.linalg.inv(phy.HB)
-        # construct the system matrix
-        A = (np.block(np.zeros((nelem * nnodes, nelem * nnodes)))).reshape((nelem, nelem, nnodes, nnodes))
 
-        A_diag = (phy.DxB + phy.DyB) - HB_inv @ (Tkk[0] + Tkk[1] + Tkk[2])
+        # construct the diagonal of the system matrix
+        A_diag = sparse.csr_matrix(sparse.block_diag(phy.DxB) + sparse.block_diag(phy.DyB))
 
-        # add the diagonals of the SAT matrix
-        for i in range(0, nelem):
-            A[i, i, :, :] += A_diag[i, :, :]
+        # construct the SAT matrix
+        sI = sparse.lil_matrix((nnodes * nelem, nnodes * nelem), dtype=np.float64)
 
-        # subtract interface SATs added at boundary facets
-        for i in range(0, len(adata.bgrpD)):
-            elem = adata.bgrpD[i, 0]
-            face = adata.bgrpD[i, 1]
-            A[elem, elem, :, :] += HB_inv[elem, :, :] @ Tkk[face][elem, :, :]
+        for elem in range(0, nelem):
+            for face in range(0, nface):
+                if not any(np.array_equal(np.array([elem, face]), rowD) for rowD in adata.bgrpD):
+                    sI[elem*nnodes:(elem+1)*nnodes, elem*nnodes:(elem+1)*nnodes] += HB_inv[elem] \
+                                                @ (phy.RB[face][elem].T @ Tkk[face][elem] @ phy.RB[face][elem])
+        for elem in range(0, nelem):
+            for face in range(0, nface):
+                elem_nbr = etoe[elem, face]
+                # SAT terms from neighboring elements -- i.e., the subtracted part in terms containing (uk - uv)
+                if elem_nbr != elem:
+                    nbr_face = etof[elem, face]
+                    sI[elem*nnodes:(elem+1)*nnodes, elem_nbr*nnodes:(elem_nbr+1)*nnodes] += HB_inv[elem]\
+                                            @ (-phy.RB[face][elem].T @ Tkk[face][elem] @ np.flipud(phy.RB[nbr_face][elem_nbr]))
 
-        # add the interface SATs at the neighboring elements
-        for i in range(0, nelem):
-            if i != etoe[i, 0]:
-                # facet 1
-                face = 0
-                elem = i
-                nbr_elem = etoe[i, 0]
-                nbr_face = etof[i, 0]
-                A[i, nbr_elem, :, :] += HB_inv[elem, :, :] @ (1/2 * phy.RB[face].transpose(0, 2, 1)[elem, :, :] @ phy.BB[face][elem, :, :]
-                                                           @ np.flipud(np.fliplr(Ln[nbr_face][nbr_elem, :, :] - upwind*np.abs(Ln[face][elem, :, :])))
-                                                           @ np.flipud(np.fliplr(phy.RB[nbr_face][nbr_elem, :, :])))
-            if i != etoe[i, 1]:
-                # facet 2
-                face = 1
-                elem = i
-                nbr_elem = etoe[i, 1]
-                nbr_face = etof[i, 1]
-                A[i, nbr_elem, :, :] += HB_inv[elem, :, :] @ (1/2 * phy.RB[face].transpose(0, 2, 1)[elem, :, :] @ phy.BB[face][elem, :, :]
-                                                           @ np.flipud(np.fliplr(Ln[nbr_face][nbr_elem, :, :] - upwind*np.abs(Ln[face][elem, :, :])))
-                                                           @ np.flipud(np.fliplr(phy.RB[nbr_face][nbr_elem, :, :])))
-            if i != etoe[i, 2]:
-                # facet 3
-                face = 2
-                elem = i
-                nbr_elem = etoe[i, 2]
-                nbr_face = etof[i, 2]
-                A[i, nbr_elem, :, :] += HB_inv[elem, :, :] @ (1/2 * phy.RB[face].transpose(0, 2, 1)[elem, :, :] @ phy.BB[face][elem, :, :]
-                                                           @ np.flipud(np.fliplr(Ln[nbr_face][nbr_elem, :, :] - upwind*np.abs(Ln[face][elem, :, :])))
-                                                           @ np.flipud(np.fliplr(phy.RB[nbr_face][nbr_elem, :, :])))
+        # construct SAT matrix that multiplies the Dirichlet boundary vector
+        sD = sparse.lil_matrix((nelem * nnodes, nelem * nfp * nface), dtype=np.float64)
+        uD = np.zeros((nfp * nface, nelem))
+        if domain_type.lower() != "periodic":
+            # Dirichlet boundary condition
+            for i in range(0, len(adata.bgrpD)):
+                elem = adata.bgrpD[i, 0]
+                face = adata.bgrpD[i, 1]
+                # add boundary SAT terms
+                sI[elem*nnodes:(elem+1)*nnodes, elem*nnodes:(elem+1)*nnodes] += HB_inv[elem] @ phy.RB[face][elem].T \
+                                @ Tkk[face][elem] @ phy.RB[face][elem]
 
-        # add boundary SATs
-        for i in range(0, len(adata.bgrpD)):
-            elem = adata.bgrpD[i, 0]
-            face = adata.bgrpD[i, 1]
-            A[elem, elem, :, :] -= HB_inv[elem, :, :] @ (phy.RB[face].transpose(0, 2, 1)[elem, :, :] @ phy.BB[face][elem, :, :]
-                                                                @ (Ln[face][elem, :, :] - upwind*np.abs(Ln[face][elem, :, :]))
-                                                                @ phy.RB[face][elem, :, :])
+            for i in range(0, len(adata.bgrpD)):
+                elem = adata.bgrpD[i, 0]
+                face = adata.bgrpD[i, 1]
+                sD[elem*nnodes:(elem+1)*nnodes, (elem*nface*nfp+nfp*face):(elem*nface*nfp+nfp*(face+1))] -= HB_inv[elem] \
+                                @ (phy.RB[face][elem].T @ Tkk[face][elem])
 
-        sD = (np.block(np.zeros((nelem * nnodes, nelem * nnodes)))).reshape((nelem, nelem, nnodes, nnodes))
-        for i in range(0, len(adata.bgrpD)):
-            elem = adata.bgrpD[i, 0]
-            face = adata.bgrpD[i, 1]
-            sD[elem, elem, :, :] += HB_inv[elem, :, :] @ (phy.RB[face].transpose(0, 2, 1)[elem, :, :] @ phy.BB[face][elem, :, :]
-                                                              @ (Ln[face][elem, :, :] - upwind*np.abs(Ln[face][elem, :, :]))
-                                                             @ phy.RB[face][elem, :, :])
+            # set boundary conditions
+            uD = MeshTools2D.set_bndry_advec_sbp_2D(xf, yf, adata.bgrpD, bL, bR, bB, bT, uDL_fun=u_exact,
+                                                    uDB_fun=u_exact, uDR_fun=u_exact, uDT_fun=u_exact)
 
-    u_exact = np.sin(np.pi * x) * np.sin(np.pi * y)
-    A_mat = (A.transpose(0, 2, 1, 3)).reshape(nelem * nnodes, nelem * nnodes)
-    A_mat = sparse.csr_matrix(A_mat)
-    sD_mat = (sD.transpose(0, 2, 1, 3)).reshape(nelem * nnodes, nelem * nnodes)
-    sD_mat = sparse.csr_matrix(sD_mat)
-    sDf = sD_mat @ u_exact.reshape(-1, 1, order='F')
-    f = (np.pi * np.cos(np.pi * x) * np.sin(np.pi*y) + np.pi * np.cos(np.pi * y) * np.sin(np.pi*x)).reshape(-1, 1, order='F') + sDf
-    u = spsolve(A_mat, f)
-    u = u.reshape(nelem, nnodes).T
+        A_mat = sparse.csr_matrix(A_diag) - sI.tocsr()
+        sD_mat = sD.tocsr()
+        sDf = (sD_mat @ uD.flatten(order="F")).reshape(-1, 1)
+        fh = f(x, y).reshape(-1, 1, order='F') + sDf
+        u = (spsolve(A_mat, fh)).reshape((nnodes, nelem), order="F")
 
-    err = np.linalg.norm(u - u_exact)
+        # get number of elements and calculate element size
+        nelems.append(nelem)
+        nnodes_list.append(nnodes)
+        #h = 1 / np.sqrt(nelem)
+        h = np.sqrt(2)/np.sqrt(2*(((n_edge0-1)*(2**refine))**2))
+        hs.append(h)
 
-    plot_figure_2d(x, y, u_exact)
-    plot_figure_2d(x, y, u)
+        # error calculation
+        Hg = sparse.block_diag(phy.HB)
+        err_soln = np.sqrt((u - u_exact(x, y)).flatten(order="F") @ Hg @ (u - u_exact(x, y)).flatten(order="F"))
+
+        errs_soln.append(err_soln)
+
+        if refine != 0:
+            rate = np.log(errs_soln[refine]/errs_soln[refine-1])/np.log(hs[refine]/hs[refine-1])
+        else:
+            rate = 0
+        # result
+        print("error_soln =", "{:.4e}".format(err_soln), "; nelem =", nelem, "; h =", "{:.4f}".format(h), "; ",
+              sbp_family, "; ", flux_type, "; p =", p, "; rate =", "{:.5f}".format(rate), "; min_Jac =",
+              "{:.5f}".format(np.min((sparse.block_diag(phy.jacB).diagonal()))))
+
+        showMesh = False
+        if showMesh == True:
+            showFacetNodes = False
+            showVolumeNodes = False
+            MeshPlot.plot_mesh_2d(nelem, adata.r, adata.s, x, y, xf, yf, adata.vx, adata.vy, adata.etov, p_map,
+                                  adata.Lx, adata.Ly, showFacetNodes, showVolumeNodes,
+                                  saveMeshPlot=False, curve_mesh=curve_mesh, sbp_family=sbp_family)
+
+
+    plot_soln = 1
+    plot_conv = 0
+    if plot_soln:
+        plot_figure_2d(x, y, u_exact(x, y))
+        plot_figure_2d(x, y, u)
+    if plot_conv:
+        conv_start = 2
+        conv_end = nrefine
+        #hs = np.sqrt(2)/np.asarray(np.sqrt(nelems))
+        conv = calc_conv(hs, errs_soln, conv_start, conv_end)
+        #np.set_printoptions(precision=3, suppress=False)
+        print("conv rate: ", np.asarray(conv))
+        # print(np.asarray(errs_soln))
+
+        # plot_conv_fig(hs[0:], errs_soln[0:], conv_start, conv_end)
 
     return u
 
 
-u = advection_solver_sbp_2d_steady(2, 5, 1, 'omega')
+u = advection_solver_sbp_2d_steady(4, 3, nrefine=4, sbp_family='diage', upwind=False, p_map=1, curve_mesh=False,
+                                   domain_type="notperiodic")

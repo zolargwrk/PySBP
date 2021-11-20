@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import vtk
-from vtk.util.numpy_support import vtk_to_numpy
+#import vtk
+#from vtk.util.numpy_support import vtk_to_numpy
 from mesh.mesh_generator import MeshGenerator2D
 from mesh.mesh_tools import MeshTools2D
 from src.ref_elem import Ref2D_SBP
@@ -10,7 +10,7 @@ from visual.mytriplot import mytriplot
 
 
 class MeshPlot:
-
+    """
     @staticmethod
     def mesh_plot_2d(file_vtu):
 
@@ -37,7 +37,7 @@ class MeshPlot:
         plt.show()
 
         return
-
+    """
     @staticmethod
     def plot_mesh_2d(nelem, r, s, x, y, xf, yf, vx, vy, etov, p_map=2, Lx=1, Ly=1, showFacetNodes=False,
                      showVolumeNodes=False, saveMeshPlot=False, curve_mesh=True, sbp_family=''):

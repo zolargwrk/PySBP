@@ -153,7 +153,7 @@ class MeshGenerator2D:
         Ly = np.abs(bT-bB)
 
         # choose mesh generator
-        meshgenerator = 'gmsh'
+        meshgenerator = 'meshzoo'
         # ------------------- dmsh ------------
         if meshgenerator=='dmsh':
             geo = dmsh.Rectangle(bL, bR, bB, bT)
@@ -162,8 +162,7 @@ class MeshGenerator2D:
         #-------------------- meshzoo ---------
         elif meshgenerator == 'meshzoo':
             # nx = int(np.ceil(2 / h ** 2) + 1)
-            vxy, etov = meshzoo.rectangle(xmin=bL, xmax=bR, ymin=bB, ymax=bT, nx=2,
-                                          ny=2, zigzag=True)
+            vxy, etov = meshzoo.rectangle_tri(np.linspace(bL, bR, h), np.linspace(bB, bT, h), variant="down")
             vxy = vxy[:, 0:2]
         # --------------------- gmsh -------
         elif meshgenerator == 'gmsh':

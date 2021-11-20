@@ -2,9 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="be4ae5a2-786a-4b34-868b-237316d326c6" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/PySBP.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/PySBP.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mesh/mesh_generator.py" beforeDir="false" afterPath="$PROJECT_DIR$/mesh/mesh_generator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mesh/mesh_tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/mesh/mesh_tools.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/solver/advection_solver.py" beforeDir="false" afterPath="$PROJECT_DIR$/solver/advection_solver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/visual/mesh_plot.py" beforeDir="false" afterPath="$PROJECT_DIR$/visual/mesh_plot.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -32,7 +34,7 @@
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="settings.editor.selected.configurable" value="advanced.settings" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RunManager" selected="Python.advection_solver">
     <configuration name="Python 3.10" type="PythonConfigurationType" factoryName="Python">
@@ -120,6 +122,7 @@
       <option name="presentableId" value="Default" />
       <updated>1637180698566</updated>
       <workItem from="1637180718335" duration="460000" />
+      <workItem from="1637341744996" duration="16528000" />
     </task>
     <servers />
   </component>
@@ -131,8 +134,18 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/solver/advection_solver.py</url>
-          <line>280</line>
-          <option name="timeStamp" value="10" />
+          <line>268</line>
+          <option name="timeStamp" value="21" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/solver/advection_solver.py</url>
+          <line>246</line>
+          <option name="timeStamp" value="23" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/solver/advection_solver.py</url>
+          <line>211</line>
+          <option name="timeStamp" value="24" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
@@ -145,7 +158,7 @@
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/PySBP$advection_solver.coverage" NAME="advection_solver Coverage Results" MODIFIED="1637193435553" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/solver" />
+    <SUITE FILE_PATH="coverage/PySBP$advection_solver.coverage" NAME="advection_solver Coverage Results" MODIFIED="1637366338319" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/solver" />
     <SUITE FILE_PATH="coverage/PySBP$Python_3_10.coverage" NAME="Python 3.10 Coverage Results" MODIFIED="1637180873127" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
   </component>
 </project>

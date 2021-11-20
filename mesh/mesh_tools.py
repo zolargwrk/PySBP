@@ -969,25 +969,36 @@ class MeshTools2D:
         fid = [fid1, fid2, fid3]
 
         uD = np.zeros((nfp * nface, nelem))
-        uN = np.zeros((nfp * nface, nelem))
 
         for i in range(0, len(bgrpD)):
             elem = bgrpD[i, 0]
             face = bgrpD[i, 1]
             # left boundary
             if np.abs(xf[fid[face][1], elem] - bL) <= tol:
-                uD[fid[face], elem] = uDL_fun(xf[fid[face], elem], yf[fid[face], elem], t)
+                if t is None:
+                    uD[fid[face], elem] = uDL_fun(xf[fid[face], elem], yf[fid[face], elem])
+                else:
+                    uD[fid[face], elem] = uDL_fun(xf[fid[face], elem], yf[fid[face], elem], t)
             # right boundary
             if np.abs(xf[fid[face][1], elem] - bR) <= tol:
-                uD[fid[face], elem] = uDR_fun(xf[fid[face], elem], yf[fid[face], elem], t)
+                if t is None:
+                    uD[fid[face], elem] = uDR_fun(xf[fid[face], elem], yf[fid[face], elem])
+                else:
+                    uD[fid[face], elem] = uDR_fun(xf[fid[face], elem], yf[fid[face], elem], t)
             # bottom boundary
             if np.abs(yf[fid[face][1], elem] - bB) <= tol:
-                uD[fid[face], elem] = uDB_fun(xf[fid[face], elem], yf[fid[face], elem], t)
+                if t is None:
+                    uD[fid[face], elem] = uDB_fun(xf[fid[face], elem], yf[fid[face], elem])
+                else:
+                    uD[fid[face], elem] = uDB_fun(xf[fid[face], elem], yf[fid[face], elem], t)
             # top boundary
             if np.abs(yf[fid[face][1], elem] - bT) <= tol:
-                uD[fid[face], elem] = uDT_fun(xf[fid[face], elem], yf[fid[face], elem], t)
+                if t is None:
+                    uD[fid[face], elem] = uDT_fun(xf[fid[face], elem], yf[fid[face], elem])
+                else:
+                    uD[fid[face], elem] = uDT_fun(xf[fid[face], elem], yf[fid[face], elem], t)
 
-        return uD, uN
+        return uD
 
     @staticmethod
     def connectivity_etoe2(etoe, etof):
